@@ -1,0 +1,6 @@
+<svg width="220" height="48" viewBox="0 0 220 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="1" y="1" width="218" height="46" rx="23" stroke="#cd2d2b" stroke-width="2"/>
+  <path d="M25 31L33 15L41 31M29 24H37" stroke="#cd2d2b" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M57 32V16H63L69 27L75 16H81V32" stroke="#1a1008" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="96" y="31" fill="#1a1008" font-family="Playfair Display, Georgia, serif" font-size="18" font-weight="900" letter-spacing="1.5">MARS</text>
+</svg>
