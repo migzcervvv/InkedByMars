@@ -73,7 +73,7 @@ export function Hero() {
 
       <div className="relative z-10 mx-auto w-full max-w-7xl">
         <p className="hero-subtitle mb-5 font-mono text-xs uppercase tracking-[0.32em] text-cream/75">
-          Freehand / Customized / Minimalist
+          Freehand / Customized / Home Studio
         </p>
         <h1 className="font-display leading-[0.78]">
           {renderLine(

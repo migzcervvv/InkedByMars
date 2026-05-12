@@ -58,7 +58,7 @@ export function AboutSection() {
           <div className="mt-10 grid grid-cols-3 gap-4 border-y border-ink/20 py-6">
             {[
               [result, " Years"],
-              ["500+", "Pieces"],
+              ["300+", "Pieces"],
               ["Manila", "PH"],
             ].map(([value, label]) => (
               <div key={label}>

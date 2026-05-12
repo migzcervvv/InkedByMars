@@ -1,7 +1,7 @@
-import { Hero } from '../components/home/Hero'
-import { FeaturedWork } from '../components/home/FeaturedWork'
-import { AboutSection } from '../components/home/AboutSection'
-import { Testimonials } from '../components/home/Testimonials'
+import { Hero } from "../components/home/Hero";
+import { FeaturedWork } from "../components/home/FeaturedWork";
+import { AboutSection } from "../components/home/AboutSection";
+import { FAQ } from "../components/home/FAQ";
 
 export default function HomePage() {
   return (
@@ -9,7 +9,7 @@ export default function HomePage() {
       <Hero />
       <FeaturedWork />
       <AboutSection />
-      <Testimonials />
+      <FAQ />
     </>
-  )
+  );
 }
