@@ -1,6 +1,13 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Route, Routes, useLocation } from "react-router-dom";
-import { AnimatePresence, LazyMotion, domAnimation } from "framer-motion";
+import {
+  AnimatePresence,
+  LazyMotion,
+  domAnimation,
+  useMotionValue,
+  useSpring,
+  motion,
+} from "framer-motion";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { Navbar } from "./components/layout/Navbar";
@@ -8,6 +15,7 @@ import { Footer } from "./components/layout/Footer";
 import { PageTransition } from "./components/layout/PageTransition";
 import { Loader } from "./components/ui/Loader";
 import { ScrollToTop } from "./components/ui/ScrollToTop";
+import { LoadingScreen } from "./components/ui/LoadingScreen";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -17,54 +25,23 @@ const BookingPage = lazy(() => import("./pages/BookingPage"));
 const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
 
 function App() {
+  const [loaded, setLoaded] = useState(false);
+
   return (
     <LazyMotion features={domAnimation}>
-      <ScrollToTop />
-      <LoadingScreen />
-      <ScrollProgress />
-      <CustomCursor />
-      <Navbar />
-      <AnimatedRoutes />
-      <Footer />
+      {!loaded ? (
+        <LoadingScreen onComplete={() => setLoaded(true)} />
+      ) : (
+        <>
+          <ScrollToTop />
+          <ScrollProgress />
+          <CustomCursor />
+          <Navbar />
+          <AnimatedRoutes />
+          <Footer />
+        </>
+      )}
     </LazyMotion>
-  );
-}
-
-function LoadingScreen() {
-  const [visible, setVisible] = useState(true);
-  const [mounted, setMounted] = useState(true);
-
-  useEffect(() => {
-    let removalTimer;
-
-    const hideLoader = () => {
-      setVisible(false);
-      removalTimer = window.setTimeout(() => setMounted(false), 650);
-    };
-
-    const minimumTimer = window.setTimeout(hideLoader, 2500);
-
-    return () => {
-      window.clearTimeout(minimumTimer);
-      window.clearTimeout(removalTimer);
-    };
-  }, []);
-
-  if (!mounted) return null;
-
-  return (
-    <div
-      className={`mars-loader ${visible ? "is-visible" : "is-hidden"}`}
-      aria-label="Loading InkedByMars"
-    >
-      <img
-        src="/mars.jpg"
-        alt="InkedByMars logo"
-        width="220"
-        height="220"
-        decoding="async"
-      />
-    </div>
   );
 }
 

@@ -1,94 +1,365 @@
-import { useRef } from "react";
-import { ArrowRight } from "lucide-react";
-import { gsap } from "gsap";
-import { Button } from "../ui/Button";
-import { useGSAP } from "../../hooks/useGSAP";
+import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
+import { useEffect, useRef } from "react";
 
-const heroImage = "https://picsum.photos/seed/inkedbymars-hero/1800/1200";
+import { InkParticles } from "../ui/InkParticles";
+
+const ease = [0.22, 1, 0.36, 1];
+
+const containerVariants = {
+  hidden: {},
+  show: {
+    transition: {
+      staggerChildren: 0.09,
+      delayChildren: 0.15,
+    },
+  },
+};
+
+const lineVariants = {
+  hidden: {
+    y: "110%",
+    opacity: 0,
+  },
+  show: {
+    y: "0%",
+    opacity: 1,
+    transition: {
+      duration: 1.1,
+      ease,
+    },
+  },
+};
+
+const fadeUp = {
+  hidden: {
+    y: 28,
+    opacity: 0,
+  },
+  show: {
+    y: 0,
+    opacity: 1,
+    transition: {
+      duration: 0.9,
+      ease,
+    },
+  },
+};
+
+const maskReveal = {
+  hidden: {
+    clipPath: "inset(100% 0 0 0)",
+    scale: 1.08,
+  },
+  show: {
+    clipPath: "inset(0% 0 0 0)",
+    scale: 1,
+    transition: {
+      duration: 1.4,
+      ease,
+    },
+  },
+};
 
 export function Hero() {
-  const scope = useRef(null);
+  const ref = useRef(null);
 
-  useGSAP(() => {
-    const chars = scope.current.querySelectorAll(".hero-char");
-    const timeline = gsap.timeline();
-    timeline
-      .from(chars, {
-        yPercent: 110,
-        opacity: 0,
-        stagger: 0.03,
-        duration: 0.9,
-        ease: "power4.out",
-      })
-      .from(
-        ".hero-subtitle",
-        { y: 18, opacity: 0, duration: 0.6, ease: "power2.out" },
-        "-=0.15",
-      )
-      .from(
-        ".hero-cta",
-        {
-          y: 22,
-          opacity: 0,
-          stagger: 0.08,
-          duration: 0.55,
-          ease: "power2.out",
-        },
-        "-=0.2",
-      );
-    gsap.fromTo(
-      ".hero-bg",
-      { scale: 1.1 },
-      { scale: 1, duration: 2.5, ease: "power2.out" },
-    );
-  }, []);
+  const mx = useMotionValue(0);
+  const my = useMotionValue(0);
 
-  const renderLine = (text, className) => (
-    <span className={`block overflow-hidden ${className}`}>
-      {text.split("").map((char, index) => (
-        <span className="hero-char inline-block" key={`${char}-${index}`}>
-          {char === " " ? "\u00A0" : char}
-        </span>
-      ))}
-    </span>
-  );
+  const sx = useSpring(mx, {
+    stiffness: 60,
+    damping: 18,
+    mass: 0.6,
+  });
+
+  const sy = useSpring(my, {
+    stiffness: 60,
+    damping: 18,
+    mass: 0.6,
+  });
+
+  const px1 = useTransform(sx, (v) => v * 18);
+  const py1 = useTransform(sy, (v) => v * 18);
+
+  const px2 = useTransform(sx, (v) => v * -28);
+  const py2 = useTransform(sy, (v) => v * -28);
+
+  const px3 = useTransform(sx, (v) => v * 12);
+  const py3 = useTransform(sy, (v) => v * 12);
+
+  const lightBg = useTransform([sx, sy], ([x, y]) => {
+    return `radial-gradient(
+      600px circle at ${50 + x * 30}% ${50 + y * 30}%,
+      rgb(240 232 222 / 0.18),
+      transparent 60%
+    )`;
+  });
+
+  useEffect(() => {
+    const el = ref.current;
+
+    if (!el) return;
+
+    const onMove = (e) => {
+      const rect = el.getBoundingClientRect();
+
+      const x = (e.clientX - rect.left) / rect.width - 0.5;
+      const y = (e.clientY - rect.top) / rect.height - 0.5;
+
+      mx.set(x);
+      my.set(y);
+    };
+
+    el.addEventListener("mousemove", onMove);
+
+    return () => {
+      el.removeEventListener("mousemove", onMove);
+    };
+  }, [mx, my]);
 
   return (
     <section
-      ref={scope}
-      className="relative flex min-h-screen items-end overflow-hidden bg-ink px-6 pb-16 pt-28 text-cream"
+      ref={ref}
+      className="relative min-h-screen w-full overflow-hidden grain"
+      style={{ backgroundColor: "var(--color-bg)" }}
+      aria-label="InkedByMars hero"
     >
-      <picture className="absolute inset-0">
-        <source srcSet={`${heroImage}?format=webp`} type="image/webp" />
-        <img
-          className="hero-bg size-full object-cover opacity-55 blur-[1px]"
-          src={heroImage}
-          width="1800"
-          height="1200"
-          alt="Tattoo studio mood portrait"
-          decoding="async"
-        />
-      </picture>
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_25%,rgba(205,45,43,0.24),transparent_32%),linear-gradient(180deg,rgba(26,16,8,0.35),rgba(26,16,8,0.93))]" />
+      {/* Paper texture base */}
+      <div
+        className="pointer-events-none absolute inset-0 opacity-60 mix-blend-multiply"
+        style={{
+          backgroundImage: "paper-texture.jpg",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+        aria-hidden
+      />
 
-      <div className="relative z-10 mx-auto w-full max-w-7xl">
-        <p className="hero-subtitle mb-5 font-mono text-xs uppercase tracking-[0.32em] text-cream/75">
-          Freehand / Customized / Home Studio
-        </p>
-        <h1 className="font-display leading-[0.78]">
-          {renderLine(
-            "INKED BY",
-            "text-[16vw] italic text-cream md:text-[9vw]",
-          )}
-          {renderLine("MARS", "text-[18vw] font-black text-red md:text-[12vw]")}
-        </h1>
-        <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-          <Button to="/gallery" variant="outline" className="hero-cta">
-            View Work <ArrowRight size={16} />
-          </Button>
-          <Button to="/booking" className="hero-cta">
-            Book Now <ArrowRight size={16} />
-          </Button>
+      <div
+        className="pointer-events-none absolute inset-0 paper-noise opacity-40"
+        aria-hidden
+      />
+
+      {/* Mouse-follow warm light */}
+      <motion.div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background: lightBg,
+          mixBlendMode: "soft-light",
+        }}
+        aria-hidden
+      />
+
+      {/* Vignette */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(ellipse at center, transparent 40%, rgba(26,16,8,0.55) 100%)",
+        }}
+        aria-hidden
+      />
+
+      <InkParticles count={16} />
+
+      {/* Vertical socials */}
+      <motion.div
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{
+          duration: 1,
+          ease,
+          delay: 1.2,
+        }}
+        className="absolute left-6 top-1/2 z-30 hidden -translate-y-1/2 md:block"
+      >
+        <ul className="flex flex-col items-center gap-6 vertical-rl font-mono text-[10px] uppercase tracking-[0.4em]">
+          {["Instagram", "Flash Designs", "Custom Work"].map((s) => (
+            <li key={s}>
+              <a
+                href="https://instagram.com/inkedbymars"
+                className="transition-opacity hover:opacity-50"
+                style={{ color: "var(--color-leather)" }}
+              >
+                {s}
+              </a>
+            </li>
+          ))}
+
+          <li>
+            <span
+              className="block h-16 w-px"
+              style={{
+                backgroundColor: "var(--color-leather)",
+              }}
+            />
+          </li>
+        </ul>
+      </motion.div>
+
+      {/* Main content */}
+      <div className="relative z-20 mx-auto grid min-h-screen max-w-[1400px] grid-cols-1 items-center gap-10 px-6 pt-32 pb-20 md:grid-cols-12 md:px-16 md:pt-28">
+        {/* Left text */}
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          animate="show"
+          className="md:col-span-7 md:pr-6"
+        >
+          <motion.div
+            variants={fadeUp}
+            className="mb-8 flex items-center gap-3"
+          >
+            <span
+              className="block h-px w-10"
+              style={{
+                backgroundColor: "var(--color-red)",
+              }}
+            />
+
+            <span
+              className="font-mono text-[11px] uppercase tracking-[0.4em]"
+              style={{
+                color: "var(--color-red-dark)",
+              }}
+            >
+              Home Studio Artist
+            </span>
+          </motion.div>
+
+          <h1
+            className="font-display leading-[0.92] tracking-[-0.02em]"
+            style={{ color: "var(--color-ink)" }}
+          >
+            <span className="block overflow-hidden">
+              <motion.span
+                variants={lineVariants}
+                className="block text-[10vw] italic md:text-[7vw]"
+              >
+                Skin
+              </motion.span>
+            </span>
+
+            <span className="block overflow-hidden">
+              <motion.span
+                variants={lineVariants}
+                className="block text-[10vw] md:text-[7vw]"
+                style={{
+                  paddingLeft: "0.18em",
+                }}
+              >
+                as a{" "}
+                <span
+                  className="italic"
+                  style={{
+                    color: "var(--color-red-dark)",
+                  }}
+                >
+                  canvas
+                </span>
+                .
+              </motion.span>
+            </span>
+
+            <span className="block overflow-hidden">
+              <motion.span
+                variants={lineVariants}
+                className="block text-[10vw] italic md:text-[7vw]"
+                style={{
+                  color: "var(--color-leather)",
+                }}
+              >
+                Ink as memory.
+              </motion.span>
+            </span>
+          </h1>
+
+          <motion.p
+            variants={fadeUp}
+            className="mt-10 max-w-xl font-body text-xl italic leading-snug text-balance md:text-2xl"
+            style={{
+              color: "var(--color-leather)",
+            }}
+          >
+            Fine-line, black & grey, and editorial blackwork — composed slowly,
+            worn for a lifetime. Booking by curated consultation only.
+          </motion.p>
+        </motion.div>
+
+        {/* Right images */}
+        <div className="relative md:col-span-5 md:h-[78vh]">
+          <div className="relative h-[80vw] max-h-[640px] w-full md:h-full">
+            {/* Main portrait */}
+            <motion.div
+              variants={maskReveal}
+              initial="hidden"
+              animate="show"
+              className="absolute right-0 top-0 z-10 h-[78%] w-[78%] overflow-hidden shadow-leather"
+              style={{
+                borderRadius: "2px",
+              }}
+            >
+              <motion.img
+                src="hero-portrait.jpg"
+                alt="Tattooed editorial portrait"
+                className="h-full w-full object-cover"
+                style={{
+                  x: px1,
+                  y: py1,
+                  willChange: "transform",
+                }}
+                draggable={false}
+              />
+            </motion.div>
+
+            {/* Tattoo image */}
+            <motion.div
+              variants={maskReveal}
+              initial="hidden"
+              animate="show"
+              transition={{ delay: 0.2 }}
+              className="absolute bottom-0 left-0 z-20 h-[46%] w-[58%] overflow-hidden shadow-leather"
+              style={{
+                borderRadius: "200px 12px 12px 12px",
+              }}
+            >
+              <motion.img
+                src="hero-tattoo-1.jpg"
+                alt="Tattoo close-up"
+                className="h-full w-full object-cover"
+                style={{
+                  x: px2,
+                  y: py2,
+                  willChange: "transform",
+                }}
+                draggable={false}
+              />
+            </motion.div>
+
+            {/* Hand image */}
+            <motion.div
+              variants={maskReveal}
+              initial="hidden"
+              animate="show"
+              transition={{ delay: 0.35 }}
+              className="absolute -right-6 -top-8 z-30 hidden h-[30%] w-[34%] overflow-hidden shadow-red md:block"
+              style={{
+                borderRadius: "9999px 9999px 4px 4px",
+              }}
+            >
+              <motion.img
+                src="hero-hand.jpg"
+                alt="Tattoo machine close-up"
+                className="h-full w-full object-cover"
+                style={{
+                  x: px3,
+                  y: py3,
+                  willChange: "transform",
+                }}
+                draggable={false}
+              />
+            </motion.div>
+          </div>
         </div>
       </div>
     </section>
