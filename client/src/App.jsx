@@ -23,6 +23,7 @@ const HomePage = lazy(() => import("./pages/HomePage"));
 const GalleryPage = lazy(() => import("./pages/GalleryPage"));
 const BookingPage = lazy(() => import("./pages/BookingPage"));
 const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
+const AboutPage = lazy(() => import("./pages/AboutPage"));
 
 function App() {
   const [loaded, setLoaded] = useState(false);
@@ -73,6 +74,14 @@ function AnimatedRoutes() {
             element={
               <PageTransition>
                 <BookingPage />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="/about"
+            element={
+              <PageTransition>
+                <AboutPage />
               </PageTransition>
             }
           />

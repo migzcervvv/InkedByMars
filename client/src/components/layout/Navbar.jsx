@@ -1,45 +1,52 @@
-import { useEffect, useState } from 'react'
-import { NavLink } from 'react-router-dom'
-import { AnimatePresence, motion } from 'framer-motion'
-import { Menu, X } from 'lucide-react'
-import { gsap } from 'gsap'
-import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import { useEffect, useState } from "react";
+import { NavLink } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
+import { Menu, X } from "lucide-react";
+import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 
-gsap.registerPlugin(ScrollTrigger)
+gsap.registerPlugin(ScrollTrigger);
 
 const links = [
-  { label: 'Work', to: '/' },
-  { label: 'Gallery', to: '/gallery' },
-  { label: 'Book', to: '/booking' },
-]
+  { label: "Work", to: "/" },
+  { label: "About", to: "/about" },
+  { label: "Gallery", to: "/gallery" },
+  { label: "Book", to: "/booking" },
+];
 
 export function Navbar() {
-  const [solid, setSolid] = useState(false)
-  const [open, setOpen] = useState(false)
+  const [solid, setSolid] = useState(false);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     const trigger = ScrollTrigger.create({
       start: 60,
       end: 99999,
       onUpdate: (self) => setSolid(self.scroll() > 60),
-    })
-    return () => trigger.kill()
-  }, [])
+    });
+    return () => trigger.kill();
+  }, []);
 
   useEffect(() => {
-    document.body.classList.toggle('menu-open', open)
-    return () => document.body.classList.remove('menu-open')
-  }, [open])
+    document.body.classList.toggle("menu-open", open);
+    return () => document.body.classList.remove("menu-open");
+  }, [open]);
 
   return (
     <>
       <header
         className={`fixed inset-x-0 top-0 z-[70] transition-colors duration-300 ${
-          solid || open ? 'bg-ink/95 shadow-leather backdrop-blur' : 'bg-ink/90 md:bg-transparent'
+          solid || open
+            ? "bg-ink/95 shadow-leather backdrop-blur"
+            : "bg-ink/90 md:bg-transparent"
         }`}
       >
         <nav className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6">
-          <NavLink to="/" className="font-display text-xl font-black tracking-[0.08em]" onClick={() => setOpen(false)}>
+          <NavLink
+            to="/"
+            className="font-display text-xl font-black tracking-[0.08em]"
+            onClick={() => setOpen(false)}
+          >
             <span className="text-cream">INKED BY </span>
             <span className="text-red">MARS</span>
           </NavLink>
@@ -54,7 +61,7 @@ export function Navbar() {
 
           <button
             type="button"
-            aria-label={open ? 'Close navigation' : 'Open navigation'}
+            aria-label={open ? "Close navigation" : "Open navigation"}
             aria-expanded={open}
             onClick={() => setOpen((value) => !value)}
             className="grid size-11 place-items-center border border-cream/25 text-cream md:hidden"
@@ -82,7 +89,13 @@ export function Navbar() {
               }}
             >
               {links.map((link) => (
-                <motion.div key={link.to} variants={{ hidden: { y: 28, opacity: 0 }, show: { y: 0, opacity: 1 } }}>
+                <motion.div
+                  key={link.to}
+                  variants={{
+                    hidden: { y: 28, opacity: 0 },
+                    show: { y: 0, opacity: 1 },
+                  }}
+                >
                   <NavLink
                     to={link.to}
                     onClick={() => setOpen(false)}
@@ -97,5 +110,5 @@ export function Navbar() {
         )}
       </AnimatePresence>
     </>
-  )
+  );
 }
