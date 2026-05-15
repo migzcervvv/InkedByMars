@@ -22,24 +22,24 @@ export function ManifestoSection() {
       .from(
         ".manifesto-headline",
         { y: 64, opacity: 0, duration: 1.2, ease: "power4.out" },
-        "-=0.5"
+        "-=0.5",
       )
       .from(
         ".manifesto-body",
         { y: 40, opacity: 0, duration: 1, ease: "power3.out" },
-        "-=0.8"
+        "-=0.8",
       )
       .from(
         ".manifesto-ghost",
         { x: 60, opacity: 0, duration: 1.4, ease: "power3.out" },
-        "<"
+        "<",
       );
   }, []);
 
   return (
     <section
       ref={ref}
-      className="relative border-b border-ink/10 px-6 py-20 md:py-28 lg:px-16 xl:py-36"
+      className="relative border-b border-ink/10 pt-24 px-6 py-20 md:py-28 lg:px-16 xl:py-36"
     >
       {/* Decorative ghost letterform */}
       <span
