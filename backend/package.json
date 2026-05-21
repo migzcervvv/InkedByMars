@@ -1,25 +1,27 @@
 {
-  "name": "backend",
+  "name": "tattoo-admin-backend",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Production-ready admin panel backend for tattoo artist booking system",
+  "main": "src/server.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js"
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "seed:admin": "node src/utils/seedAdmin.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "module",
   "dependencies": {
-    "bcryptjs": "^3.0.3",
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dayjs": "^1.11.20",
-    "dotenv": "^17.4.2",
-    "express": "^5.2.1",
+    "dotenv": "^16.6.1",
+    "express": "^4.22.2",
+    "express-rate-limit": "^7.5.1",
+    "express-validator": "^7.3.2",
+    "helmet": "^7.2.0",
     "jsonwebtoken": "^9.0.3",
-    "mongodb": "^7.2.0",
-    "mongoose": "^9.6.2"
+    "mongoose": "^8.24.0",
+    "morgan": "^1.10.1",
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
