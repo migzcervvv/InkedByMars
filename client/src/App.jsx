@@ -13,6 +13,7 @@ import { PageTransition } from "./components/layout/PageTransition";
 import { Loader } from "./components/ui/Loader";
 import { ScrollToTop } from "./components/ui/ScrollToTop";
 import { LoadingScreen } from "./components/ui/LoadingScreen";
+import { ErrorBoundary } from "./components/ui/ErrorBoundary";
 import { AdminLayout } from "./layouts/AdminLayout";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
 
@@ -36,10 +37,11 @@ function App() {
   const [loaded, setLoaded] = useState(false);
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith("/admin");
+  const ready = loaded || isAdminRoute;
 
   return (
     <LazyMotion features={domAnimation}>
-      {!loaded ? (
+      {!ready ? (
         <LoadingScreen onComplete={() => setLoaded(true)} />
       ) : (
         <>
@@ -59,101 +61,111 @@ function AnimatedRoutes() {
   const location = useLocation();
 
   return (
-    <Suspense fallback={<Loader label="Entering studio" />}>
-      <AnimatePresence mode="wait">
-        <Routes location={location} key={location.pathname}>
-          <Route
-            path="/"
-            element={
-              <PageTransition>
-                <HomePage />
-              </PageTransition>
-            }
-          />
-          <Route
-            path="/gallery"
-            element={
-              <PageTransition>
-                <GalleryPage />
-              </PageTransition>
-            }
-          />
-          <Route
-            path="/portfolio"
-            element={
-              <PageTransition>
-                <GalleryPage />
-              </PageTransition>
-            }
-          />
-          <Route
-            path="/booking"
-            element={
-              <PageTransition>
-                <BookingPage />
-              </PageTransition>
-            }
-          />
-          <Route
-            path="/availability"
-            element={
-              <PageTransition>
-                <AvailabilityPage />
-              </PageTransition>
-            }
-          />
-          <Route
-            path="/contact"
-            element={
-              <PageTransition>
-                <ContactPage />
-              </PageTransition>
-            }
-          />
-          <Route
-            path="/about"
-            element={
-              <PageTransition>
-                <AboutPage />
-              </PageTransition>
-            }
-          />
-          <Route path="/admin/login" element={<LoginPage />} />
-          <Route element={<ProtectedRoute />}>
-            <Route path="/admin" element={<AdminLayout />}>
-              <Route index element={<AdminDashboardPage />} />
-              <Route path="bookings" element={<AdminBookingsPage />} />
-              <Route path="schedule" element={<AdminSchedulePage />} />
-              <Route path="availability" element={<AdminAvailabilityPage />} />
-              <Route path="settings" element={<AdminSettingsPage />} />
+    <ErrorBoundary key={location.pathname}>
+      <Suspense fallback={<Loader label="Entering studio" />}>
+        <AnimatePresence mode="wait">
+          <Routes location={location} key={location.pathname}>
+            <Route
+              path="/"
+              element={
+                <PageTransition>
+                  <HomePage />
+                </PageTransition>
+              }
+            />
+            <Route
+              path="/gallery"
+              element={
+                <PageTransition>
+                  <GalleryPage />
+                </PageTransition>
+              }
+            />
+            <Route
+              path="/portfolio"
+              element={
+                <PageTransition>
+                  <GalleryPage />
+                </PageTransition>
+              }
+            />
+            <Route
+              path="/booking"
+              element={
+                <PageTransition>
+                  <BookingPage />
+                </PageTransition>
+              }
+            />
+            <Route
+              path="/availability"
+              element={
+                <PageTransition>
+                  <AvailabilityPage />
+                </PageTransition>
+              }
+            />
+            <Route
+              path="/contact"
+              element={
+                <PageTransition>
+                  <ContactPage />
+                </PageTransition>
+              }
+            />
+            <Route
+              path="/about"
+              element={
+                <PageTransition>
+                  <AboutPage />
+                </PageTransition>
+              }
+            />
+            <Route path="/admin/login" element={<LoginPage />} />
+            <Route element={<ProtectedRoute />}>
+              <Route path="/admin" element={<AdminLayout />}>
+                <Route index element={<AdminDashboardPage />} />
+                <Route path="bookings" element={<AdminBookingsPage />} />
+                <Route path="schedule" element={<AdminSchedulePage />} />
+                <Route path="availability" element={<AdminAvailabilityPage />} />
+                <Route path="settings" element={<AdminSettingsPage />} />
+              </Route>
             </Route>
-          </Route>
-          <Route
-            path="*"
-            element={
-              <PageTransition>
-                <NotFoundPage />
-              </PageTransition>
-            }
-          />
-        </Routes>
-      </AnimatePresence>
-    </Suspense>
+            <Route
+              path="*"
+              element={
+                <PageTransition>
+                  <NotFoundPage />
+                </PageTransition>
+              }
+            />
+          </Routes>
+        </AnimatePresence>
+      </Suspense>
+    </ErrorBoundary>
   );
 }
 
 function ScrollProgress() {
+  const progressRef = useRef(null);
+
   useEffect(() => {
-    const tween = gsap.to(".scroll-progress", {
+    if (!progressRef.current) return undefined;
+
+    const tween = gsap.to(progressRef.current, {
       scaleX: 1,
       ease: "none",
       scrollTrigger: { start: 0, end: "max", scrub: 0.15 },
     });
-    return () => tween.kill();
+
+    return () => {
+      tween.scrollTrigger?.kill();
+      tween.kill();
+    };
   }, []);
 
   return (
-    <div className="scroll-progress fixed left-0 top-0 z-[90] h-1 w-full origin-left scale-x-0 bg-red" />
+    <div ref={progressRef} className="fixed left-0 top-0 z-[90] h-1 w-full origin-left scale-x-0 bg-red" />
   );
 }
 
@@ -163,6 +175,10 @@ function CustomCursor() {
 
   useEffect(() => {
     if (!window.matchMedia("(pointer: fine)").matches) return undefined;
+    if (!dot.current || !ring.current) return undefined;
+
+    const dotEl = dot.current;
+    const ringEl = ring.current;
     const dotX = gsap.quickTo(dot.current, "x", {
       duration: 0.05,
       ease: "none",
@@ -203,6 +219,7 @@ function CustomCursor() {
     return () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("mouseover", over);
+      gsap.killTweensOf([dotEl, ringEl]);
     };
   }, []);
 

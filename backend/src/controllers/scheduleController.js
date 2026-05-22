@@ -7,6 +7,20 @@ const asyncHandler = require('../utils/asyncHandler');
 const { sendOk, sendCreated } = require('../utils/response');
 const { DAY_STATUS, SLOT_STATUS } = require('../config/constants');
 const scheduleService = require('../services/scheduleService');
+const logger = require('../utils/logger');
+
+const eachDate = (startDate, endDate) => {
+  const dates = [];
+  let cursor = dayjs(startDate);
+  const end = dayjs(endDate);
+
+  while (cursor.isBefore(end) || cursor.isSame(end, 'day')) {
+    dates.push(cursor.format('YYYY-MM-DD'));
+    cursor = cursor.add(1, 'day');
+  }
+
+  return dates;
+};
 
 /**
  * GET /api/schedule
@@ -59,6 +73,13 @@ const blockDay = asyncHandler(async (req, res, next) => {
 
   await schedule.save();
 
+  logger.info('schedule.day_blocked', {
+    requestId: req.requestId,
+    adminId: req.admin?._id?.toString(),
+    date,
+    dayStatus,
+  });
+
   sendOk(res, { schedule }, `Day ${date} marked as ${dayStatus}`);
 });
 
@@ -87,6 +108,14 @@ const blockSlot = asyncHandler(async (req, res, next) => {
 
   await scheduleService.closeSlot(schedule, time, reason);
 
+  logger.info('schedule.slot_blocked', {
+    requestId: req.requestId,
+    adminId: req.admin?._id?.toString(),
+    date,
+    time,
+    reason,
+  });
+
   sendOk(res, { schedule }, `Slot ${time} on ${date} closed`);
 });
 
@@ -114,6 +143,13 @@ const releaseSlot = asyncHandler(async (req, res, next) => {
   }
 
   await scheduleService.releaseSlot(schedule, time);
+
+  logger.info('schedule.slot_released', {
+    requestId: req.requestId,
+    adminId: req.admin?._id?.toString(),
+    date,
+    time,
+  });
 
   sendOk(res, { schedule }, `Slot ${time} on ${date} released`);
 });
@@ -153,6 +189,87 @@ const expireHolds = asyncHandler(async (req, res, next) => {
   sendOk(res, {}, 'Stale holds expired');
 });
 
+const applyOpeningWindow = asyncHandler(async (req, res, next) => {
+  const { startDate, endDate, openTime, closeTime, reason = 'Outside opening hours' } = req.body;
+
+  if (dayjs(endDate).isBefore(dayjs(startDate))) {
+    return next(new AppError('endDate must be on or after startDate', 400));
+  }
+
+  if (closeTime <= openTime) {
+    return next(new AppError('closeTime must be after openTime', 400));
+  }
+
+  const dates = eachDate(startDate, endDate);
+  if (dates.length > 120) {
+    return next(new AppError('Opening window range cannot exceed 120 days', 400));
+  }
+
+  let updatedSlots = 0;
+  let skippedBookedSlots = 0;
+  const schedules = [];
+
+  for (const date of dates) {
+    const schedule = await scheduleService.getOrCreateSchedule(date);
+
+    for (const slot of schedule.timeSlots) {
+      if (slot.status === SLOT_STATUS.BOOKED) {
+        skippedBookedSlots += 1;
+        continue;
+      }
+
+      const shouldBeOpen = slot.time >= openTime && slot.time < closeTime;
+      const nextStatus = shouldBeOpen ? SLOT_STATUS.AVAILABLE : SLOT_STATUS.CLOSED;
+
+      if (slot.status !== nextStatus || (!shouldBeOpen && slot.reason !== reason)) {
+        slot.status = nextStatus;
+        slot.reason = shouldBeOpen ? null : reason;
+        slot.bookingId = null;
+        slot.holdExpiresAt = null;
+        updatedSlots += 1;
+      }
+    }
+
+    schedule.dayStatus = DAY_STATUS.OPEN;
+    if (schedule.timeSlots.every((slot) => slot.status === SLOT_STATUS.CLOSED)) {
+      schedule.dayStatus = DAY_STATUS.FULLY_CLOSED;
+      schedule.closureReason = reason;
+    } else if (schedule.timeSlots.some((slot) => slot.status === SLOT_STATUS.CLOSED)) {
+      schedule.dayStatus = DAY_STATUS.PARTIALLY_CLOSED;
+      schedule.closureReason = reason;
+    } else {
+      schedule.closureReason = null;
+    }
+
+    await schedule.save();
+    schedules.push(schedule);
+  }
+
+  logger.info('schedule.opening_window_applied', {
+    requestId: req.requestId,
+    adminId: req.admin?._id?.toString(),
+    startDate,
+    endDate,
+    openTime,
+    closeTime,
+    updatedSlots,
+    skippedBookedSlots,
+  });
+
+  sendOk(
+    res,
+    {
+      schedules,
+      summary: {
+        dates: dates.length,
+        updatedSlots,
+        skippedBookedSlots,
+      },
+    },
+    'Opening hours applied'
+  );
+});
+
 module.exports = {
   getAllSchedules,
   getScheduleByDate,
@@ -161,4 +278,5 @@ module.exports = {
   releaseSlot,
   overrideSlot,
   expireHolds,
+  applyOpeningWindow,
 };

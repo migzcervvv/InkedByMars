@@ -4,6 +4,7 @@ const Admin = require('../models/Admin');
 const AppError = require('../utils/AppError');
 const asyncHandler = require('../utils/asyncHandler');
 const { sendOk, sendCreated, sendCookieWithToken } = require('../utils/response');
+const logger = require('../utils/logger');
 
 /**
  * POST /api/auth/login
@@ -14,6 +15,11 @@ const login = asyncHandler(async (req, res, next) => {
 
   const admin = await Admin.findOne({ email }).select('+password');
   if (!admin || !(await admin.comparePassword(password))) {
+    logger.warn('auth.login_failed', {
+      requestId: req.requestId,
+      email,
+      ip: req.ip,
+    });
     return next(new AppError('Invalid credentials', 401));
   }
 
@@ -25,6 +31,13 @@ const login = asyncHandler(async (req, res, next) => {
   await admin.save({ validateBeforeSave: false });
 
   const token = sendCookieWithToken(res, admin);
+
+  logger.info('auth.login_success', {
+    requestId: req.requestId,
+    adminId: admin._id.toString(),
+    email: admin.email,
+    role: admin.role,
+  });
 
   sendOk(res, {
     token,
@@ -53,6 +66,13 @@ const register = asyncHandler(async (req, res, next) => {
 
   const token = sendCookieWithToken(res, admin);
 
+  logger.info('auth.admin_registered', {
+    requestId: req.requestId,
+    createdAdminId: admin._id.toString(),
+    createdBy: req.admin?._id?.toString() || null,
+    role: admin.role,
+  });
+
   sendCreated(res, {
     token,
     admin: {
@@ -72,6 +92,11 @@ const logout = asyncHandler(async (req, res, next) => {
   res.cookie('token', 'none', {
     expires: new Date(Date.now() + 10 * 1000),
     httpOnly: true,
+  });
+
+  logger.info('auth.logout', {
+    requestId: req.requestId,
+    adminId: req.admin?._id?.toString() || null,
   });
 
   sendOk(res, {}, 'Logged out successfully');

@@ -18,10 +18,22 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    let active = true
+
     bookingApi.dashboard()
-      .then(setData)
-      .catch(setError)
-      .finally(() => setLoading(false))
+      .then((nextData) => {
+        if (active) setData(nextData)
+      })
+      .catch((nextError) => {
+        if (active) setError(nextError)
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+
+    return () => {
+      active = false
+    }
   }, [])
 
   return (
@@ -76,4 +88,3 @@ function Panel({ title, children }) {
     </section>
   )
 }
-

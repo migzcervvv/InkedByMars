@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "../../hooks/useGSAP";
@@ -130,8 +130,19 @@ export function FAQ() {
   const [openItems, setOpenItems] = useState({});
   const contentRefs = useRef({});
 
-  const registerContent = useCallback((key, el) => {
-    if (el) contentRefs.current[key] = el;
+  const registerContent = useCallback((key) => (el) => {
+    if (el) {
+      contentRefs.current[key] = el;
+    } else {
+      delete contentRefs.current[key];
+    }
+  }, []);
+
+  useEffect(() => {
+    const refs = contentRefs.current;
+    return () => {
+      gsap.killTweensOf(Object.values(refs));
+    };
   }, []);
 
   const toggleItem = useCallback((key) => {
@@ -233,7 +244,7 @@ export function FAQ() {
       repeat: -1,
       delay: 2.5,
     });
-  }, []);
+  }, [], ref);
 
   return (
     <section
@@ -337,7 +348,7 @@ export function FAQ() {
 
                       {/* Answer — height animated by GSAP, not CSS */}
                       <div
-                        ref={(el) => registerContent(key, el)}
+                        ref={registerContent(key)}
                         style={{ height: 0, opacity: 0, overflow: "hidden" }}
                         role="region"
                         aria-hidden={!isOpen}

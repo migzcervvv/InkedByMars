@@ -54,19 +54,26 @@ export default function BookingPage() {
           <Loader label="Loading calendar" />
         ) : (
           <div className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
-            <BookingCalendar
-              availabilityByDate={bookingApi.availabilityByDate}
-              dayAvailability={bookingApi.selectedDateAvailability}
-              unavailableDates={bookingApi.unavailableDates}
-              selectedDate={selectedDate}
-              selectedSlot={selectedSlot}
-              loading={bookingApi.dateLoading}
-              onDateChange={(date) => {
-                setSelectedDate(date)
-                setSelectedSlot(null)
-              }}
-              onSlotChange={setSelectedSlot}
-            />
+            <div>
+              {bookingApi.error && (
+                <div className="mb-4 border border-red bg-red/10 p-4 font-mono text-xs uppercase tracking-[0.14em] text-red">
+                  {bookingApi.error.message}
+                </div>
+              )}
+              <BookingCalendar
+                availabilityByDate={bookingApi.availabilityByDate}
+                dayAvailability={bookingApi.selectedDateAvailability}
+                unavailableDates={bookingApi.unavailableDates}
+                selectedDate={selectedDate}
+                selectedSlot={selectedSlot}
+                loading={bookingApi.dateLoading}
+                onDateChange={(date) => {
+                  setSelectedDate(date)
+                  setSelectedSlot(null)
+                }}
+                onSlotChange={setSelectedSlot}
+              />
+            </div>
             {booking ? (
               <BookingConfirmation booking={booking} onAnother={reset} />
             ) : (

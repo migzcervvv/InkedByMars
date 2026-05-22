@@ -27,7 +27,7 @@ export function Specializations() {
       ease: "power3.out",
       scrollTrigger: { trigger: ref.current, start: "top 72%" },
     });
-  }, []);
+  }, [], ref);
 
   return (
     <section

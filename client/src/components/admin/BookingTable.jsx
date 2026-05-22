@@ -12,8 +12,37 @@ export function BookingTable({ bookings, onSelect }) {
   }
 
   return (
-    <div className="overflow-x-auto border border-ink/10 bg-white/55">
-      <table className="min-w-full border-collapse text-left">
+    <>
+      <div className="grid gap-3 md:hidden">
+        {bookings.map((booking) => (
+          <article key={booking._id} className="border border-ink/10 bg-white/65 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="font-body text-2xl leading-none text-ink">{booking.clientName}</p>
+                <p className="mt-1 break-all font-mono text-[0.68rem] text-ash">{booking.email}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => onSelect(booking)}
+                className="grid size-11 shrink-0 place-items-center border border-ink/15 text-ink transition hover:border-red hover:text-red"
+                aria-label={`Open ${booking.clientName}`}
+              >
+                <Eye size={16} />
+              </button>
+            </div>
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <BookingStatusBadge status={booking.status} />
+              <span className="font-mono text-[0.68rem] uppercase tracking-[0.1em] text-ash">
+                {formatDisplayDate(booking.preferredDate)} at {formatDisplayTime(booking.preferredTime)}
+              </span>
+            </div>
+            <p className="mt-3 line-clamp-3 font-body text-xl leading-tight text-ash">{booking.tattooIdea}</p>
+          </article>
+        ))}
+      </div>
+
+      <div className="hidden overflow-x-auto border border-ink/10 bg-white/55 md:block">
+        <table className="min-w-full border-collapse text-left">
         <thead className="border-b border-ink/10 bg-ink/5 font-mono text-[0.68rem] uppercase tracking-[0.14em] text-ash">
           <tr>
             <th className="px-4 py-3">Client</th>
@@ -50,8 +79,8 @@ export function BookingTable({ bookings, onSelect }) {
             </tr>
           ))}
         </tbody>
-      </table>
-    </div>
+        </table>
+      </div>
+    </>
   )
 }
-

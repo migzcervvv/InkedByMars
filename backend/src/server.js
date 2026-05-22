@@ -4,50 +4,60 @@ require('dotenv').config();
 
 const app = require('./app');
 const connectDB = require('./config/db');
+const { validateEnv } = require('./config/env');
+const logger = require('./utils/logger');
 
-// Handle uncaught synchronous exceptions before anything runs
 process.on('uncaughtException', (err) => {
-  console.error('UNCAUGHT EXCEPTION — shutting down');
-  console.error(err.name, err.message);
+  logger.error('process.uncaught_exception', {
+    name: err.name,
+    message: err.message,
+    stack: err.stack,
+  });
   process.exit(1);
 });
 
-const PORT = process.env.PORT || 5000;
+validateEnv();
 
+const PORT = process.env.PORT || 5000;
 let server;
 
 connectDB()
   .then(() => {
     server = app.listen(PORT, () => {
-      console.log(
-        `Server running in ${process.env.NODE_ENV} mode on port ${PORT}`
-      );
+      logger.info('server.started', {
+        env: process.env.NODE_ENV || 'development',
+        port: PORT,
+      });
     });
   })
   .catch((err) => {
-    console.error('Database connection failed:', err.message);
+    logger.error('server.start_failed', {
+      message: err.message,
+      stack: err.stack,
+    });
     process.exit(1);
   });
 
-// Handle unhandled promise rejections
 process.on('unhandledRejection', (err) => {
-  console.error('UNHANDLED REJECTION — shutting down gracefully');
-  console.error(err.name, err.message);
+  logger.error('process.unhandled_rejection', {
+    name: err.name,
+    message: err.message,
+    stack: err.stack,
+  });
+
   if (server) {
-    server.close(() => {
-      process.exit(1);
-    });
+    server.close(() => process.exit(1));
   } else {
     process.exit(1);
   }
 });
 
-// Graceful shutdown on SIGTERM (Docker, cloud platforms)
 process.on('SIGTERM', () => {
-  console.log('SIGTERM received — shutting down gracefully');
+  logger.warn('process.sigterm');
   if (server) {
     server.close(() => {
-      console.log('Process terminated');
+      logger.info('server.closed');
     });
   }
 });
+

@@ -34,7 +34,7 @@ export function ManifestoSection() {
         { x: 60, opacity: 0, duration: 1.4, ease: "power3.out" },
         "<",
       );
-  }, []);
+  }, [], ref);
 
   return (
     <section

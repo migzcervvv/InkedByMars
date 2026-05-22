@@ -1,6 +1,7 @@
 export function normalizeApiError(error, fallback = 'Something went wrong') {
   if (!error) return { message: fallback, status: null, fields: {} }
 
+  const isCanceled = error.code === 'ERR_CANCELED' || error.name === 'CanceledError'
   const status = error.response?.status || null
   const data = error.response?.data
   const fields = {}
@@ -19,13 +20,15 @@ export function normalizeApiError(error, fallback = 'Something went wrong') {
   }
 
   return {
-    message: data?.message || error.message || fallback,
+    message: isCanceled ? 'Request canceled' : data?.message || error.message || fallback,
     status,
     fields,
+    code: error.code,
+    isCanceled,
+    requestId: data?.requestId || error.response?.headers?.['x-request-id'] || null,
   }
 }
 
 export function fieldError(errors, name) {
   return errors?.[name] || ''
 }
-

@@ -1,5 +1,4 @@
 import { http } from './http'
-import { eachDateKey, scopeToDateRange } from '../utils/date'
 
 export const scheduleApi = {
   list(params = {}) {
@@ -30,7 +29,12 @@ export const scheduleApi = {
     return http.post('/schedule/expire-holds')
   },
 
+  applyOpeningWindow(payload) {
+    return http.post('/schedule/opening-window', payload)
+  },
+
   async blockDateRange({ startDate, endDate, dayStatus, closureReason }) {
+    const { eachDateKey } = await import('../utils/date')
     const dates = eachDateKey(startDate, endDate)
     const results = await Promise.all(
       dates.map((date) => scheduleApi.blockDay({ date, dayStatus, closureReason })),
@@ -38,7 +42,8 @@ export const scheduleApi = {
     return results.at(-1)
   },
 
-  async applyOpeningWindow({ scope, startDate, endDate, openTime, closeTime, slots, reason }) {
+  async applyOpeningWindowLegacy({ scope, startDate, endDate, openTime, closeTime, slots, reason }) {
+    const { eachDateKey, scopeToDateRange } = await import('../utils/date')
     const range = scopeToDateRange(scope, startDate, endDate)
     const dates = eachDateKey(range.startDate, range.endDate)
     const changes = []
@@ -57,4 +62,3 @@ export const scheduleApi = {
     return Promise.allSettled(changes)
   },
 }
-

@@ -11,6 +11,7 @@ const {
   releaseSlot,
   overrideSlot,
   expireHolds,
+  applyOpeningWindow,
 } = require('../controllers/scheduleController');
 
 const {
@@ -19,6 +20,7 @@ const {
   blockSlotValidators,
   releaseSlotValidators,
   rangeQueryValidators,
+  applyOpeningWindowValidators,
 } = require('../validators/scheduleValidators');
 
 const { body } = require('express-validator');
@@ -34,6 +36,7 @@ router.get('/:date', dateParamValidator, validate, getScheduleByDate);
 router.post('/block-day', blockDayValidators, validate, blockDay);
 router.post('/block-slot', blockSlotValidators, validate, blockSlot);
 router.post('/release-slot', releaseSlotValidators, validate, releaseSlot);
+router.post('/opening-window', applyOpeningWindowValidators, validate, applyOpeningWindow);
 
 router.post(
   '/override-slot',

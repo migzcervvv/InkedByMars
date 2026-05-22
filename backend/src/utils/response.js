@@ -8,6 +8,7 @@
 const sendSuccess = (res, statusCode, data = {}, message = 'Success') => {
   return res.status(statusCode).json({
     success: true,
+    requestId: res.req.requestId,
     message,
     ...data,
   });

@@ -4,6 +4,7 @@ import { getStoredToken } from '../lib/storage'
 import { normalizeApiError } from '../utils/errors'
 
 let unauthorizedHandler = null
+const DEBUG_API = import.meta.env.VITE_API_DEBUG === 'true'
 
 export function setUnauthorizedHandler(handler) {
   unauthorizedHandler = handler
@@ -21,12 +22,33 @@ export const http = axios.create({
 http.interceptors.request.use((config) => {
   const token = getStoredToken()
   if (token) config.headers.Authorization = `Bearer ${token}`
+  config.headers['X-Request-Id'] = crypto.randomUUID()
+  config.metadata = { startedAt: performance.now() }
   return config
 })
 
 http.interceptors.response.use(
-  (response) => response.data,
-  (error) => {
+  (response) => {
+    if (DEBUG_API) {
+      const durationMs = Math.round(performance.now() - response.config.metadata.startedAt)
+      console.debug('[api]', response.config.method?.toUpperCase(), response.config.url, response.status, `${durationMs}ms`)
+    }
+    return response.data
+  },
+  async (error) => {
+    const config = error.config || {}
+
+    if (
+      !axios.isCancel(error) &&
+      !config.__retried &&
+      ['get', 'head', 'options'].includes(config.method) &&
+      (!error.response || error.response.status >= 500)
+    ) {
+      config.__retried = true
+      await new Promise((resolve) => setTimeout(resolve, 300))
+      return http(config)
+    }
+
     const normalized = normalizeApiError(error)
 
     if (normalized.status === 401 && unauthorizedHandler) {
@@ -36,4 +58,3 @@ http.interceptors.response.use(
     return Promise.reject(normalized)
   },
 )
-

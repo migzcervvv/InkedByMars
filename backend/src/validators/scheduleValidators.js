@@ -82,10 +82,41 @@ const rangeQueryValidators = [
     .withMessage('endDate must be in YYYY-MM-DD format'),
 ];
 
+const applyOpeningWindowValidators = [
+  body('scope')
+    .optional()
+    .isIn(['this_week', 'this_month', 'range', 'forever'])
+    .withMessage('scope must be this_week, this_month, range, or forever'),
+  body('startDate')
+    .notEmpty()
+    .withMessage('startDate is required')
+    .matches(/^\d{4}-\d{2}-\d{2}$/)
+    .withMessage('startDate must be in YYYY-MM-DD format'),
+  body('endDate')
+    .notEmpty()
+    .withMessage('endDate is required')
+    .matches(/^\d{4}-\d{2}-\d{2}$/)
+    .withMessage('endDate must be in YYYY-MM-DD format'),
+  body('openTime')
+    .notEmpty()
+    .matches(/^\d{2}:\d{2}$/)
+    .withMessage('openTime must be in HH:MM format'),
+  body('closeTime')
+    .notEmpty()
+    .matches(/^\d{2}:\d{2}$/)
+    .withMessage('closeTime must be in HH:MM format'),
+  body('reason')
+    .optional()
+    .trim()
+    .isLength({ max: 500 })
+    .withMessage('Reason cannot exceed 500 characters'),
+];
+
 module.exports = {
   dateParamValidator,
   blockDayValidators,
   blockSlotValidators,
   releaseSlotValidators,
   rangeQueryValidators,
+  applyOpeningWindowValidators,
 };

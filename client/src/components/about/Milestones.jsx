@@ -27,7 +27,7 @@ export function Milestones() {
       ease: "power3.out",
       scrollTrigger: { trigger: ref.current, start: "top 80%" },
     });
-  }, []);
+  }, [], ref);
 
   return (
     <section ref={ref} className="border-y border-ink/10">

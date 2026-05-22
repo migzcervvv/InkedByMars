@@ -5,10 +5,6 @@ import {
   useSpring,
   motion,
 } from "framer-motion";
-import { gsap } from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-
-gsap.registerPlugin(ScrollTrigger);
 
 export function LoadingScreen({ onComplete }) {
   const [progress, setProgress] = useState(0);
@@ -33,7 +29,12 @@ export function LoadingScreen({ onComplete }) {
     const start = performance.now();
     const duration = 3200;
     let raf = 0;
+    let exitTimer = 0;
+    let cancelled = false;
+
     const tick = (now) => {
+      if (cancelled) return;
+
       const p = Math.min(1, (now - start) / duration);
       // ease-out
       const eased = 1 - Math.pow(1 - p, 2.2);
@@ -41,7 +42,8 @@ export function LoadingScreen({ onComplete }) {
       if (p < 1) raf = requestAnimationFrame(tick);
       else {
         setPhase("exit");
-        setTimeout(() => {
+        exitTimer = setTimeout(() => {
+          if (cancelled) return;
           setShow(false);
           onComplete();
         }, 1300);
@@ -49,7 +51,9 @@ export function LoadingScreen({ onComplete }) {
     };
     raf = requestAnimationFrame(tick);
     return () => {
+      cancelled = true;
       clearTimeout(t1);
+      clearTimeout(exitTimer);
       cancelAnimationFrame(raf);
     };
   }, [onComplete]);

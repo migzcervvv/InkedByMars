@@ -7,6 +7,7 @@ const { sendOk, sendCreated } = require('../utils/response');
 const { BOOKING_STATUS, SLOT_STATUS, HOLD_EXPIRY_MINUTES } = require('../config/constants');
 const scheduleService = require('../services/scheduleService');
 const emailService = require('../services/emailService');
+const logger = require('../utils/logger');
 
 /**
  * GET /api/bookings
@@ -83,6 +84,15 @@ const createBooking = asyncHandler(async (req, res, next) => {
 
   await scheduleService.markSlotBooked(schedule, preferredTime, booking._id);
 
+  logger.info('booking.created', {
+    requestId: req.requestId,
+    bookingId: booking._id.toString(),
+    adminId: req.admin?._id?.toString() || null,
+    preferredDate,
+    preferredTime,
+    createdByAdmin: Boolean(req.admin),
+  });
+
   // Fire-and-forget — do not block response
   emailService.sendBookingPending(booking).catch(console.error);
 
@@ -112,6 +122,14 @@ const updateBookingStatus = asyncHandler(async (req, res, next) => {
   });
 
   await booking.save();
+
+  logger.info('booking.status_updated', {
+    requestId: req.requestId,
+    bookingId: booking._id.toString(),
+    adminId: req.admin?._id?.toString() || null,
+    previousStatus,
+    status,
+  });
 
   const schedule = await scheduleService.getOrCreateSchedule(booking.preferredDate);
 

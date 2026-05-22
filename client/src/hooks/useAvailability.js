@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { publicApi } from '../api/publicApi'
 import { addMonths, toDateKey } from '../utils/date'
 
 export function useAvailability(initialStartDate = new Date(), initialEndDate = addMonths(new Date(), 2)) {
-  const [range, setRange] = useState({
+  const [range, setRangeState] = useState({
     startDate: toDateKey(initialStartDate),
     endDate: toDateKey(initialEndDate),
   })
@@ -12,6 +12,15 @@ export function useAvailability(initialStartDate = new Date(), initialEndDate = 
   const [loading, setLoading] = useState(true)
   const [dateLoading, setDateLoading] = useState(false)
   const [error, setError] = useState(null)
+  const dateRequestId = useRef(0)
+
+  const setRange = useCallback((nextRange) => {
+    setLoading(true)
+    setError(null)
+    setRangeState((current) =>
+      typeof nextRange === 'function' ? nextRange(current) : nextRange,
+    )
+  }, [])
 
   const refreshRange = useCallback(async (nextRange = range) => {
     setLoading(true)
@@ -31,37 +40,47 @@ export function useAvailability(initialStartDate = new Date(), initialEndDate = 
 
   const fetchDate = useCallback(async (date) => {
     if (!date) return null
+    const requestId = dateRequestId.current + 1
+    dateRequestId.current = requestId
     setDateLoading(true)
     setError(null)
 
     try {
       const data = await publicApi.getAvailabilityByDate(date)
+      if (requestId !== dateRequestId.current) return null
       setSelectedDateAvailability(data)
       return data
     } catch (nextError) {
+      if (requestId !== dateRequestId.current) return null
+      if (nextError.isCanceled) return null
       setError(nextError)
       return null
     } finally {
-      setDateLoading(false)
+      if (requestId === dateRequestId.current) setDateLoading(false)
     }
   }, [])
 
   useEffect(() => {
-    let active = true
+    const controller = new AbortController()
 
-    publicApi.getAvailability({ startDate: range.startDate, endDate: range.endDate })
+    publicApi.getAvailability(
+      { startDate: range.startDate, endDate: range.endDate },
+      { signal: controller.signal },
+    )
       .then((data) => {
-        if (active) setAvailability(data.availability || [])
+        setAvailability(data.availability || [])
       })
       .catch((nextError) => {
-        if (active) setError(nextError)
+        if (!nextError.isCanceled && nextError.name !== 'CanceledError' && nextError.code !== 'ERR_CANCELED') {
+          setError(nextError)
+        }
       })
       .finally(() => {
-        if (active) setLoading(false)
+        if (!controller.signal.aborted) setLoading(false)
       })
 
     return () => {
-      active = false
+      controller.abort()
     }
   }, [range.startDate, range.endDate])
 

@@ -10,8 +10,14 @@ const AppError = require('../utils/AppError');
 const validate = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    const messages = errors.array().map((e) => e.msg);
-    return next(new AppError(messages.join('. '), 422));
+    const details = errors.array().map((e) => ({
+      field: e.path || e.param,
+      message: e.msg,
+      value: e.value,
+    }));
+    const error = new AppError(details.map((e) => e.message).join('. '), 422);
+    error.details = details;
+    return next(error);
   }
   next();
 };

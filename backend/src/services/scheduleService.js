@@ -9,25 +9,29 @@ const { DEFAULT_TIME_SLOTS, SLOT_STATUS, DAY_STATUS } = require('../config/const
  * Newly created schedules are populated with default available time slots.
  */
 const getOrCreateSchedule = async (dateStr) => {
-  let schedule = await Schedule.findOne({ date: dateStr });
+  const slots = DEFAULT_TIME_SLOTS.map((time) => ({
+    time,
+    status: SLOT_STATUS.AVAILABLE,
+    bookingId: null,
+    reason: null,
+    holdExpiresAt: null,
+  }));
 
-  if (!schedule) {
-    const slots = DEFAULT_TIME_SLOTS.map((time) => ({
-      time,
-      status: SLOT_STATUS.AVAILABLE,
-      bookingId: null,
-      reason: null,
-      holdExpiresAt: null,
-    }));
-
-    schedule = await Schedule.create({
+  return Schedule.findOneAndUpdate(
+    { date: dateStr },
+    {
+      $setOnInsert: {
       date: dateStr,
       dayStatus: DAY_STATUS.OPEN,
       timeSlots: slots,
-    });
-  }
-
-  return schedule;
+      },
+    },
+    {
+      new: true,
+      upsert: true,
+      setDefaultsOnInsert: true,
+    }
+  );
 };
 
 /**

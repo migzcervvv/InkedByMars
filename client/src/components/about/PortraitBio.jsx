@@ -51,7 +51,7 @@ export function PortraitBio() {
       delay: 0.6,
       scrollTrigger: { trigger: ref.current, start: "top 72%" },
     });
-  }, []);
+  }, [], ref);
 
   return (
     <section ref={ref} className="py-24 lg:py-36">

@@ -1,6 +1,7 @@
 'use strict';
 
 const AppError = require('../utils/AppError');
+const logger = require('../utils/logger');
 
 const handleCastErrorDB = (err) => {
   const message = `Invalid ${err.path}: ${err.value}`;
@@ -29,8 +30,10 @@ const handleJWTExpiredError = () =>
 const sendErrorDev = (err, res) => {
   res.status(err.statusCode).json({
     success: false,
+    requestId: res.req.requestId,
     error: err,
     message: err.message,
+    details: err.details,
     stack: err.stack,
   });
 };
@@ -39,20 +42,39 @@ const sendErrorProd = (err, res) => {
   if (err.isOperational) {
     res.status(err.statusCode).json({
       success: false,
+      requestId: res.req.requestId,
       message: err.message,
+      details: err.details,
     });
   } else {
-    console.error('UNHANDLED ERROR:', err);
+    logger.error('error.unhandled', {
+      requestId: res.req.requestId,
+      message: err.message,
+      stack: err.stack,
+    });
     res.status(500).json({
       success: false,
+      requestId: res.req.requestId,
       message: 'Something went wrong. Please try again later.',
     });
   }
 };
 
 const errorHandler = (err, req, res, next) => {
+  if (res.headersSent) return next(err);
+
   err.statusCode = err.statusCode || 500;
   err.status = err.status || 'error';
+
+  logger.error('request.error', {
+    requestId: req.requestId,
+    method: req.method,
+    endpoint: req.originalUrl,
+    statusCode: err.statusCode,
+    adminId: req.admin?._id?.toString() || null,
+    message: err.message,
+    stack: err.stack,
+  });
 
   if (process.env.NODE_ENV === 'development') {
     sendErrorDev(err, res);

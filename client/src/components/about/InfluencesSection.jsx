@@ -35,7 +35,7 @@ export function InfluencesSection() {
       ease: "power3.out",
       scrollTrigger: { trigger: ref.current, start: "top 60%" },
     });
-  }, []);
+  }, [], ref);
 
   return (
     <section ref={ref} className="border-t border-ink/10 py-24 lg:py-32">

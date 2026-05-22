@@ -27,7 +27,7 @@ export function ClientPhilosophy() {
       ease: "power3.out",
       scrollTrigger: { trigger: ref.current, start: "top 70%" },
     });
-  }, []);
+  }, [], ref);
 
   return (
     <section
