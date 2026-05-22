@@ -23,8 +23,14 @@ export function Footer() {
             <Link to="/gallery" className="hover:text-red">
               Gallery
             </Link>
+            <Link to="/availability" className="hover:text-red">
+              Availability
+            </Link>
             <Link to="/booking" className="hover:text-red">
               Book
+            </Link>
+            <Link to="/contact" className="hover:text-red">
+              Contact
             </Link>
           </div>
         </div>

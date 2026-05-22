@@ -1,15 +1,19 @@
 import { useMemo } from "react";
 
+function seededParticleValue(seed, offset) {
+  return (Math.sin(seed * 999 + offset * 37) + 1) / 2;
+}
+
 export function InkParticles({ count = 14 }) {
   const particles = useMemo(
     () =>
       Array.from({ length: count }).map((_, i) => ({
         id: i,
-        left: Math.random() * 100,
-        size: 2 + Math.random() * 5,
-        delay: Math.random() * 18,
-        duration: 18 + Math.random() * 22,
-        opacity: 0.15 + Math.random() * 0.35,
+        left: seededParticleValue(i + 1, 1) * 100,
+        size: 2 + seededParticleValue(i + 1, 2) * 5,
+        delay: seededParticleValue(i + 1, 3) * 18,
+        duration: 18 + seededParticleValue(i + 1, 4) * 22,
+        opacity: 0.15 + seededParticleValue(i + 1, 5) * 0.35,
       })),
     [count],
   );

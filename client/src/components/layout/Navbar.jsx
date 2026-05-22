@@ -10,8 +10,10 @@ gsap.registerPlugin(ScrollTrigger);
 const links = [
   { label: "Work", to: "/" },
   { label: "About", to: "/about" },
-  { label: "Gallery", to: "/gallery" },
+  { label: "Portfolio", to: "/portfolio" },
+  { label: "Availability", to: "/availability" },
   { label: "Book", to: "/booking" },
+  { label: "Contact", to: "/contact" },
 ];
 
 export function Navbar() {

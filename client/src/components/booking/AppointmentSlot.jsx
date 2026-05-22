@@ -3,6 +3,7 @@ const labels = {
   booked: 'Booked',
   closed: 'Closed',
   pending: 'On Hold',
+  'on-hold': 'On Hold',
 }
 
 export function AppointmentSlot({ time, status, selected, onSelect }) {
@@ -14,10 +15,10 @@ export function AppointmentSlot({ time, status, selected, onSelect }) {
       type="button"
       disabled={!isAvailable}
       onClick={onSelect}
-      className={`slot slot-${status} ${selected ? 'slot-selected' : ''}`}
+      className={`slot slot-${status === 'on-hold' ? 'pending' : status} ${selected ? 'slot-selected' : ''}`}
     >
       <span className={status === 'booked' ? 'line-through' : ''}>{display}</span>
-      <span>{labels[status]}</span>
+      <span>{labels[status] || status}</span>
     </button>
   )
 }

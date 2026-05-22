@@ -3,16 +3,16 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowLeft, ArrowRight, Upload } from 'lucide-react'
 import { tattooStyles } from '../../data/mockGallery'
 import { Button } from '../ui/Button'
-import { formatDisplayDate } from '../../utils/animations'
+import { formatDisplayDate } from '../../utils/date'
 
 const initial = {
-  name: '',
+  clientName: '',
   email: '',
   phone: '',
   source: '',
-  style: '',
-  placement: '',
-  size: '',
+  tattooIdea: '',
+  tattooPlacement: '',
+  tattooSize: '',
   notes: '',
   references: '',
 }
@@ -24,8 +24,8 @@ export function BookingForm({ selectedDate, selectedSlot, onSubmit, submitting }
 
   const steps = useMemo(
     () => [
-      { label: 'Your Info', required: ['name', 'email', 'phone', 'source'] },
-      { label: 'Your Tattoo', required: ['style', 'placement', 'size'] },
+      { label: 'Your Info', required: ['clientName', 'email', 'phone', 'source'] },
+      { label: 'Your Tattoo', required: ['tattooIdea', 'tattooPlacement', 'tattooSize'] },
       { label: 'Review', required: [] },
     ],
     [],
@@ -89,7 +89,7 @@ export function BookingForm({ selectedDate, selectedSlot, onSubmit, submitting }
         >
           {step === 0 && (
             <>
-              <Field label="Full Name" name="name" value={form.name} error={errors.name} onChange={setField} />
+              <Field label="Full Name" name="clientName" value={form.clientName} error={errors.clientName} onChange={setField} />
               <Field label="Email" name="email" type="email" value={form.email} error={errors.email} onChange={setField} />
               <Field label="Phone" name="phone" type="tel" value={form.phone} error={errors.phone} onChange={setField} />
               <Select label="How did you find us?" name="source" value={form.source} error={errors.source} onChange={setField} options={['Instagram', 'Referral', 'Google', 'Walk-in']} />
@@ -98,9 +98,23 @@ export function BookingForm({ selectedDate, selectedSlot, onSubmit, submitting }
 
           {step === 1 && (
             <>
-              <Select label="Tattoo style" name="style" value={form.style} error={errors.style} onChange={setField} options={tattooStyles} />
-              <Field label="Placement on body" name="placement" value={form.placement} error={errors.placement} onChange={setField} />
-              <Select label="Size estimate" name="size" value={form.size} error={errors.size} onChange={setField} options={['Tiny <5cm', 'Small 5-10cm', 'Medium 10-20cm', 'Large 20cm+']} />
+              <Select label="Tattoo style" name="tattooIdea" value={form.tattooIdea} error={errors.tattooIdea} onChange={setField} options={tattooStyles} />
+              <Field label="Placement on body" name="tattooPlacement" value={form.tattooPlacement} error={errors.tattooPlacement} onChange={setField} />
+              <Select
+                label="Size estimate"
+                name="tattooSize"
+                value={form.tattooSize}
+                error={errors.tattooSize}
+                onChange={setField}
+                options={[
+                  ['tiny', 'Tiny <5cm'],
+                  ['small', 'Small 5-10cm'],
+                  ['medium', 'Medium 10-20cm'],
+                  ['large', 'Large 20cm+'],
+                  ['extra_large', 'Extra large 20cm+'],
+                  ['custom', 'Custom'],
+                ]}
+              />
               <label className="field-label">
                 Reference Images
                 <span className="mt-2 flex cursor-pointer items-center gap-3 border border-ink/20 bg-cream/40 px-4 py-4 font-mono text-xs uppercase tracking-[0.14em] text-ash">
@@ -121,8 +135,8 @@ export function BookingForm({ selectedDate, selectedSlot, onSubmit, submitting }
               <dl className="mt-4 grid gap-3 font-body text-2xl">
                 <Summary label="When" value={`${formatDisplayDate(selectedDate)} at ${selectedSlot}`} />
                 <Summary label="Artist" value="InkedByMars" />
-                <Summary label="Client" value={`${form.name} / ${form.email} / ${form.phone}`} />
-                <Summary label="Tattoo" value={`${form.style}, ${form.size}, ${form.placement}`} />
+                <Summary label="Client" value={`${form.clientName} / ${form.email} / ${form.phone}`} />
+                <Summary label="Tattoo" value={`${form.tattooIdea}, ${form.tattooSize}, ${form.tattooPlacement}`} />
                 <Summary label="Notes" value={form.notes || 'No notes added'} />
               </dl>
             </div>
@@ -164,9 +178,11 @@ function Select({ label, name, value, error, onChange, options }) {
       {label} <span className="text-red">*</span>
       <select className={`field-input ${error ? 'border-red' : ''}`} value={value} onChange={(event) => onChange(name, event.target.value)}>
         <option value="">Select</option>
-        {options.map((option) => (
-          <option key={option} value={option}>{option}</option>
-        ))}
+        {options.map((option) => {
+          const value = Array.isArray(option) ? option[0] : option
+          const label = Array.isArray(option) ? option[1] : option
+          return <option key={value} value={value}>{label}</option>
+        })}
       </select>
       {error && <span className="field-error">{error}</span>}
     </motion.label>

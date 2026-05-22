@@ -1,34 +1,43 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { BookingCalendar } from '../components/booking/BookingCalendar'
 import { BookingForm } from '../components/booking/BookingForm'
 import { BookingConfirmation } from '../components/booking/BookingConfirmation'
 import { Loader } from '../components/ui/Loader'
 import { useBooking } from '../hooks/useBooking'
-
-function localKey(date) {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
+import { toDateKey } from '../utils/date'
 
 export default function BookingPage() {
-  const { appointments, unavailableDates, loading, submitBooking } = useBooking()
-  const [selectedDate, setSelectedDate] = useState(new Date('2026-05-11T00:00:00'))
+  const bookingApi = useBooking()
+  const { loadDate } = bookingApi
+  const [selectedDate, setSelectedDate] = useState(new Date())
   const [selectedSlot, setSelectedSlot] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [booking, setBooking] = useState(null)
+  const [submitError, setSubmitError] = useState(null)
+
+  useEffect(() => {
+    loadDate(selectedDate)
+  }, [loadDate, selectedDate])
 
   const handleSubmit = async (form) => {
     setSubmitting(true)
-    const result = await submitBooking({
-      ...form,
-      date: localKey(selectedDate),
-      time: selectedSlot,
-      artist: 'InkedByMars',
-    })
-    setBooking(result)
-    setSubmitting(false)
+    setSubmitError(null)
+
+    try {
+      const result = await bookingApi.submitBooking({
+        ...form,
+        notes: [form.source ? `Source: ${form.source}` : '', form.notes || ''].filter(Boolean).join('\n'),
+        preferredDate: toDateKey(selectedDate),
+        preferredTime: selectedSlot,
+      })
+      setBooking(result)
+      await bookingApi.loadDate(selectedDate)
+      await bookingApi.refreshRange()
+    } catch (error) {
+      setSubmitError(error)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const reset = () => {
@@ -41,15 +50,17 @@ export default function BookingPage() {
       <div className="mx-auto max-w-7xl">
         <p className="eyebrow">Appointments</p>
         <h1 className="page-title">Book Ink</h1>
-        {loading ? (
+        {bookingApi.loading ? (
           <Loader label="Loading calendar" />
         ) : (
           <div className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
             <BookingCalendar
-              appointments={appointments}
-              unavailableDates={unavailableDates}
+              availabilityByDate={bookingApi.availabilityByDate}
+              dayAvailability={bookingApi.selectedDateAvailability}
+              unavailableDates={bookingApi.unavailableDates}
               selectedDate={selectedDate}
               selectedSlot={selectedSlot}
+              loading={bookingApi.dateLoading}
               onDateChange={(date) => {
                 setSelectedDate(date)
                 setSelectedSlot(null)
@@ -59,7 +70,14 @@ export default function BookingPage() {
             {booking ? (
               <BookingConfirmation booking={booking} onAnother={reset} />
             ) : (
-              <BookingForm selectedDate={selectedDate} selectedSlot={selectedSlot} onSubmit={handleSubmit} submitting={submitting} />
+              <div>
+                {submitError && (
+                  <div className="mb-4 border border-red bg-red/10 p-4 font-mono text-xs uppercase tracking-[0.14em] text-red">
+                    {submitError.message}
+                  </div>
+                )}
+                <BookingForm selectedDate={selectedDate} selectedSlot={selectedSlot} onSubmit={handleSubmit} submitting={submitting} />
+              </div>
             )}
           </div>
         )}

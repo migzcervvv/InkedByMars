@@ -4,9 +4,6 @@ import {
   AnimatePresence,
   LazyMotion,
   domAnimation,
-  useMotionValue,
-  useSpring,
-  motion,
 } from "framer-motion";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -16,17 +13,29 @@ import { PageTransition } from "./components/layout/PageTransition";
 import { Loader } from "./components/ui/Loader";
 import { ScrollToTop } from "./components/ui/ScrollToTop";
 import { LoadingScreen } from "./components/ui/LoadingScreen";
+import { AdminLayout } from "./layouts/AdminLayout";
+import { ProtectedRoute } from "./routes/ProtectedRoute";
 
 gsap.registerPlugin(ScrollTrigger);
 
 const HomePage = lazy(() => import("./pages/HomePage"));
 const GalleryPage = lazy(() => import("./pages/GalleryPage"));
 const BookingPage = lazy(() => import("./pages/BookingPage"));
+const AvailabilityPage = lazy(() => import("./pages/AvailabilityPage"));
+const ContactPage = lazy(() => import("./pages/ContactPage"));
 const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
 const AboutPage = lazy(() => import("./pages/AboutPage"));
+const LoginPage = lazy(() => import("./pages/admin/LoginPage"));
+const AdminDashboardPage = lazy(() => import("./pages/admin/AdminDashboardPage"));
+const AdminBookingsPage = lazy(() => import("./pages/admin/AdminBookingsPage"));
+const AdminSchedulePage = lazy(() => import("./pages/admin/AdminSchedulePage"));
+const AdminAvailabilityPage = lazy(() => import("./pages/admin/AdminAvailabilityPage"));
+const AdminSettingsPage = lazy(() => import("./pages/admin/AdminSettingsPage"));
 
 function App() {
   const [loaded, setLoaded] = useState(false);
+  const location = useLocation();
+  const isAdminRoute = location.pathname.startsWith("/admin");
 
   return (
     <LazyMotion features={domAnimation}>
@@ -35,11 +44,11 @@ function App() {
       ) : (
         <>
           <ScrollToTop />
-          <ScrollProgress />
-          <CustomCursor />
-          <Navbar />
+          {!isAdminRoute && <ScrollProgress />}
+          {!isAdminRoute && <CustomCursor />}
+          {!isAdminRoute && <Navbar />}
           <AnimatedRoutes />
-          <Footer />
+          {!isAdminRoute && <Footer />}
         </>
       )}
     </LazyMotion>
@@ -70,10 +79,34 @@ function AnimatedRoutes() {
             }
           />
           <Route
+            path="/portfolio"
+            element={
+              <PageTransition>
+                <GalleryPage />
+              </PageTransition>
+            }
+          />
+          <Route
             path="/booking"
             element={
               <PageTransition>
                 <BookingPage />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="/availability"
+            element={
+              <PageTransition>
+                <AvailabilityPage />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="/contact"
+            element={
+              <PageTransition>
+                <ContactPage />
               </PageTransition>
             }
           />
@@ -85,6 +118,16 @@ function AnimatedRoutes() {
               </PageTransition>
             }
           />
+          <Route path="/admin/login" element={<LoginPage />} />
+          <Route element={<ProtectedRoute />}>
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<AdminDashboardPage />} />
+              <Route path="bookings" element={<AdminBookingsPage />} />
+              <Route path="schedule" element={<AdminSchedulePage />} />
+              <Route path="availability" element={<AdminAvailabilityPage />} />
+              <Route path="settings" element={<AdminSettingsPage />} />
+            </Route>
+          </Route>
           <Route
             path="*"
             element={
