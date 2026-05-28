@@ -10,6 +10,7 @@ export function BookingCalendar({
   unavailableDates,
   selectedDate,
   selectedSlot,
+  holdLoading,
   onDateChange,
   onSlotChange,
   loading,
@@ -37,6 +38,12 @@ export function BookingCalendar({
       />
       <div className="mt-8">
         <p className="font-mono text-xs uppercase tracking-[0.18em] text-ash">{formatDisplayDate(selectedDate)}</p>
+        <div className="mt-3 flex flex-wrap gap-2 font-mono text-[0.62rem] uppercase tracking-[0.12em] text-ash">
+          <Legend tone="bg-cream/70" label="Available" />
+          <Legend tone="bg-[#d49a38]/70" label="Held" />
+          <Legend tone="bg-red" label="Confirmed" />
+          <Legend tone="bg-ash/45" label="Unavailable" />
+        </div>
         {dayAvailability?.closureReason && (
           <p className="mt-2 font-mono text-[0.68rem] uppercase tracking-[0.14em] text-red">
             {dayAvailability.closureReason}
@@ -55,6 +62,7 @@ export function BookingCalendar({
                   time={slot.time}
                   status={isClosed ? 'closed' : slot.status}
                   selected={selectedSlot === slot.time}
+                  loading={holdLoading === slot.time}
                   onSelect={() => onSlotChange(slot.time)}
                 />
               ))
@@ -67,5 +75,14 @@ export function BookingCalendar({
         )}
       </div>
     </section>
+  )
+}
+
+function Legend({ tone, label }) {
+  return (
+    <span className="inline-flex items-center gap-2">
+      <span className={`size-2 border border-ink/20 ${tone}`} />
+      {label}
+    </span>
   )
 }

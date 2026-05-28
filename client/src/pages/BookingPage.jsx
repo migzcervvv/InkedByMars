@@ -8,9 +8,12 @@ import { toDateKey } from '../utils/date'
 
 export default function BookingPage() {
   const bookingApi = useBooking()
-  const { loadDate } = bookingApi
+  const { holdSlot, loadDate, refreshRange, releaseHold } = bookingApi
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [selectedSlot, setSelectedSlot] = useState(null)
+  const [hold, setHold] = useState(null)
+  const [holdLoading, setHoldLoading] = useState('')
+  const [holdSecondsRemaining, setHoldSecondsRemaining] = useState(0)
   const [submitting, setSubmitting] = useState(false)
   const [booking, setBooking] = useState(null)
   const [submitError, setSubmitError] = useState(null)
@@ -19,20 +22,96 @@ export default function BookingPage() {
     loadDate(selectedDate)
   }, [loadDate, selectedDate])
 
+  useEffect(() => {
+    if (!hold?.holdExpiresAt) {
+      return undefined
+    }
+
+    const tick = () => {
+      const seconds = Math.max(0, Math.floor((new Date(hold.holdExpiresAt).getTime() - Date.now()) / 1000))
+      setHoldSecondsRemaining(seconds)
+      if (seconds === 0) {
+        setHold(null)
+        setSelectedSlot(null)
+        setHoldSecondsRemaining(0)
+        setSubmitError({ message: 'Temporary hold expired. Select another time.' })
+        loadDate(selectedDate)
+        refreshRange()
+      }
+    }
+
+    tick()
+    const timer = window.setInterval(tick, 1000)
+    return () => window.clearInterval(timer)
+  }, [hold, loadDate, refreshRange, selectedDate])
+
+  const releaseCurrentHold = async () => {
+    if (!hold?.holdToken) return
+    await releaseHold({
+      date: hold.date,
+      time: hold.time,
+      holdToken: hold.holdToken,
+    })
+  }
+
+  const handleDateChange = async (date) => {
+    await releaseCurrentHold()
+    setSelectedDate(date)
+    setSelectedSlot(null)
+    setHold(null)
+    setHoldSecondsRemaining(0)
+    setSubmitError(null)
+  }
+
+  const handleSlotChange = async (time) => {
+    if (time === selectedSlot || holdLoading) return
+
+    setHoldLoading(time)
+    setSubmitError(null)
+
+    try {
+      await releaseCurrentHold()
+      const nextHold = await holdSlot({
+        date: toDateKey(selectedDate),
+        time,
+      })
+      setSelectedSlot(time)
+      setHold(nextHold)
+      await loadDate(selectedDate)
+      await refreshRange()
+    } catch (error) {
+      setSelectedSlot(null)
+      setHold(null)
+      setHoldSecondsRemaining(0)
+      setSubmitError(error)
+      await loadDate(selectedDate)
+    } finally {
+      setHoldLoading('')
+    }
+  }
+
   const handleSubmit = async (form) => {
     setSubmitting(true)
     setSubmitError(null)
 
     try {
+      const { references, source, ...bookingFields } = form
       const result = await bookingApi.submitBooking({
-        ...form,
-        notes: [form.source ? `Source: ${form.source}` : '', form.notes || ''].filter(Boolean).join('\n'),
+        ...bookingFields,
+        holdToken: hold?.holdToken,
+        referenceImages: references.map((reference) => ({
+          url: reference.dataUrl,
+          publicId: reference.name,
+        })),
+        notes: [source ? `Source: ${source}` : '', form.notes || ''].filter(Boolean).join('\n'),
         preferredDate: toDateKey(selectedDate),
         preferredTime: selectedSlot,
       })
       setBooking(result)
-      await bookingApi.loadDate(selectedDate)
-      await bookingApi.refreshRange()
+      setHold(null)
+      setHoldSecondsRemaining(0)
+      await loadDate(selectedDate)
+      await refreshRange()
     } catch (error) {
       setSubmitError(error)
     } finally {
@@ -43,6 +122,8 @@ export default function BookingPage() {
   const reset = () => {
     setBooking(null)
     setSelectedSlot(null)
+    setHold(null)
+    setHoldSecondsRemaining(0)
   }
 
   return (
@@ -67,11 +148,9 @@ export default function BookingPage() {
                 selectedDate={selectedDate}
                 selectedSlot={selectedSlot}
                 loading={bookingApi.dateLoading}
-                onDateChange={(date) => {
-                  setSelectedDate(date)
-                  setSelectedSlot(null)
-                }}
-                onSlotChange={setSelectedSlot}
+                holdLoading={holdLoading}
+                onDateChange={handleDateChange}
+                onSlotChange={handleSlotChange}
               />
             </div>
             {booking ? (
@@ -83,7 +162,14 @@ export default function BookingPage() {
                     {submitError.message}
                   </div>
                 )}
-                <BookingForm selectedDate={selectedDate} selectedSlot={selectedSlot} onSubmit={handleSubmit} submitting={submitting} />
+                <BookingForm
+                  selectedDate={selectedDate}
+                  selectedSlot={selectedSlot}
+                  hold={hold}
+                  holdSecondsRemaining={holdSecondsRemaining}
+                  onSubmit={handleSubmit}
+                  submitting={submitting}
+                />
               </div>
             )}
           </div>

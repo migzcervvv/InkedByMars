@@ -12,4 +12,12 @@ export const publicApi = {
   createBooking(payload) {
     return http.post('/public/bookings', payload)
   },
+
+  createHold(payload) {
+    return http.post('/public/holds', payload)
+  },
+
+  releaseHold(payload) {
+    return http.post('/public/holds/release', payload)
+  },
 }

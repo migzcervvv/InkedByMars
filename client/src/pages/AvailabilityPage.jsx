@@ -1,5 +1,5 @@
 // AvailabilityPage.jsx
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { useAvailability } from "../hooks/useAvailability";
 import { Button } from "../components/ui/Button";
 import { Loader } from "../components/ui/Loader";
@@ -165,13 +165,10 @@ export default function AvailabilityPage() {
   const todayKey = toDateKey(today);
   const nextMonthDate = addMonths(today, 1);
 
-  const handleSelect = useCallback(
-    (dateKey) => {
-      setSelectedDate(dateKey);
-      fetchDate(dateKey);
-    },
-    [fetchDate],
-  );
+  const handleSelect = (dateKey) => {
+    setSelectedDate(dateKey);
+    fetchDate(dateKey);
+  };
 
   const thisMonth = { year: today.getFullYear(), month: today.getMonth() };
   const nextMonth = {

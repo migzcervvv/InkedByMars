@@ -7,6 +7,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const { sendOk, sendCreated } = require('../utils/response');
 const { DAY_STATUS, SLOT_STATUS } = require('../config/constants');
 const scheduleService = require('../services/scheduleService');
+const holdCleanupService = require('../services/holdCleanupService');
 const logger = require('../utils/logger');
 
 const eachDate = (startDate, endDate) => {
@@ -185,8 +186,8 @@ const overrideSlot = asyncHandler(async (req, res, next) => {
  * Admin — manually trigger hold expiry (normally run by a job)
  */
 const expireHolds = asyncHandler(async (req, res, next) => {
-  await scheduleService.expireStaleHolds();
-  sendOk(res, {}, 'Stale holds expired');
+  const expiredBookings = await holdCleanupService.expireStaleBookingHolds();
+  sendOk(res, { expiredBookings }, 'Stale holds expired');
 });
 
 const applyOpeningWindow = asyncHandler(async (req, res, next) => {

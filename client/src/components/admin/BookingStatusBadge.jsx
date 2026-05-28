@@ -1,9 +1,9 @@
 const tone = {
   pending: 'border-[#b88917]/35 bg-[#f1c45e]/20 text-[#7a5410]',
-  confirmed: 'border-[#277a48]/35 bg-[#57c785]/15 text-[#1f6a3c]',
-  completed: 'border-ink/20 bg-ink/10 text-ink',
+  confirmed: 'border-red/35 bg-red/15 text-red',
+  completed: 'border-ash/40 bg-ash/20 text-ink/60',
   cancelled: 'border-red/35 bg-red/10 text-red',
-  'on-hold': 'border-[#7a62d6]/35 bg-[#7a62d6]/10 text-[#5741b8]',
+  'on-hold': 'border-[#a66a18]/40 bg-[#d49a38]/30 text-[#7a5410]',
 }
 
 export function BookingStatusBadge({ status }) {
@@ -13,4 +13,3 @@ export function BookingStatusBadge({ status }) {
     </span>
   )
 }
-

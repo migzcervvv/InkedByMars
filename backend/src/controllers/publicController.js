@@ -6,7 +6,8 @@ const AppError = require('../utils/AppError');
 const asyncHandler = require('../utils/asyncHandler');
 const { sendOk } = require('../utils/response');
 const scheduleService = require('../services/scheduleService');
-const { DAY_STATUS } = require('../config/constants');
+const holdCleanupService = require('../services/holdCleanupService');
+const { DAY_STATUS, DEFAULT_TIME_SLOTS, HOLD_EXPIRY_MINUTES } = require('../config/constants');
 
 /**
  * GET /api/public/availability?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
@@ -49,7 +50,7 @@ const getAvailability = asyncHandler(async (req, res, next) => {
         dayStatus: DAY_STATUS.OPEN,
         isFullyClosed: false,
         closureReason: null,
-        availableCount: 10, // default slot count
+        availableCount: DEFAULT_TIME_SLOTS.length,
       });
     } else {
       const pub = scheduleService.toPublicAvailability(schedule);
@@ -92,7 +93,6 @@ const getAvailabilityByDate = asyncHandler(async (req, res, next) => {
 
   if (!schedule) {
     // No document yet — return default open state
-    const { DEFAULT_TIME_SLOTS } = require('../config/constants');
     return sendOk(res, {
       date,
       dayStatus: DAY_STATUS.OPEN,
@@ -111,4 +111,26 @@ const getAvailabilityByDate = asyncHandler(async (req, res, next) => {
   sendOk(res, publicData);
 });
 
-module.exports = { getAvailability, getAvailabilityByDate };
+const createSlotHold = asyncHandler(async (req, res, next) => {
+  const { date, time } = req.body;
+
+  await holdCleanupService.expireStaleBookingHolds();
+  const hold = await scheduleService.createClientHold(date, time, HOLD_EXPIRY_MINUTES);
+  if (!hold) {
+    return next(new AppError(`The time slot ${time} on ${date} is not available.`, 409));
+  }
+
+  sendOk(res, {
+    hold: {
+      ...hold,
+      expiresInSeconds: HOLD_EXPIRY_MINUTES * 60,
+    },
+  }, 'Slot held temporarily');
+});
+
+const releaseSlotHold = asyncHandler(async (req, res, next) => {
+  const released = await scheduleService.releaseClientHold(req.body);
+  sendOk(res, { released }, released ? 'Slot hold released' : 'Slot hold not found');
+});
+
+module.exports = { getAvailability, getAvailabilityByDate, createSlotHold, releaseSlotHold };

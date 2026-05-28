@@ -233,7 +233,7 @@ a {
   }
 
   .slot-booked {
-    @apply cursor-not-allowed border-leather bg-leather text-cream/45;
+    @apply cursor-not-allowed border-red bg-red text-cream/75;
   }
 
   .slot-closed {
@@ -246,6 +246,10 @@ a {
 
   .slot-selected {
     @apply border-red bg-red text-cream shadow-red;
+  }
+
+  .slot-held-selected {
+    @apply border-[#a66a18] bg-[#d49a38]/70 text-ink shadow-leather;
   }
 }
 

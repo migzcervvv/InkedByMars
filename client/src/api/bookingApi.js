@@ -25,8 +25,11 @@ export const bookingApi = {
     return http.put(`/bookings/${id}/status`, payload)
   },
 
+  confirm(id, payload) {
+    return http.put(`/bookings/${id}/confirm`, payload)
+  },
+
   remove(id) {
     return http.delete(`/bookings/${id}`)
   },
 }
-

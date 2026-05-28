@@ -65,6 +65,29 @@ const createBookingValidators = [
     .trim()
     .isLength({ max: 1000 })
     .withMessage('Notes cannot exceed 1000 characters'),
+
+  body('holdToken')
+    .optional()
+    .trim()
+    .isUUID()
+    .withMessage('Invalid hold token'),
+
+  body('referenceImages')
+    .optional()
+    .isArray({ max: 4 })
+    .withMessage('Reference images must be an array with at most 4 items'),
+
+  body('referenceImages.*.url')
+    .optional()
+    .isString()
+    .isLength({ max: 750000 })
+    .withMessage('Reference image payload is too large'),
+
+  body('referenceImages.*.publicId')
+    .optional()
+    .isString()
+    .isLength({ max: 200 })
+    .withMessage('Reference image public ID is too long'),
 ];
 
 const updateBookingStatusValidators = [
@@ -83,6 +106,59 @@ const updateBookingStatusValidators = [
     .trim()
     .isLength({ max: 500 })
     .withMessage('Reason cannot exceed 500 characters'),
+
+  body('adminNotes')
+    .optional()
+    .trim()
+    .isLength({ max: 1000 })
+    .withMessage('Admin notes cannot exceed 1000 characters'),
+];
+
+const confirmBookingValidators = [
+  param('id')
+    .isMongoId()
+    .withMessage('Invalid booking ID'),
+
+  body('date')
+    .optional()
+    .matches(/^\d{4}-\d{2}-\d{2}$/)
+    .withMessage('Date must be in YYYY-MM-DD format')
+    .custom((value) => {
+      if (!dayjs(value, 'YYYY-MM-DD', true).isValid()) {
+        throw new Error('Invalid date');
+      }
+      return true;
+    }),
+
+  body('startTime')
+    .notEmpty()
+    .withMessage('Start time is required')
+    .matches(/^\d{2}:\d{2}$/)
+    .withMessage('Start time must be in HH:MM 24h format'),
+
+  body('endTime')
+    .notEmpty()
+    .withMessage('End time is required')
+    .matches(/^\d{2}:\d{2}$/)
+    .withMessage('End time must be in HH:MM 24h format')
+    .custom((value, { req }) => {
+      if (value <= req.body.startTime) {
+        throw new Error('End time must be after start time');
+      }
+      return true;
+    }),
+
+  body('adminNotes')
+    .optional()
+    .trim()
+    .isLength({ max: 1000 })
+    .withMessage('Admin notes cannot exceed 1000 characters'),
+
+  body('reason')
+    .optional()
+    .trim()
+    .isLength({ max: 500 })
+    .withMessage('Reason cannot exceed 500 characters'),
 ];
 
 const mongoIdParam = [
@@ -94,5 +170,6 @@ const mongoIdParam = [
 module.exports = {
   createBookingValidators,
   updateBookingStatusValidators,
+  confirmBookingValidators,
   mongoIdParam,
 };

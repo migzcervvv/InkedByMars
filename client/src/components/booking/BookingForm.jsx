@@ -14,10 +14,10 @@ const initial = {
   tattooPlacement: '',
   tattooSize: '',
   notes: '',
-  references: '',
+  references: [],
 }
 
-export function BookingForm({ selectedDate, selectedSlot, onSubmit, submitting }) {
+export function BookingForm({ selectedDate, selectedSlot, hold, holdSecondsRemaining, onSubmit, submitting }) {
   const [step, setStep] = useState(0)
   const [form, setForm] = useState(initial)
   const [errors, setErrors] = useState({})
@@ -50,6 +50,21 @@ export function BookingForm({ selectedDate, selectedSlot, onSubmit, submitting }
     if (validate()) setStep((value) => Math.min(value + 1, 2))
   }
 
+  const setReferenceFiles = async (fileList) => {
+    const files = Array.from(fileList).slice(0, 4)
+    const references = await Promise.all(
+      files.map((file) => new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve({ name: file.name, dataUrl: reader.result })
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+      })),
+    )
+    setField('references', references)
+  }
+
+  const countdown = `${String(Math.floor(holdSecondsRemaining / 60)).padStart(2, '0')}:${String(holdSecondsRemaining % 60).padStart(2, '0')}`
+
   if (!selectedSlot) {
     return (
       <section className="booking-panel flex min-h-[420px] items-center justify-center text-center">
@@ -77,6 +92,11 @@ export function BookingForm({ selectedDate, selectedSlot, onSubmit, submitting }
           {selectedSlot}
         </p>
       </div>
+      {hold && (
+        <div className="mb-5 border border-[#a66a18]/40 bg-[#d49a38]/20 p-3 font-mono text-[0.68rem] uppercase tracking-[0.12em] text-ink">
+          Temporary hold active. Admin approval required. Expires in {countdown}.
+        </div>
+      )}
 
       <AnimatePresence mode="wait">
         <motion.div
@@ -118,10 +138,22 @@ export function BookingForm({ selectedDate, selectedSlot, onSubmit, submitting }
               <label className="field-label">
                 Reference Images
                 <span className="mt-2 flex cursor-pointer items-center gap-3 border border-ink/20 bg-cream/40 px-4 py-4 font-mono text-xs uppercase tracking-[0.14em] text-ash">
-                  <Upload size={16} /> {form.references || 'Choose files'}
-                  <input type="file" multiple className="sr-only" onChange={(event) => setField('references', `${event.target.files.length} file(s) selected`)} />
+                  <Upload size={16} /> {form.references.length ? `${form.references.length} file(s) selected` : 'Choose files'}
+                  <input type="file" multiple accept="image/*" className="sr-only" onChange={(event) => setReferenceFiles(event.target.files)} />
                 </span>
               </label>
+              {form.references.length > 0 && (
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  {form.references.map((reference) => (
+                    <img
+                      key={reference.name}
+                      src={reference.dataUrl}
+                      alt={reference.name}
+                      className="aspect-square w-full border border-ink/15 object-cover"
+                    />
+                  ))}
+                </div>
+              )}
               <label className="field-label">
                 Additional notes
                 <textarea className="field-input min-h-28 resize-none" value={form.notes} onChange={(event) => setField('notes', event.target.value)} />
@@ -138,6 +170,7 @@ export function BookingForm({ selectedDate, selectedSlot, onSubmit, submitting }
                 <Summary label="Client" value={`${form.clientName} / ${form.email} / ${form.phone}`} />
                 <Summary label="Tattoo" value={`${form.tattooIdea}, ${form.tattooSize}, ${form.tattooPlacement}`} />
                 <Summary label="Notes" value={form.notes || 'No notes added'} />
+                <Summary label="References" value={form.references.length ? `${form.references.length} image(s)` : 'No references attached'} />
               </dl>
             </div>
           )}
@@ -154,7 +187,7 @@ export function BookingForm({ selectedDate, selectedSlot, onSubmit, submitting }
           </Button>
         ) : (
           <Button onClick={() => onSubmit(form)} disabled={submitting}>
-            {submitting ? 'Confirming...' : 'Confirm Booking'}
+            {submitting ? 'Submitting...' : 'Submit Hold'}
           </Button>
         )}
       </div>

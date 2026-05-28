@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { bookingApi } from '../../api/bookingApi'
+import { scheduleApi } from '../../api/scheduleApi'
 import { BookingTable } from '../../components/admin/BookingTable'
 import { BookingDetailModal } from '../../components/admin/BookingDetailModal'
 import { Button } from '../../components/ui/Button'
@@ -7,16 +9,59 @@ import { Loader } from '../../components/ui/Loader'
 
 const initialFilters = { status: '', date: '', email: '', page: 1, limit: 20 }
 
+function addHour(time) {
+  const [hours, minutes] = time.split(':').map(Number)
+  return `${String(hours + 1).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+}
+
+function getBoundaries(schedule) {
+  const times = (schedule?.timeSlots || []).map((slot) => slot.time).sort()
+  if (!times.length) return []
+  return [...times, addHour(times[times.length - 1])]
+}
+
+function getNextBoundary(boundaries, startTime) {
+  const index = boundaries.indexOf(startTime)
+  return boundaries[index + 1] || addHour(startTime)
+}
+
 export default function AdminBookingsPage() {
+  const [searchParams] = useSearchParams()
+  const bookingId = searchParams.get('booking')
   const [filters, setFilters] = useState(initialFilters)
   const [bookings, setBookings] = useState([])
   const [pagination, setPagination] = useState(null)
   const [selected, setSelected] = useState(null)
   const [status, setStatus] = useState('')
   const [notes, setNotes] = useState('')
+  const [actualDate, setActualDate] = useState('')
+  const [actualStart, setActualStart] = useState('')
+  const [actualEnd, setActualEnd] = useState('')
+  const [timeOptions, setTimeOptions] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
+  const pendingHoldCount = useMemo(() => bookings.filter((booking) => booking.status === 'on-hold').length, [bookings])
+
+  const openBooking = useCallback(async (booking) => {
+    const fallbackEnd = addHour(booking.preferredTime)
+    setSelected(booking)
+    setStatus(booking.status)
+    setNotes(booking.adminNotes || '')
+    setActualDate(booking.preferredDate)
+    setActualStart(booking.preferredTime)
+    setActualEnd(fallbackEnd)
+    setTimeOptions([booking.preferredTime, fallbackEnd])
+
+    try {
+      const data = await scheduleApi.getByDate(booking.preferredDate)
+      const boundaries = getBoundaries(data.schedule)
+      setTimeOptions(boundaries)
+      setActualEnd(getNextBoundary(boundaries, booking.preferredTime))
+    } catch (nextError) {
+      setError(nextError)
+    }
+  }, [])
 
   const loadBookings = async (nextFilters = filters) => {
     setLoading(true)
@@ -37,12 +82,16 @@ export default function AdminBookingsPage() {
   useEffect(() => {
     let active = true
     const params = Object.fromEntries(Object.entries(initialFilters).filter(([, value]) => value !== ''))
-
     bookingApi.list(params)
       .then((data) => {
         if (!active) return
         setBookings(data.bookings || [])
         setPagination(data.pagination || null)
+        if (bookingId) {
+          bookingApi.getById(bookingId).then((detail) => {
+            if (active && detail.booking) openBooking(detail.booking)
+          })
+        }
       })
       .catch((nextError) => {
         if (active) setError(nextError)
@@ -54,7 +103,7 @@ export default function AdminBookingsPage() {
     return () => {
       active = false
     }
-  }, [])
+  }, [bookingId, openBooking])
 
   const applyFilters = () => {
     const nextFilters = { ...filters, page: 1 }
@@ -68,16 +117,35 @@ export default function AdminBookingsPage() {
     loadBookings(nextFilters)
   }
 
-  const openBooking = (booking) => {
-    setSelected(booking)
-    setStatus(booking.status)
-    setNotes(booking.adminNotes || '')
+  const changeActualDate = async (date) => {
+    setActualDate(date)
+    try {
+      const data = await scheduleApi.getByDate(date)
+      const boundaries = getBoundaries(data.schedule)
+      setTimeOptions(boundaries)
+      if (!boundaries.includes(actualStart)) {
+        const nextStart = boundaries[0] || actualStart
+        setActualStart(nextStart)
+        setActualEnd(getNextBoundary(boundaries, nextStart))
+      } else {
+        setActualEnd(getNextBoundary(boundaries, actualStart))
+      }
+    } catch (nextError) {
+      setError(nextError)
+    }
   }
 
-  const saveBooking = async () => {
+  const saveBooking = async (nextStatus = status) => {
     setSaving(true)
     try {
-      const data = await bookingApi.updateStatus(selected._id, { status, adminNotes: notes })
+      const data = nextStatus === 'confirmed'
+        ? await bookingApi.confirm(selected._id, {
+          date: actualDate,
+          startTime: actualStart,
+          endTime: actualEnd,
+          adminNotes: notes,
+        })
+        : await bookingApi.updateStatus(selected._id, { status: nextStatus, adminNotes: notes })
       setSelected(null)
       setBookings((current) => current.map((item) => (item._id === data.booking._id ? data.booking : item)))
     } catch (nextError) {
@@ -99,6 +167,23 @@ export default function AdminBookingsPage() {
         <Button onClick={applyFilters}>Filter</Button>
       </div>
 
+      <div className="flex flex-wrap items-center justify-between gap-3 border border-[#a66a18]/30 bg-[#d49a38]/15 p-4">
+        <div>
+          <p className="font-mono text-[0.68rem] uppercase tracking-[0.16em] text-[#7a5410]">Pending holds</p>
+          <p className="mt-1 font-body text-3xl leading-none text-ink">{pendingHoldCount} on this page</p>
+        </div>
+        <Button
+          variant="ghost"
+          onClick={() => {
+            const nextFilters = { ...filters, status: 'on-hold', page: 1 }
+            setFilters(nextFilters)
+            loadBookings(nextFilters)
+          }}
+        >
+          Show Holds
+        </Button>
+      </div>
+
       {error && <div className="border border-red bg-red/10 p-4 font-mono text-xs uppercase tracking-[0.14em] text-red">{error.message}</div>}
       {loading ? <Loader label="Loading bookings" /> : <BookingTable bookings={bookings} onSelect={openBooking} />}
 
@@ -116,11 +201,22 @@ export default function AdminBookingsPage() {
         booking={selected}
         status={status}
         notes={notes}
+        actualDate={actualDate}
+        actualStart={actualStart}
+        actualEnd={actualEnd}
+        timeOptions={timeOptions}
         saving={saving}
         onClose={() => setSelected(null)}
         onStatusChange={setStatus}
         onNotesChange={setNotes}
+        onActualDateChange={changeActualDate}
+        onActualStartChange={(time) => {
+          setActualStart(time)
+          setActualEnd(getNextBoundary(timeOptions, time))
+        }}
+        onActualEndChange={setActualEnd}
         onSave={saveBooking}
+        onQuickStatus={saveBooking}
       />
     </section>
   )

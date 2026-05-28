@@ -50,8 +50,8 @@ app.use(helmet());
 app.use(requestTimeout(Number(process.env.REQUEST_TIMEOUT_MS) || 30000));
 app.use(requestLogger);
 
-app.use(express.json({ limit: "10kb" }));
-app.use(express.urlencoded({ extended: true, limit: "10kb" }));
+app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || "8mb" }));
+app.use(express.urlencoded({ extended: true, limit: process.env.URLENCODED_BODY_LIMIT || "8mb" }));
 app.use(cookieParser());
 app.use(sanitizeInput);
 

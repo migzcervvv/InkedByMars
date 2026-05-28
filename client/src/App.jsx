@@ -250,16 +250,18 @@ function CustomCursor() {
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerover", over);
     document.documentElement.addEventListener("mouseleave", hide);
-    document.documentElement.addEventListener("mouseenter", (e) => {
+    const handleEnter = () => {
       show();
       resetOnEnter();
-    });
+    };
+
+    document.documentElement.addEventListener("mouseenter", handleEnter);
 
     return () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerover", over);
       document.documentElement.removeEventListener("mouseleave", hide);
-      document.documentElement.removeEventListener("mouseenter", show);
+      document.documentElement.removeEventListener("mouseenter", handleEnter);
       gsap.killTweensOf([dotEl, ringEl]);
     };
   }, []);

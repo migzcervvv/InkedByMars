@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
-import { submitBooking } from '../services/bookingService'
+import { createBookingHold, releaseBookingHold, submitBooking } from '../services/bookingService'
 import { useAvailability } from './useAvailability'
 import { toDateKey } from '../utils/date'
 
@@ -41,12 +41,32 @@ export function useBooking() {
     }
   }
 
+  const holdSlot = async (payload) => {
+    setBookingError(null)
+    try {
+      return await createBookingHold(payload)
+    } catch (error) {
+      setBookingError(error)
+      throw error
+    }
+  }
+
+  const releaseHold = async (payload) => {
+    try {
+      return await releaseBookingHold(payload)
+    } catch {
+      return false
+    }
+  }
+
   return {
     ...availability,
     appointments: slotsByDate,
     unavailableDates,
     loading: availability.loading,
     loadDate,
+    holdSlot,
+    releaseHold,
     submitBooking: createBooking,
     bookingError,
   }

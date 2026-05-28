@@ -7,6 +7,7 @@ const {
   getAllBookings,
   getBookingById,
   createBooking,
+  confirmBooking,
   updateBookingStatus,
   updateBooking,
   deleteBooking,
@@ -16,6 +17,7 @@ const {
 const {
   createBookingValidators,
   updateBookingStatusValidators,
+  confirmBookingValidators,
   mongoIdParam,
 } = require('../validators/bookingValidators');
 
@@ -37,6 +39,13 @@ router
   .get(mongoIdParam, validate, getBookingById)
   .put(mongoIdParam, validate, updateBooking)
   .delete(mongoIdParam, validate, deleteBooking);
+
+router.put(
+  '/:id/confirm',
+  confirmBookingValidators,
+  validate,
+  confirmBooking
+);
 
 router.put(
   '/:id/status',

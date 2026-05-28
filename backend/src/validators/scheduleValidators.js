@@ -71,6 +71,33 @@ const releaseSlotValidators = [
     .withMessage('Time must be in HH:MM 24h format'),
 ];
 
+const clientHoldValidators = [
+  body('date')
+    .notEmpty()
+    .withMessage('Date is required')
+    .matches(/^\d{4}-\d{2}-\d{2}$/)
+    .withMessage('Date must be in YYYY-MM-DD format')
+    .custom((value) => {
+      if (!dayjs(value, 'YYYY-MM-DD', true).isValid()) {
+        throw new Error('Invalid date');
+      }
+      if (dayjs(value).isBefore(dayjs().startOf('day'))) {
+        throw new Error('Date cannot be in the past');
+      }
+      return true;
+    }),
+  body('time')
+    .notEmpty()
+    .withMessage('Time is required')
+    .matches(/^\d{2}:\d{2}$/)
+    .withMessage('Time must be in HH:MM 24h format'),
+  body('holdToken')
+    .optional()
+    .trim()
+    .isUUID()
+    .withMessage('Invalid hold token'),
+];
+
 const rangeQueryValidators = [
   query('startDate')
     .optional()
@@ -117,6 +144,7 @@ module.exports = {
   blockDayValidators,
   blockSlotValidators,
   releaseSlotValidators,
+  clientHoldValidators,
   rangeQueryValidators,
   applyOpeningWindowValidators,
 };

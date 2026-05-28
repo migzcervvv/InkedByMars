@@ -6,6 +6,7 @@ const app = require('./app');
 const connectDB = require('./config/db');
 const { validateEnv } = require('./config/env');
 const logger = require('./utils/logger');
+const { startHoldCleanupJob } = require('./services/holdCleanupService');
 
 process.on('uncaughtException', (err) => {
   logger.error('process.uncaught_exception', {
@@ -20,9 +21,14 @@ validateEnv();
 
 const PORT = process.env.PORT || 5000;
 let server;
+let holdCleanupTimer;
 
 connectDB()
   .then(() => {
+    holdCleanupTimer = startHoldCleanupJob({
+      intervalMs: Number(process.env.HOLD_CLEANUP_INTERVAL_MS) || 60 * 1000,
+    });
+
     server = app.listen(PORT, () => {
       logger.info('server.started', {
         env: process.env.NODE_ENV || 'development',
@@ -54,10 +60,10 @@ process.on('unhandledRejection', (err) => {
 
 process.on('SIGTERM', () => {
   logger.warn('process.sigterm');
+  if (holdCleanupTimer) clearInterval(holdCleanupTimer);
   if (server) {
     server.close(() => {
       logger.info('server.closed');
     });
   }
 });
-
