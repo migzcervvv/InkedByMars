@@ -4,7 +4,10 @@ import { Link } from "react-router-dom";
 export function Footer() {
   return (
     <footer className="border-t border-red bg-leather text-cream">
-      <div className="mx-auto grid max-w-7xl gap-10 px-6 py-14 md:grid-cols-3">
+      <div className="mx-auto grid max-w-7xl gap-10 px-6 py-14 md:grid-cols-4">
+        <div className="order-last md:order-first">
+          <img src="/mars-logo.svg" alt="Inked by Mars logo" className="h-40" />
+        </div>
         <div>
           <p className="font-display text-3xl font-black tracking-[0.08em]">
             INKED BY <span className="text-red">MARS</span>
