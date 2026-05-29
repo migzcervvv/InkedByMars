@@ -1,7 +1,7 @@
 import { GalleryGrid } from "../components/gallery/GalleryGrid";
 import { Loader } from "../components/ui/Loader";
 import { useInstagramFeed } from "../hooks/useInstagramFeed";
-import { InstagramFeed } from "../components/instagram/InstagramFeed";
+import InstagramFeed from "../components/instagram/InstagramFeed.jsx";
 
 export default function GalleryPage() {
   const { posts, loading } = useInstagramFeed();

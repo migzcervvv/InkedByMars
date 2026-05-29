@@ -10,7 +10,7 @@ gsap.registerPlugin(ScrollTrigger);
 const links = [
   { label: "Work", to: "/" },
   { label: "About", to: "/about" },
-  { label: "Portfolio", to: "/portfolio" },
+  { label: "Gallery", to: "/gallery" },
   { label: "Availability", to: "/availability" },
   { label: "Book", to: "/booking" },
   { label: "Contact", to: "/contact" },

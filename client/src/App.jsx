@@ -86,14 +86,6 @@ function AnimatedRoutes() {
               }
             />
             <Route
-              path="/portfolio"
-              element={
-                <PageTransition>
-                  <GalleryPage />
-                </PageTransition>
-              }
-            />
-            <Route
               path="/booking"
               element={
                 <PageTransition>
