@@ -162,41 +162,6 @@ export function Hero() {
 
       <InkParticles count={16} />
 
-      {/* Vertical socials */}
-      <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{
-          duration: 1,
-          ease,
-          delay: 1.2,
-        }}
-        className="absolute left-6 top-1/2 z-30 hidden -translate-y-1/2 md:block"
-      >
-        <ul className="flex flex-col items-center gap-6 vertical-rl font-mono text-[10px] uppercase tracking-[0.4em]">
-          {["Instagram", "Flash Designs", "Custom Work"].map((s) => (
-            <li key={s}>
-              <a
-                href="https://instagram.com/inkedbymars"
-                className="transition-opacity hover:opacity-50"
-                style={{ color: "var(--color-leather)" }}
-              >
-                {s}
-              </a>
-            </li>
-          ))}
-
-          <li>
-            <span
-              className="block h-16 w-px"
-              style={{
-                backgroundColor: "var(--color-leather)",
-              }}
-            />
-          </li>
-        </ul>
-      </motion.div>
-
       {/* Main content */}
       <div className="relative z-20 mx-auto grid min-h-screen max-w-[1400px] grid-cols-1 items-center gap-10 px-6 pt-32 pb-20 md:grid-cols-12 md:px-16 md:pt-28">
         {/* Left text */}

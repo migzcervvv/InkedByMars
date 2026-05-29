@@ -11,54 +11,58 @@ export function PortraitBio() {
 
   const yearsActive = new Date().getFullYear() - START_YEAR;
 
-  useGSAP(() => {
-    /* Clip-path reveal on the portrait frame */
-    gsap.from(".portrait-bio-frame", {
-      clipPath: "inset(0% 0% 100% 0%)",
-      duration: 1.5,
-      ease: "power4.inOut",
-      scrollTrigger: { trigger: ref.current, start: "top 72%" },
-    });
+  useGSAP(
+    () => {
+      /* Clip-path reveal on the portrait frame */
+      gsap.from(".portrait-bio-frame", {
+        clipPath: "inset(0% 0% 100% 0%)",
+        duration: 1.5,
+        ease: "power4.inOut",
+        scrollTrigger: { trigger: ref.current, start: "top 72%" },
+      });
 
-    /* Parallax drift on the inner image */
-    gsap.to(".portrait-bio-img", {
-      yPercent: -12,
-      ease: "none",
-      scrollTrigger: {
-        trigger: ref.current,
-        start: "top bottom",
-        end: "bottom top",
-        scrub: 1.2,
-      },
-    });
+      /* Parallax drift on the inner image */
+      gsap.to(".portrait-bio-img", {
+        yPercent: -12,
+        ease: "none",
+        scrollTrigger: {
+          trigger: ref.current,
+          start: "top bottom",
+          end: "bottom top",
+          scrub: 1.2,
+        },
+      });
 
-    /* Copy stagger */
-    gsap.from(".portrait-bio-copy > *", {
-      y: 36,
-      opacity: 0,
-      duration: 0.9,
-      stagger: 0.1,
-      ease: "power3.out",
-      scrollTrigger: { trigger: ref.current, start: "top 68%" },
-    });
+      /* Copy stagger */
+      gsap.from(".portrait-bio-copy > *", {
+        y: 36,
+        opacity: 0,
+        duration: 0.9,
+        stagger: 0.1,
+        ease: "power3.out",
+        scrollTrigger: { trigger: ref.current, start: "top 68%" },
+      });
 
-    /* Floating badge slide-in */
-    gsap.from(".portrait-bio-badge", {
-      x: -24,
-      opacity: 0,
-      duration: 0.8,
-      ease: "power3.out",
-      delay: 0.6,
-      scrollTrigger: { trigger: ref.current, start: "top 72%" },
-    });
-  }, [], ref);
+      /* Floating badge slide-in */
+      gsap.from(".portrait-bio-badge", {
+        x: -24,
+        opacity: 0,
+        duration: 0.8,
+        ease: "power3.out",
+        delay: 0.6,
+        scrollTrigger: { trigger: ref.current, start: "top 72%" },
+      });
+    },
+    [],
+    ref,
+  );
 
   return (
     <section ref={ref} className="py-24 lg:py-36">
       <div className="mx-auto grid max-w-7xl px-6 lg:grid-cols-[1.25fr_1fr] lg:gap-20 lg:px-12 xl:gap-28">
         {/* Portrait column */}
         <div className="relative mb-12 lg:mb-0">
-          <div className="portrait-bio-frame aspect-[3/4] overflow-hidden bg-leather">
+          <div className="portrait-bio-frame overflow-hidden bg-leather">
             <img
               src={IMG.portrait}
               alt="InkedByMars — Mars, tattoo artist, Manila"
@@ -76,7 +80,7 @@ export function PortraitBio() {
               Private Studio
             </p>
             <p className="mt-1 font-display text-base font-black text-ink">
-              Manila, Philippines
+              Las Piñas, Philippines
             </p>
           </div>
         </div>
@@ -99,16 +103,15 @@ export function PortraitBio() {
 
           <div className="mt-5 space-y-4 font-body leading-relaxed text-ink/65">
             <p>
-              Mars works in fine line, blackwork, and neo-traditional — styles
-              chosen for how they age as much as how they look. She trained
-              under three artists across Manila and Osaka before opening her
-              private studio in {START_YEAR}.
+              Mars works in fine line, custom, and minimalistic — styles chosen
+              for how they age as much as how they look. She trained with a few
+              artists across Manila before opening her private studio in{" "}
+              {START_YEAR}.
             </p>
             <p>
               Every consultation is unhurried. Every design is drawn to
               disappear into its wearer — not to announce itself, but to belong
-              completely. No templates. No flash. No second opinions on your
-              skin.
+              completely.
             </p>
           </div>
 

@@ -4,39 +4,39 @@
 ───────────────────────────────────────────────────────────────── */
 
 export const IMG = {
-  portrait:     "https://picsum.photos/seed/mars-portrait/1100/1400",
-  studio:       "https://picsum.photos/seed/mars-studio/900/1200",
-  fineline:     "https://picsum.photos/seed/mars-fineline/600/800",
-  blackwork:    "https://picsum.photos/seed/mars-blackwork/600/800",
-  neotrad:      "https://picsum.photos/seed/mars-neotraditional/600/800",
-  illustrative: "https://picsum.photos/seed/mars-illustrative/600/800",
+  portrait: "/artist.jpg",
+  studio: "/sample.jpg",
+  freehand: "/freehand.jpg",
+  custom: "/custom.jpg",
+  minimalistic: "/minimalistic.jpg",
+  flash: "/flash.jpg",
 };
 
 export const START_YEAR = 2019;
 
 export const SPECIALIZATIONS = [
   {
-    label: "Fine Line",
+    label: "Freehand",
     tag: "Signature",
-    image: IMG.fineline,
+    image: IMG.freehand,
     body: "Precision single-needle work with architectural detail. Thin, permanent, and deeply intentional.",
   },
   {
-    label: "Blackwork",
-    tag: "Geometric",
-    image: IMG.blackwork,
-    body: "Bold forms and negative space that read across the room and hold across decades.",
+    label: "Custom",
+    tag: "Unique",
+    image: IMG.custom,
+    body: "Tailored designs that reflect your individuality and story.",
   },
   {
-    label: "Neo-Traditional",
+    label: "Minimalistic",
     tag: "Narrative",
-    image: IMG.neotrad,
+    image: IMG.minimalistic,
     body: "Classic motifs redrawn through a modern lens — saturated, sculptural, and rich with atmosphere.",
   },
   {
-    label: "Illustrative",
+    label: "Flash",
     tag: "Storytelling",
-    image: IMG.illustrative,
+    image: IMG.flash,
     body: "The body as page — complex, layered pieces built to carry entire worlds.",
   },
 ];

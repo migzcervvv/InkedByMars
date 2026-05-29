@@ -381,6 +381,10 @@ a {
   background: var(--color-red);
 }
 
+.faq-answer {
+  background-color: var(--color-ash);
+}
+
 @media (max-width: 640px) {
   .page-title {
     font-size: 4.5rem;

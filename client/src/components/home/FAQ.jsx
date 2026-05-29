@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "../../hooks/useGSAP";
+import { Button } from "../ui/Button";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -130,13 +131,16 @@ export function FAQ() {
   const [openItems, setOpenItems] = useState({});
   const contentRefs = useRef({});
 
-  const registerContent = useCallback((key) => (el) => {
-    if (el) {
-      contentRefs.current[key] = el;
-    } else {
-      delete contentRefs.current[key];
-    }
-  }, []);
+  const registerContent = useCallback(
+    (key) => (el) => {
+      if (el) {
+        contentRefs.current[key] = el;
+      } else {
+        delete contentRefs.current[key];
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     const refs = contentRefs.current;
@@ -174,77 +178,81 @@ export function FAQ() {
     setOpenItems((prev) => ({ ...prev, [key]: !isOpen }));
   }, []);
 
-  useGSAP(() => {
-    // ── Hero entrance ──
-    gsap.from(".faq-eyebrow", {
-      x: -18,
-      opacity: 0,
-      duration: 0.7,
-      ease: "power3.out",
-    });
-    gsap.from(".faq-headline", {
-      y: 44,
-      opacity: 0,
-      duration: 1,
-      ease: "power3.out",
-      delay: 0.12,
-    });
-    gsap.from(".faq-subline", {
-      y: 22,
-      opacity: 0,
-      duration: 0.8,
-      ease: "power3.out",
-      delay: 0.26,
-    });
-
-    // ── Sections stagger in on scroll ──
-    gsap.utils.toArray(".faq-section").forEach((section) => {
-      gsap.from(section, {
-        y: 32,
+  useGSAP(
+    () => {
+      // ── Hero entrance ──
+      gsap.from(".faq-eyebrow", {
+        x: -18,
         opacity: 0,
-        duration: 0.75,
+        duration: 0.7,
         ease: "power3.out",
-        scrollTrigger: {
-          trigger: section,
-          start: "top 82%",
-          toggleActions: "play none none none",
-        },
       });
-    });
-
-    // ── Ghost number parallax ──
-    gsap.utils.toArray(".faq-ghost-num").forEach((num) => {
-      gsap.to(num, {
-        y: -28,
-        ease: "none",
-        scrollTrigger: {
-          trigger: num.closest(".faq-section"),
-          start: "top bottom",
-          end: "bottom top",
-          scrub: true,
-        },
+      gsap.from(".faq-headline", {
+        y: 44,
+        opacity: 0,
+        duration: 1,
+        ease: "power3.out",
+        delay: 0.12,
       });
-    });
+      gsap.from(".faq-subline", {
+        y: 22,
+        opacity: 0,
+        duration: 0.8,
+        ease: "power3.out",
+        delay: 0.26,
+      });
 
-    // ── Ambient orb drift ──
-    gsap.to(".faq-orb-a", {
-      y: -44,
-      x: 18,
-      duration: 7,
-      ease: "sine.inOut",
-      yoyo: true,
-      repeat: -1,
-    });
-    gsap.to(".faq-orb-b", {
-      y: 36,
-      x: -22,
-      duration: 10,
-      ease: "sine.inOut",
-      yoyo: true,
-      repeat: -1,
-      delay: 2.5,
-    });
-  }, [], ref);
+      // ── Sections stagger in on scroll ──
+      gsap.utils.toArray(".faq-section").forEach((section) => {
+        gsap.from(section, {
+          y: 32,
+          opacity: 0,
+          duration: 0.75,
+          ease: "power3.out",
+          scrollTrigger: {
+            trigger: section,
+            start: "top 82%",
+            toggleActions: "play none none none",
+          },
+        });
+      });
+
+      // ── Ghost number parallax ──
+      gsap.utils.toArray(".faq-ghost-num").forEach((num) => {
+        gsap.to(num, {
+          y: -28,
+          ease: "none",
+          scrollTrigger: {
+            trigger: num.closest(".faq-section"),
+            start: "top bottom",
+            end: "bottom top",
+            scrub: true,
+          },
+        });
+      });
+
+      // ── Ambient orb drift ──
+      gsap.to(".faq-orb-a", {
+        y: -44,
+        x: 18,
+        duration: 7,
+        ease: "sine.inOut",
+        yoyo: true,
+        repeat: -1,
+      });
+      gsap.to(".faq-orb-b", {
+        y: 36,
+        x: -22,
+        duration: 10,
+        ease: "sine.inOut",
+        yoyo: true,
+        repeat: -1,
+        delay: 2.5,
+      });
+    },
+    [],
+    ref,
+  );
 
   return (
     <section
@@ -257,7 +265,7 @@ export function FAQ() {
 
       <div className="relative mx-auto max-w-3xl px-6">
         {/* ══ Hero Header ════════════════════════════════════════════════════ */}
-        <header className="mb-20 lg:mb-24">
+        <header className="mb-20 lg:mb-12">
           {/* Eyebrow */}
           <div className="faq-eyebrow mb-5 flex items-center gap-3">
             <div className="h-px w-7 bg-red" />
@@ -353,8 +361,8 @@ export function FAQ() {
                         role="region"
                         aria-hidden={!isOpen}
                       >
-                        <div className="border-t border-cream/[0.07] px-5 pb-6 pt-4 md:px-6">
-                          <p className="font-body text-sm leading-relaxed text-cream/48 md:text-[15px]">
+                        <div className="border-t border-cream/[0.07] px-5 pb-6 pt-4 md:px-6 faq-answer">
+                          <p className="font-body text-sm leading-relaxed text-cream/80 md:text-[15px]">
                             {item.a}
                           </p>
                         </div>
@@ -379,9 +387,12 @@ export function FAQ() {
           <p className="font-body text-xl italic text-cream/58">
             Still have questions?
           </p>
-          <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.24em] text-cream/28">
+          <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.24em] text-cream/78">
             Reach out — we answer every inquiry personally
           </p>
+          <Button to="/contact" variant="outline" className="mx-auto mt-6">
+            Contact Us
+          </Button>
         </div>
       </div>
     </section>
