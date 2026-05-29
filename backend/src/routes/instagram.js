@@ -7,7 +7,7 @@ const {
   getCarouselChildren,
   getInstagramProfile,
 } = require("../services/instagramService");
-const { cacheMiddleware } = require("../middleware/cache");
+const { cacheMiddleware } = require("../middlewares/cache");
 const logger = require("../utils/logger");
 
 /**
@@ -26,7 +26,7 @@ router.get("/posts", async (req, res) => {
     // Only cache the FIRST page (no cursor) — subsequent pages are dynamic
     if (!cursor) {
       const cacheKey = `posts_first_${limit}`;
-      const { cacheMiddleware: cm } = require("../middleware/cache");
+      const { cacheMiddleware: cm } = require("../middlewares/cache");
       // Apply cache inline for first page
     }
 
