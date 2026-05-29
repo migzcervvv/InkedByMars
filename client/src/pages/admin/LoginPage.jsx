@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Lock } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { useAuth } from "../../hooks/useAuth";
+import { loadFacebookSDK } from "../../lib/facebook";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -11,8 +12,59 @@ export default function LoginPage() {
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [fbStatus, setFbStatus] = useState(null);
+  const [user, setUser] = useState(null);
 
-  if (isAuthenticated) return <Navigate to="/admin" replace />;
+  useEffect(() => {
+    const loadFacebook = async () => {
+      const FB = await loadFacebookSDK();
+      FB.getLoginStatus((response) => {
+        statusChangeCallback(response);
+      });
+    };
+    loadFacebook();
+  }, []);
+
+  if (isAuthenticated) {
+    return <Navigate to="/admin" replace />;
+  }
+
+  const statusChangeCallback = (response) => {
+    if (response.status === "connected") {
+      setFbStatus("connected");
+      const accessToken = response.authResponse.accessToken;
+      console.log("ACCESS TOKEN:", accessToken);
+      fetchUserProfile();
+    } else if (response.status === "not_authorized") {
+      setFbStatus("not_authorized");
+    } else {
+      setFbStatus("unknown");
+    }
+  };
+
+  const fetchUserProfile = () => {
+    window.FB.api("/me", { fields: "id,name,email,picture" }, (response) => {
+      setUser(response);
+      // FIX 3: navigate after a successful Facebook login
+      navigate(location.state?.from?.pathname || "/admin", { replace: true });
+    });
+  };
+
+  const loginWithFacebook = () => {
+    setError("");
+    setLoading(true);
+    window.FB.login(
+      (response) => {
+        if (response.status === "connected") {
+          statusChangeCallback(response);
+        } else {
+          setError("Facebook login was cancelled or failed. Please try again.");
+          setLoading(false);
+        }
+      },
+      { scope: "public_profile,email" },
+    );
+  };
 
   const submit = async (event) => {
     event.preventDefault();
@@ -86,6 +138,23 @@ export default function LoginPage() {
         </div>
         <Button className="mt-6 w-full" disabled={loading} type="submit">
           {loading ? "Signing in..." : "Sign In"}
+        </Button>
+
+        {/* FIX 4: wire up the Facebook login button */}
+        <div className="mt-4 flex items-center gap-3">
+          <span className="h-px flex-1 bg-cream/15" />
+          <span className="font-mono text-xs uppercase tracking-[0.16em] text-cream/40">
+            or
+          </span>
+          <span className="h-px flex-1 bg-cream/15" />
+        </div>
+        <Button
+          className="mt-4 w-full"
+          disabled={loading}
+          type="button"
+          onClick={loginWithFacebook}
+        >
+          Continue with Facebook
         </Button>
       </form>
     </section>

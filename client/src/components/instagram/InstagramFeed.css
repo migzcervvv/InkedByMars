@@ -1,0 +1,86 @@
+/* Instagram Feed Grid Layout */
+.instagram-feed {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+/* Responsive 3-column grid — collapses on smaller screens */
+.instagram-feed__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 768px) {
+  .instagram-feed__grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .instagram-feed__grid {
+    grid-template-columns: repeat(1, 1fr);
+    gap: 12px;
+  }
+}
+
+/* Error state */
+.instagram-feed--error,
+.instagram-feed--empty {
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.instagram-feed__error,
+.instagram-feed__empty {
+  text-align: center;
+  color: #666;
+}
+
+.instagram-feed__error-message {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.instagram-feed__error-detail {
+  font-size: 0.85rem;
+  color: #888;
+  margin-bottom: 16px;
+  font-family: monospace;
+}
+
+.instagram-feed__retry-btn {
+  padding: 8px 20px;
+  background: #0095f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.2s;
+}
+
+.instagram-feed__retry-btn:hover {
+  background: #0086e0;
+}
+
+/* Infinite scroll sentinel — invisible spacer */
+.instagram-feed__sentinel {
+  height: 1px;
+  width: 100%;
+  margin: 20px 0;
+}
+
+.instagram-feed__end-message {
+  text-align: center;
+  color: #aaa;
+  font-size: 0.85rem;
+  padding: 24px 0;
+}

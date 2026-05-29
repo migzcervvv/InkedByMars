@@ -1,0 +1,147 @@
+// Handles token validation, storage, and auto-refresh
+// The access token is the most critical piece of infrastructure — treat it carefully
+const axios = require("axios");
+const fs = require("fs");
+const path = require("path");
+const logger = require("../utils/logger");
+
+const TOKEN_FILE = path.join(__dirname, "../../.token-store.json");
+const GRAPH_BASE = process.env.GRAPH_BASE;
+
+// Days before expiry to trigger a refresh (7-day buffer is safe)
+const REFRESH_THRESHOLD_DAYS = 7;
+
+/**
+ * Load the stored token data from disk.
+ * Falls back to env var if no file exists (first run).
+ */
+function loadTokenData() {
+  try {
+    if (fs.existsSync(TOKEN_FILE)) {
+      const data = JSON.parse(fs.readFileSync(TOKEN_FILE, "utf8"));
+      return data;
+    }
+  } catch (err) {
+    logger.warn("Could not read token store file", { error: err.message });
+  }
+
+  // First run: use the token from environment variable
+  return {
+    access_token: process.env.META_ACCESS_TOKEN,
+    expires_at: null, // Unknown expiry — will be fetched on first validate
+  };
+}
+
+/**
+ * Persist token data to disk so it survives server restarts.
+ * In production, use a database or secret manager instead of a local file.
+ */
+function saveTokenData(data) {
+  try {
+    fs.writeFileSync(TOKEN_FILE, JSON.stringify(data, null, 2), "utf8");
+    logger.info("Token data saved to disk");
+  } catch (err) {
+    logger.error("Could not save token data", { error: err.message });
+  }
+}
+
+/**
+ * Query Meta's debug_token endpoint to check validity and expiry.
+ * The app_id|app_secret combo acts as an app access token for this endpoint.
+ */
+async function debugToken(token) {
+  const appAccessToken = `${process.env.META_APP_ID}|${process.env.META_APP_SECRET}`;
+  const url = `${GRAPH_BASE}/debug_token`;
+
+  const response = await axios.get(url, {
+    params: {
+      input_token: token,
+      access_token: appAccessToken,
+    },
+  });
+
+  return response.data.data;
+}
+
+/**
+ * Exchange the current long-lived token for a fresh one.
+ * Meta resets the 60-day clock on each successful exchange.
+ */
+async function refreshToken(currentToken) {
+  const url = `${GRAPH_BASE}/oauth/access_token`;
+
+  const response = await axios.get(url, {
+    params: {
+      grant_type: "fb_exchange_token",
+      client_id: process.env.META_APP_ID,
+      client_secret: process.env.META_APP_SECRET,
+      fb_exchange_token: currentToken,
+    },
+  });
+
+  const { access_token, expires_in } = response.data;
+  const expiresAt = Date.now() + expires_in * 1000;
+
+  const tokenData = { access_token, expires_at: expiresAt };
+  saveTokenData(tokenData);
+  logger.info("Token refreshed successfully", {
+    expiresAt: new Date(expiresAt).toISOString(),
+  });
+
+  return access_token;
+}
+
+/**
+ * Get the current valid access token.
+ * Automatically refreshes if within REFRESH_THRESHOLD_DAYS of expiry.
+ * Call this at the start of any service function that needs the token.
+ */
+async function getValidToken() {
+  const tokenData = loadTokenData();
+  const { access_token, expires_at } = tokenData;
+
+  if (!access_token) {
+    throw new Error("No access token found. Set META_ACCESS_TOKEN in .env");
+  }
+
+  // Check if we know the expiry and if we are approaching it
+  if (expires_at) {
+    const daysUntilExpiry = (expires_at - Date.now()) / (1000 * 60 * 60 * 24);
+    logger.info("Token expiry check", {
+      daysUntilExpiry: daysUntilExpiry.toFixed(1),
+    });
+
+    if (daysUntilExpiry < 0) {
+      // Token is expired — cannot auto-refresh, manual re-auth needed
+      throw new Error(
+        "Access token has expired. Please re-authenticate via OAuth to generate a new token.",
+      );
+    }
+
+    if (daysUntilExpiry < REFRESH_THRESHOLD_DAYS) {
+      logger.info("Token expiry approaching, refreshing...");
+      return await refreshToken(access_token);
+    }
+  } else {
+    // First run: validate token to populate expiry info
+    try {
+      const info = await debugToken(access_token);
+      if (!info.is_valid) {
+        throw new Error("Access token is invalid. Please re-authenticate.");
+      }
+      const expiresAt = info.expires_at * 1000; // Convert Unix seconds to ms
+      saveTokenData({ access_token, expires_at: expiresAt });
+      logger.info("Token validated on first run", {
+        expiresAt: new Date(expiresAt).toISOString(),
+        scopes: info.scopes,
+      });
+    } catch (err) {
+      logger.error("Token validation failed", { error: err.message });
+      throw err;
+    }
+  }
+
+  return access_token;
+}
+
+module.exports = { getValidToken, refreshToken, debugToken };

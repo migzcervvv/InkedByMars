@@ -20,9 +20,6 @@ export function Footer() {
         <div>
           <p className="footer-heading">Quick Links</p>
           <div className="mt-4 grid gap-3 font-mono text-xs uppercase tracking-[0.18em]">
-            <Link to="/" className="hover:text-red">
-              Work
-            </Link>
             <Link to="/gallery" className="hover:text-red">
               Gallery
             </Link>
@@ -31,6 +28,9 @@ export function Footer() {
             </Link>
             <Link to="/booking" className="hover:text-red">
               Book
+            </Link>
+            <Link to="/privacy-policy" className="hover:text-red">
+              Privacy Policy
             </Link>
             <Link to="/contact" className="hover:text-red">
               Contact

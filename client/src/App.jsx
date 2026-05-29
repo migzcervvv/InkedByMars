@@ -12,6 +12,7 @@ import { LoadingScreen } from "./components/ui/LoadingScreen";
 import { ErrorBoundary } from "./components/ui/ErrorBoundary";
 import { AdminLayout } from "./layouts/AdminLayout";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
+import { loadFacebookSDK } from "./lib/facebook";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -22,6 +23,7 @@ const AvailabilityPage = lazy(() => import("./pages/AvailabilityPage"));
 const ContactPage = lazy(() => import("./pages/ContactPage"));
 const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
 const AboutPage = lazy(() => import("./pages/AboutPage"));
+const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const LoginPage = lazy(() => import("./pages/admin/LoginPage"));
 const AdminDashboardPage = lazy(
   () => import("./pages/admin/AdminDashboardPage"),
@@ -38,7 +40,9 @@ function App() {
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith("/admin");
   const ready = loaded || isAdminRoute;
-
+  useEffect(() => {
+    loadFacebookSDK();
+  }, []);
   return (
     <LazyMotion features={domAnimation}>
       {!ready ? (
@@ -118,6 +122,14 @@ function AnimatedRoutes() {
               element={
                 <PageTransition>
                   <AboutPage />
+                </PageTransition>
+              }
+            />
+            <Route
+              path="/privacy-policy"
+              element={
+                <PageTransition>
+                  <PrivacyPolicy />
                 </PageTransition>
               }
             />

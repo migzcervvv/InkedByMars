@@ -10,13 +10,19 @@ const authRoutes = require("./routes/auth");
 const bookingRoutes = require("./routes/bookings");
 const scheduleRoutes = require("./routes/schedule");
 const publicRoutes = require("./routes/public");
+const instagramRouter = require("./routes/instagram");
+const { getValidToken } = require("./services/tokenService");
 
 const errorHandler = require("./middlewares/error");
 const notFound = require("./middlewares/notFound");
 const requestLogger = require("./middlewares/requestLogger");
 const requestTimeout = require("./middlewares/timeout");
 const { sanitizeInput } = require("./middlewares/security");
-const { authLimiter, adminLimiter, publicLimiter } = require("./middlewares/rateLimiters");
+const {
+  authLimiter,
+  adminLimiter,
+  publicLimiter,
+} = require("./middlewares/rateLimiters");
 const { getAllowedOrigins } = require("./config/env");
 const AppError = require("./utils/AppError");
 
@@ -51,7 +57,12 @@ app.use(requestTimeout(Number(process.env.REQUEST_TIMEOUT_MS) || 30000));
 app.use(requestLogger);
 
 app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || "8mb" }));
-app.use(express.urlencoded({ extended: true, limit: process.env.URLENCODED_BODY_LIMIT || "8mb" }));
+app.use(
+  express.urlencoded({
+    extended: true,
+    limit: process.env.URLENCODED_BODY_LIMIT || "8mb",
+  }),
+);
 app.use(cookieParser());
 app.use(sanitizeInput);
 
@@ -77,6 +88,7 @@ app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/bookings", adminLimiter, bookingRoutes);
 app.use("/api/schedule", adminLimiter, scheduleRoutes);
 app.use("/api/public", publicLimiter, publicRoutes);
+app.use("/api/instagram", instagramRouter);
 
 app.use(notFound);
 app.use(errorHandler);
