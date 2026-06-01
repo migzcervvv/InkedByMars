@@ -4,6 +4,12 @@ A modern tattoo artist portfolio and booking platform built to showcase artwork,
 
 ---
 
+192.168.10.169
+36.255.107.166
+
+74.220.60.0
+74.220.52.0
+
 # Overview
 
 InkedByMars is a full-stack tattoo artist website focused on:
