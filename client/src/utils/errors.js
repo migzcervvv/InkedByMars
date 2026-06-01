@@ -1,4 +1,4 @@
-export function normalizeApiError(error, fallback = 'Something went wrong') {
+export function normalizeApiError(error, fallback = "Can't reach the server. Check your connection or try again in a moment.") {
   if (!error) return { message: fallback, status: null, fields: {} }
 
   const isCanceled = error.code === 'ERR_CANCELED' || error.name === 'CanceledError'
@@ -20,7 +20,7 @@ export function normalizeApiError(error, fallback = 'Something went wrong') {
   }
 
   return {
-    message: isCanceled ? 'Request canceled' : data?.message || error.message || fallback,
+    message: isCanceled ? 'Request canceled' : data?.message || fallback,
     status,
     fields,
     code: error.code,

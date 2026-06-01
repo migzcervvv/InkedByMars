@@ -55,7 +55,13 @@ export function Navbar() {
 
           <div className="hidden items-center gap-8 md:flex">
             {links.map((link) => (
-              <NavLink key={link.to} to={link.to} className="nav-link">
+              <NavLink
+                key={link.to}
+                to={link.to}
+                className={({ isActive }) =>
+                  `nav-link ${isActive ? "active" : ""}`
+                }
+              >
                 {link.label}
               </NavLink>
             ))}
@@ -101,7 +107,11 @@ export function Navbar() {
                   <NavLink
                     to={link.to}
                     onClick={() => setOpen(false)}
-                    className="font-display text-5xl italic text-cream transition hover:text-red"
+                    className={({ isActive }) =>
+                      `font-display text-5xl italic transition hover:text-red ${
+                        isActive ? "text-red" : "text-cream"
+                      }`
+                    }
                   >
                     {link.label}
                   </NavLink>

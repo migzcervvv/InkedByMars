@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Lock } from "lucide-react";
 import { Button } from "../../components/ui/Button";
@@ -12,8 +12,22 @@ export default function LoginPage() {
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [fbStatus, setFbStatus] = useState(null);
-  const [user, setUser] = useState(null);
+  const fetchUserProfile = useCallback(() => {
+    window.FB.api("/me", { fields: "id,name,email,picture" }, () => {
+      navigate(location.state?.from?.pathname || "/admin", { replace: true });
+    });
+  }, [location.state?.from?.pathname, navigate]);
+
+  const statusChangeCallback = useCallback(
+    (response) => {
+      if (response.status === "connected") {
+        fetchUserProfile();
+      } else if (response.status === "not_authorized") {
+        setError("Facebook is not authorized for this app.");
+      }
+    },
+    [fetchUserProfile],
+  );
 
   useEffect(() => {
     const loadFacebook = async () => {
@@ -23,32 +37,11 @@ export default function LoginPage() {
       });
     };
     loadFacebook();
-  }, []);
+  }, [statusChangeCallback]);
 
   if (isAuthenticated) {
     return <Navigate to="/admin" replace />;
   }
-
-  const statusChangeCallback = (response) => {
-    if (response.status === "connected") {
-      setFbStatus("connected");
-      const accessToken = response.authResponse.accessToken;
-      console.log("ACCESS TOKEN:", accessToken);
-      fetchUserProfile();
-    } else if (response.status === "not_authorized") {
-      setFbStatus("not_authorized");
-    } else {
-      setFbStatus("unknown");
-    }
-  };
-
-  const fetchUserProfile = () => {
-    window.FB.api("/me", { fields: "id,name,email,picture" }, (response) => {
-      setUser(response);
-      // FIX 3: navigate after a successful Facebook login
-      navigate(location.state?.from?.pathname || "/admin", { replace: true });
-    });
-  };
 
   const loginWithFacebook = () => {
     setError("");

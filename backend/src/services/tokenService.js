@@ -4,9 +4,14 @@ const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
 const logger = require("../utils/logger");
+const AppError = require("../utils/AppError");
 
 const TOKEN_FILE = path.join(__dirname, "../../.token-store.json");
-const GRAPH_BASE = process.env.GRAPH_BASE;
+const IG_API_VERSION = process.env.IG_API_VERSION || "v25.0";
+const GRAPH_HOST = (process.env.GRAPH_BASE || "https://graph.facebook.com")
+  .replace(/\/+$/, "")
+  .replace(/\/v\d+\.\d+$/, "");
+const GRAPH_BASE = `${GRAPH_HOST}/${IG_API_VERSION}`;
 
 // Days before expiry to trigger a refresh (7-day buffer is safe)
 const REFRESH_THRESHOLD_DAYS = 7;
@@ -53,12 +58,11 @@ async function debugToken(token) {
   const appAccessToken = `${process.env.META_APP_ID}|${process.env.META_APP_SECRET}`;
   const url = `${GRAPH_BASE}/debug_token`;
 
-  const response = await axios.get(url, {
-    params: {
-      input_token: token,
-      access_token: appAccessToken,
-    },
-  });
+  const params = {
+    input_token: token,
+    access_token: appAccessToken,
+  };
+  const response = await graphTokenGet(url, params);
 
   return response.data.data;
 }
@@ -70,13 +74,11 @@ async function debugToken(token) {
 async function refreshToken(currentToken) {
   const url = `${GRAPH_BASE}/oauth/access_token`;
 
-  const response = await axios.get(url, {
-    params: {
-      grant_type: "fb_exchange_token",
-      client_id: process.env.META_APP_ID,
-      client_secret: process.env.META_APP_SECRET,
-      fb_exchange_token: currentToken,
-    },
+  const response = await graphTokenGet(url, {
+    grant_type: "fb_exchange_token",
+    client_id: process.env.META_APP_ID,
+    client_secret: process.env.META_APP_SECRET,
+    fb_exchange_token: currentToken,
   });
 
   const { access_token, expires_in } = response.data;
@@ -101,7 +103,11 @@ async function getValidToken() {
   const { access_token, expires_at } = tokenData;
 
   if (!access_token) {
-    throw new Error("No access token found. Set META_ACCESS_TOKEN in .env");
+    throw new AppError(
+      "No Instagram access token found.",
+      401,
+      "IG_TOKEN_EXPIRED",
+    );
   }
 
   // Check if we know the expiry and if we are approaching it
@@ -113,8 +119,10 @@ async function getValidToken() {
 
     if (daysUntilExpiry < 0) {
       // Token is expired — cannot auto-refresh, manual re-auth needed
-      throw new Error(
+      throw new AppError(
         "Access token has expired. Please re-authenticate via OAuth to generate a new token.",
+        401,
+        "IG_TOKEN_EXPIRED",
       );
     }
 
@@ -127,7 +135,11 @@ async function getValidToken() {
     try {
       const info = await debugToken(access_token);
       if (!info.is_valid) {
-        throw new Error("Access token is invalid. Please re-authenticate.");
+        throw new AppError(
+          "Access token is invalid. Please re-authenticate.",
+          401,
+          "IG_TOKEN_EXPIRED",
+        );
       }
       const expiresAt = info.expires_at * 1000; // Convert Unix seconds to ms
       saveTokenData({ access_token, expires_at: expiresAt });
@@ -145,3 +157,37 @@ async function getValidToken() {
 }
 
 module.exports = { getValidToken, refreshToken, debugToken };
+
+function sanitizeParams(params) {
+  return Object.fromEntries(
+    Object.entries(params).map(([key, value]) => [
+      key,
+      key.includes("token") || key.includes("secret") ? "[redacted]" : value,
+    ]),
+  );
+}
+
+async function graphTokenGet(url, params) {
+  try {
+    return await axios.get(url, { params });
+  } catch (error) {
+    const status = error.response?.status || 502;
+    const metaError = error.response?.data?.error || {};
+    const code = metaError.code === 190 || status === 400 || status === 401
+      ? "IG_TOKEN_EXPIRED"
+      : "IG_FETCH_FAILED";
+
+    logger.error("Meta Graph token request failed", {
+      url,
+      params: sanitizeParams(params),
+      status,
+      responseBody: error.response?.data || null,
+    });
+
+    throw new AppError(
+      metaError.message || "Instagram token validation failed.",
+      code === "IG_TOKEN_EXPIRED" ? 401 : status,
+      code,
+    );
+  }
+}

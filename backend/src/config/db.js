@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 const logger = require('../utils/logger');
 
 const connectDB = async (attempt = 1) => {
-  const maxAttempts = Number(process.env.MONGO_CONNECT_RETRIES) || 5;
+  const maxAttempts = Math.min(Number(process.env.MONGO_CONNECT_RETRIES) || 3, 3);
 
   try {
     mongoose.set('strictQuery', true);
@@ -31,7 +31,7 @@ const connectDB = async (attempt = 1) => {
 
     if (attempt >= maxAttempts) throw error;
 
-    const delayMs = Math.min(1000 * attempt, 5000);
+    const delayMs = 1000 * 2 ** (attempt - 1);
     await new Promise((resolve) => setTimeout(resolve, delayMs));
     return connectDB(attempt + 1);
   }
@@ -50,4 +50,3 @@ mongoose.connection.on('error', (error) => {
 });
 
 module.exports = connectDB;
-

@@ -12,7 +12,7 @@ export const loadFacebookSDK = () => {
         appId: import.meta.env.VITE_FACEBOOK_APP_ID, // Vite
         cookie: true,
         xfbml: true,
-        version: "v23.0",
+        version: import.meta.env.VITE_FB_API_VERSION || "v25.0",
       });
 
       window.FB.AppEvents.logPageView();

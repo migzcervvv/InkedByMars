@@ -173,6 +173,16 @@ a {
   }
 }
 
+@keyframes warmup {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(300%);
+  }
+}
+
 @layer components {
   .page-title {
     @apply mb-6 font-display text-7xl font-black italic leading-none text-ink md:text-8xl lg:text-9xl;

@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { BookingCalendar } from '../components/booking/BookingCalendar'
 import { BookingForm } from '../components/booking/BookingForm'
-import { BookingConfirmation } from '../components/booking/BookingConfirmation'
 import { Loader } from '../components/ui/Loader'
 import { useBooking } from '../hooks/useBooking'
 import { toDateKey } from '../utils/date'
 
 export default function BookingPage() {
   const bookingApi = useBooking()
+  const navigate = useNavigate()
   const { holdSlot, loadDate, refreshRange, releaseHold } = bookingApi
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [selectedSlot, setSelectedSlot] = useState(null)
@@ -15,7 +16,6 @@ export default function BookingPage() {
   const [holdLoading, setHoldLoading] = useState('')
   const [holdSecondsRemaining, setHoldSecondsRemaining] = useState(0)
   const [submitting, setSubmitting] = useState(false)
-  const [booking, setBooking] = useState(null)
   const [submitError, setSubmitError] = useState(null)
 
   useEffect(() => {
@@ -107,25 +107,17 @@ export default function BookingPage() {
         preferredDate: toDateKey(selectedDate),
         preferredTime: selectedSlot,
       })
-      setBooking(result)
       setHold(null)
       setHoldSecondsRemaining(0)
       await loadDate(selectedDate)
       await refreshRange()
+      navigate('/booking/confirmation', { state: { booking: result } })
     } catch (error) {
       setSubmitError(error)
     } finally {
       setSubmitting(false)
     }
   }
-
-  const reset = () => {
-    setBooking(null)
-    setSelectedSlot(null)
-    setHold(null)
-    setHoldSecondsRemaining(0)
-  }
-
   return (
     <section className="min-h-screen bg-bg px-6 pb-24 pt-32 lg:pb-32">
       <div className="mx-auto max-w-7xl">
@@ -138,7 +130,7 @@ export default function BookingPage() {
             <div>
               {bookingApi.error && (
                 <div className="mb-4 border border-red bg-red/10 p-4 font-mono text-xs uppercase tracking-[0.14em] text-red">
-                  {bookingApi.error.message}
+                  {bookingApi.error.message || "Can't reach the server. Check your connection or try again in a moment."}
                 </div>
               )}
               <BookingCalendar
@@ -153,25 +145,21 @@ export default function BookingPage() {
                 onSlotChange={handleSlotChange}
               />
             </div>
-            {booking ? (
-              <BookingConfirmation booking={booking} onAnother={reset} />
-            ) : (
-              <div>
-                {submitError && (
-                  <div className="mb-4 border border-red bg-red/10 p-4 font-mono text-xs uppercase tracking-[0.14em] text-red">
-                    {submitError.message}
-                  </div>
-                )}
-                <BookingForm
-                  selectedDate={selectedDate}
-                  selectedSlot={selectedSlot}
-                  hold={hold}
-                  holdSecondsRemaining={holdSecondsRemaining}
-                  onSubmit={handleSubmit}
-                  submitting={submitting}
-                />
-              </div>
-            )}
+            <div>
+              {submitError && (
+                <div className="mb-4 border border-red bg-red/10 p-4 font-mono text-xs uppercase tracking-[0.14em] text-red">
+                  {submitError.message || "Can't reach the server. Check your connection or try again in a moment."}
+                </div>
+              )}
+              <BookingForm
+                selectedDate={selectedDate}
+                selectedSlot={selectedSlot}
+                hold={hold}
+                holdSecondsRemaining={holdSecondsRemaining}
+                onSubmit={handleSubmit}
+                submitting={submitting}
+              />
+            </div>
           </div>
         )}
       </div>

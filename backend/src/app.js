@@ -66,23 +66,17 @@ app.use(
 app.use(cookieParser());
 app.use(sanitizeInput);
 
-app.get("/health", (req, res) => {
+const sendHealth = (req, res) => {
   const dbState = mongoose.connection.readyState;
 
   res.status(dbState === 1 ? 200 : 503).json({
-    success: dbState === 1,
-    message: "Server health check",
-    requestId: req.requestId,
-    uptimeSeconds: Math.round(process.uptime()),
-    memory: process.memoryUsage(),
-    database: {
-      state: dbState,
-      connected: dbState === 1,
-      host: mongoose.connection.host || null,
-      name: mongoose.connection.name || null,
-    },
+    status: dbState === 1 ? "ok" : "starting",
+    timestamp: Date.now(),
   });
-});
+};
+
+app.get("/api/health", sendHealth);
+app.get("/health", sendHealth);
 
 app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/bookings", adminLimiter, bookingRoutes);

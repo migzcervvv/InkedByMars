@@ -1,96 +1,70 @@
-// Custom hook that manages all data fetching state for the Instagram feed
-// Centralizing this logic keeps components clean and reusable
-import { useState, useEffect, useCallback, useRef } from "react";
-import { fetchInstagramPosts } from "../api/instagramApi";
+import { useCallback, useEffect, useState } from "react";
+import {
+  fetchInstagramPosts,
+  fetchInstagramProfile,
+} from "../api/instagramApi";
 
-/**
- * useInstagramFeed
- * Handles:
- *   - Initial data fetch
- *   - Pagination / infinite scroll
- *   - Loading states
- *   - Error states
- *   - Deduplication of posts
- */
-export function useInstagramFeed(postsPerPage = 12) {
+const networkMessage =
+  "Can't reach the server. Check your connection or try again in a moment.";
+
+function getGalleryMessage(error) {
+  if (!error?.status) return networkMessage;
+  return "We couldn't load the gallery right now. Try refreshing — or visit our Instagram directly.";
+}
+
+export function useInstagramFeed(postsPerPage = 50) {
   const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(true); // True on initial load
-  const [loadingMore, setLoadingMore] = useState(false); // True when fetching next page
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [slowLoading, setSlowLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [hasMore, setHasMore] = useState(true);
-  const [cursor, setCursor] = useState(null);
 
-  // Track seen post IDs to avoid duplicates on re-renders or rapid calls
-  const seenIds = useRef(new Set());
+  const load = useCallback(async () => {
+    setLoading(true);
+    setSlowLoading(false);
+    setError(null);
 
-  /**
-   * Fetch a page of posts and merge into state.
-   * @param {string|null} paginationCursor - null for first page
-   */
-  const fetchPage = useCallback(
-    async (paginationCursor = null) => {
-      try {
-        const result = await fetchInstagramPosts(
-          postsPerPage,
-          paginationCursor,
-        );
+    const slowTimer = window.setTimeout(() => {
+      setSlowLoading(true);
+    }, 8000);
 
-        if (!result.success) {
-          throw new Error(result.error || "Failed to fetch posts");
-        }
+    try {
+      const [postsResult, profileResult] = await Promise.allSettled([
+        fetchInstagramPosts(postsPerPage),
+        fetchInstagramProfile(),
+      ]);
 
-        // Deduplicate: only add posts we haven't seen before
-        const newPosts = (result.data || []).filter((post) => {
-          if (seenIds.current.has(post.id)) return false;
-          seenIds.current.add(post.id);
-          return true;
-        });
-
-        setPosts((prev) =>
-          paginationCursor ? [...prev, ...newPosts] : newPosts,
-        );
-        setHasMore(result.pagination?.hasMore || false);
-        setCursor(result.pagination?.nextCursor || null);
-      } catch (err) {
-        setError(err.message);
+      if (postsResult.status === "rejected") {
+        throw postsResult.reason;
       }
-    },
-    [postsPerPage],
-  );
 
-  // Initial load
+      setPosts(postsResult.value.data || []);
+
+      if (profileResult.status === "fulfilled") {
+        setProfile(profileResult.value.data || null);
+      }
+    } catch (err) {
+      setError({
+        message: getGalleryMessage(err),
+        code: err?.code || "IG_FETCH_FAILED",
+      });
+    } finally {
+      window.clearTimeout(slowTimer);
+      setLoading(false);
+    }
+  }, [postsPerPage]);
+
   useEffect(() => {
-    seenIds.current = new Set(); // Reset on mount
-    setLoading(true);
-    setError(null);
-    fetchPage(null).finally(() => setLoading(false));
-  }, [fetchPage]);
+    const timer = window.setTimeout(load, 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
 
-  /**
-   * Trigger loading the next page.
-   * Safe to call multiple times — guards against concurrent calls.
-   */
-  const loadMore = useCallback(async () => {
-    if (loadingMore || !hasMore || !cursor) return;
-
-    setLoadingMore(true);
-    await fetchPage(cursor);
-    setLoadingMore(false);
-  }, [loadingMore, hasMore, cursor, fetchPage]);
-
-  /**
-   * Refresh from the beginning.
-   */
-  const refresh = useCallback(async () => {
-    seenIds.current = new Set();
-    setPosts([]);
-    setCursor(null);
-    setHasMore(true);
-    setError(null);
-    setLoading(true);
-    await fetchPage(null);
-    setLoading(false);
-  }, [fetchPage]);
-
-  return { posts, loading, loadingMore, error, hasMore, loadMore, refresh };
+  return {
+    posts,
+    profile,
+    loading,
+    slowLoading,
+    error,
+    refresh: load,
+  };
 }

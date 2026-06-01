@@ -15,9 +15,14 @@ const validate = (req, res, next) => {
       message: e.msg,
       value: e.value,
     }));
-    const error = new AppError(details.map((e) => e.message).join('. '), 422);
-    error.details = details;
-    return next(error);
+    return next(
+      new AppError(
+        details.map((e) => e.message).join('. '),
+        422,
+        'VALIDATION_ERROR',
+        details,
+      ),
+    );
   }
   next();
 };

@@ -61,10 +61,12 @@ const processQueue = async () => {
         message: error.message,
       });
 
-      if (job.attempts >= 3) {
+      if (job.attempts >= 2) {
         emailQueue.shift();
       } else {
-        await new Promise((resolve) => setTimeout(resolve, 1000 * job.attempts));
+        await new Promise((resolve) =>
+          setTimeout(resolve, 1000 * 2 ** (job.attempts - 1)),
+        );
       }
     }
   }

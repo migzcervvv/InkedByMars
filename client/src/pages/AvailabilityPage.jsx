@@ -185,7 +185,9 @@ export default function AvailabilityPage() {
         {loading ? (
           <Loader label="Checking studio calendar" />
         ) : error ? (
-          <div className="booking-panel text-red">{error.message}</div>
+          <div className="booking-panel text-red">
+            {error.message || "Can't reach the server. Check your connection or try again in a moment."}
+          </div>
         ) : (
           <>
             {/* Legend */}

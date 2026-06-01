@@ -68,25 +68,19 @@ export function BookingForm({
   const setReferenceFiles = async (fileList) => {
     const files = Array.from(fileList).slice(0, 4);
 
-    try {
-      const references = await Promise.all(files.map(processImage));
-      setField("references", references);
-    } catch (err) {
-      const references = settled
-        .filter((result) => result.status === "fulfilled")
-        .map((result) => result.value);
+    const settled = await Promise.allSettled(files.map(processImage));
+    const references = settled
+      .filter((result) => result.status === "fulfilled")
+      .map((result) => result.value);
+    const failures = settled.filter((result) => result.status === "rejected");
 
-      const failures = settled
-        .filter((result) => result.status === "rejected")
-        .map((result) => result.reason);
+    setField("references", references);
 
-      if (failures.length > 0) {
-        console.warn(
-          "[setReferenceFiles] Some images could not be processed:",
-          failures,
-        );
-        setErrors("uploadError", err.message);
-      }
+    if (failures.length > 0) {
+      setErrors((current) => ({
+        ...current,
+        uploadError: "Some images could not be processed.",
+      }));
     }
   };
 

@@ -21,8 +21,11 @@ api.interceptors.response.use(
   (response) => response.data, // Unwrap .data so callers get the payload directly
   (error) => {
     const message =
-      error.response?.data?.error || error.message || "Unknown error";
-    return Promise.reject(new Error(message));
+      error.response?.data?.message || error.message || "Unknown error";
+    const normalized = new Error(message);
+    normalized.status = error.response?.status || null;
+    normalized.code = error.response?.data?.code || error.code;
+    return Promise.reject(normalized);
   },
 );
 
@@ -37,11 +40,7 @@ export async function fetchInstagramPosts(limit = 12, cursor = null) {
   const params = { limit };
   if (cursor) params.cursor = cursor;
 
-  // Use the cached endpoint for first page, regular for paginated pages
-  const endpoint = cursor
-    ? "/api/instagram/posts"
-    : "/api/instagram/posts/cached";
-  return api.get(endpoint, { params });
+  return api.get("/api/instagram/posts", { params });
 }
 
 /**

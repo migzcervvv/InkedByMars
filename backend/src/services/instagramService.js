@@ -1,14 +1,23 @@
-// Core service: all Meta Graph API calls live here
-// The route handler should NEVER call axios directly — always go through this service
 const axios = require("axios");
 const { getValidToken } = require("./tokenService");
 const logger = require("../utils/logger");
+const AppError = require("../utils/AppError");
 
-const GRAPH_BASE = process.env.GRAPH_BASE;
+const IG_API_VERSION = process.env.IG_API_VERSION || "v25.0";
+const GRAPH_HOST = (process.env.GRAPH_BASE || "https://graph.facebook.com")
+  .replace(/\/+$/, "")
+  .replace(/\/v\d+\.\d+$/, "");
+const GRAPH_BASE = `${GRAPH_HOST}/${IG_API_VERSION}`;
 const IG_USER_ID = process.env.INSTAGRAM_USER_ID;
+const CACHE_TTL_MS = 10 * 60 * 1000;
+const MAX_RETRIES = 2;
 
-// Fields to request for each media item
-// thumbnail_url is only populated for VIDEO type — safe to request for all types
+const postsCache = {
+  data: null,
+  fetchedAt: 0,
+  limit: null,
+};
+
 const MEDIA_FIELDS = [
   "id",
   "caption",
@@ -17,178 +26,244 @@ const MEDIA_FIELDS = [
   "thumbnail_url",
   "permalink",
   "timestamp",
-  "like_count",
-  "comments_count",
 ].join(",");
 
-/**
- * Fetch a paginated list of Instagram media posts.
- *
- * @param {number} limit - Number of posts per page (max 100, default 12)
- * @param {string|null} cursor - Pagination cursor (null for first page)
- * @returns {{ posts: Array, nextCursor: string|null, hasMore: boolean }}
- */
-async function getInstagramPosts(limit = 12, cursor = null) {
-  const token = await getValidToken();
+const PROFILE_FIELDS = [
+  "id",
+  "username",
+  "biography",
+  "profile_picture_url",
+  "followers_count",
+  "media_count",
+  "website",
+].join(",");
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function getSanitizedUrl(url, params = {}) {
+  const searchParams = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null) return;
+    if (key === "access_token") return;
+    searchParams.set(key, value);
+  });
+
+  const query = searchParams.toString();
+  return query ? `${url}?${query}` : url;
+}
+
+function shouldRetry(error) {
+  if (!error.response) return true;
+  return error.response.status >= 500;
+}
+
+async function graphGet(url, params) {
+  let attempt = 0;
+
+  while (attempt <= MAX_RETRIES) {
+    try {
+      return await axios.get(url, { params });
+    } catch (error) {
+      const status = error.response?.status || null;
+
+      logger.error("Meta Graph API request failed", {
+        url: getSanitizedUrl(url, params),
+        status,
+        responseBody: error.response?.data || null,
+        attempt: attempt + 1,
+      });
+
+      if (attempt >= MAX_RETRIES || !shouldRetry(error)) {
+        handleGraphApiError(error);
+      }
+
+      await sleep(1000 * 2 ** attempt);
+      attempt += 1;
+    }
+  }
+
+  throw new AppError("Instagram fetch failed.", 502, "IG_FETCH_FAILED");
+}
+
+function normalizePost(post) {
+  return {
+    id: post.id,
+    caption: post.caption || "",
+    mediaType: post.media_type,
+    mediaUrl: post.media_url || "",
+    thumbnailUrl: post.thumbnail_url || null,
+    permalink: post.permalink,
+    timestamp: post.timestamp,
+    displayImageUrl:
+      post.media_type === "VIDEO"
+        ? post.thumbnail_url || post.media_url
+        : post.media_url,
+  };
+}
+
+function getFreshCachedPosts(limit) {
+  const fresh = postsCache.data && Date.now() - postsCache.fetchedAt < CACHE_TTL_MS;
+  if (!fresh || postsCache.limit !== limit) return null;
+
+  logger.info("Instagram posts cache hit", {
+    limit,
+    fetchedAt: postsCache.fetchedAt,
+  });
+
+  return {
+    ...postsCache.data,
+    fromCache: true,
+    fetchedAt: postsCache.fetchedAt,
+  };
+}
+
+function setCachedPosts(limit, data) {
+  postsCache.data = data;
+  postsCache.fetchedAt = Date.now();
+  postsCache.limit = limit;
+}
+
+async function getInstagramPosts(limit = 12, cursor = null) {
+  if (!cursor) {
+    const cached = getFreshCachedPosts(limit);
+    if (cached) return cached;
+  }
+
+  const token = await getValidToken();
   const params = {
     fields: MEDIA_FIELDS,
     limit,
     access_token: token,
   };
 
-  // Only include 'after' cursor if paginating
   if (cursor) {
     params.after = cursor;
   }
 
-  try {
-    const url = `${GRAPH_BASE}/${IG_USER_ID}/media`;
-    logger.info("Fetching Instagram posts", { limit, hasCursor: !!cursor });
+  const url = `${GRAPH_BASE}/${IG_USER_ID}/media`;
+  logger.info("Fetching Instagram posts", {
+    version: IG_API_VERSION,
+    limit,
+    hasCursor: !!cursor,
+  });
 
-    const response = await axios.get(url, { params });
+  const response = await graphGet(url, params);
 
-    // Log rate limit info from response headers
-    const rateLimitHeader = response.headers["x-app-usage"];
-    if (rateLimitHeader) {
-      const usage = JSON.parse(rateLimitHeader);
-      logger.info("Meta API rate limit usage", usage);
-      // Warn if approaching limit (> 80% usage)
-      if (
-        usage.call_count > 80 ||
-        usage.total_cputime > 80 ||
-        usage.total_time > 80
-      ) {
-        logger.warn("Approaching Meta API rate limit", usage);
-      }
+  const rateLimitHeader = response.headers["x-app-usage"];
+  if (rateLimitHeader) {
+    const usage = JSON.parse(rateLimitHeader);
+    logger.info("Meta API rate limit usage", usage);
+    if (
+      usage.call_count > 80 ||
+      usage.total_cputime > 80 ||
+      usage.total_time > 80
+    ) {
+      logger.warn("Approaching Meta API rate limit", usage);
     }
-
-    const { data, paging } = response.data;
-
-    // Extract the next page cursor from the paging object
-    const nextCursor = paging?.cursors?.after || null;
-    const hasMore = !!paging?.next; // 'next' only exists if there is another page
-
-    // Normalize the data: add a display-friendly date, set default values
-    const posts = data.map((post) => ({
-      id: post.id,
-      caption: post.caption || "",
-      mediaType: post.media_type, // 'IMAGE' | 'VIDEO' | 'CAROUSEL_ALBUM'
-      mediaUrl: post.media_url || "",
-      thumbnailUrl: post.thumbnail_url || null,
-      permalink: post.permalink,
-      timestamp: post.timestamp,
-      likeCount: post.like_count || 0,
-      commentsCount: post.comments_count || 0,
-      // Determine the display image: use thumbnail for videos, media_url for images
-      displayImageUrl:
-        post.media_type === "VIDEO"
-          ? post.thumbnail_url || post.media_url
-          : post.media_url,
-    }));
-
-    logger.info("Instagram posts fetched", { count: posts.length, hasMore });
-    return { posts, nextCursor, hasMore };
-  } catch (error) {
-    handleGraphApiError(error);
   }
+
+  const { data = [], paging } = response.data;
+  if (!data.length) {
+    throw new AppError(
+      "No Instagram posts are available right now.",
+      404,
+      "IG_NO_POSTS",
+    );
+  }
+
+  const result = {
+    posts: data.map(normalizePost),
+    nextCursor: paging?.cursors?.after || null,
+    hasMore: !!paging?.next,
+    fromCache: false,
+    fetchedAt: Date.now(),
+  };
+
+  if (!cursor) {
+    setCachedPosts(limit, result);
+  }
+
+  logger.info("Instagram posts fetched", {
+    count: result.posts.length,
+    hasMore: result.hasMore,
+  });
+
+  return result;
 }
 
-/**
- * Fetch carousel children for a CAROUSEL_ALBUM post.
- * Returns the individual slides/images in a carousel.
- *
- * @param {string} mediaId - ID of the CAROUSEL_ALBUM post
- */
 async function getCarouselChildren(mediaId) {
   const token = await getValidToken();
+  const url = `${GRAPH_BASE}/${mediaId}/children`;
+  const response = await graphGet(url, {
+    fields: "id,media_type,media_url,thumbnail_url",
+    access_token: token,
+  });
 
-  try {
-    const url = `${GRAPH_BASE}/${mediaId}/children`;
-    const response = await axios.get(url, {
-      params: {
-        fields: "id,media_type,media_url,thumbnail_url",
-        access_token: token,
-      },
-    });
-
-    return response.data.data;
-  } catch (error) {
-    handleGraphApiError(error);
-  }
+  return response.data.data;
 }
 
-/**
- * Fetch the Instagram profile/account info.
- * Useful for displaying follower count, bio, profile picture.
- */
 async function getInstagramProfile() {
   const token = await getValidToken();
+  const url = `${GRAPH_BASE}/${IG_USER_ID}`;
+  const response = await graphGet(url, {
+    fields: PROFILE_FIELDS,
+    access_token: token,
+  });
 
-  try {
-    const url = `${GRAPH_BASE}/${IG_USER_ID}`;
-    const response = await axios.get(url, {
-      params: {
-        fields:
-          "id,username,biography,profile_picture_url,followers_count,media_count,website",
-        access_token: token,
-      },
-    });
-
-    return response.data;
-  } catch (error) {
-    handleGraphApiError(error);
-  }
+  return response.data;
 }
 
-/**
- * Centralized Graph API error handler.
- * Translates Meta's error codes into meaningful messages.
- *
- * Meta error code reference:
- * https://developers.facebook.com/docs/graph-api/guides/error-handling
- */
+async function getGraphMe() {
+  const token = await getValidToken();
+  const url = `${GRAPH_BASE}/me`;
+  const response = await graphGet(url, {
+    fields: "id,name",
+    access_token: token,
+  });
+
+  return response.data;
+}
+
+function getInstagramErrorCode(status, metaCode) {
+  if (metaCode === 190 || status === 401) return "IG_TOKEN_EXPIRED";
+  if ([4, 17, 32, 341, 613].includes(metaCode) || status === 429) {
+    return "IG_RATE_LIMITED";
+  }
+  return "IG_FETCH_FAILED";
+}
+
+function getInstagramStatus(status, code) {
+  if (code === "IG_TOKEN_EXPIRED") return 401;
+  if (code === "IG_RATE_LIMITED") return 429;
+  return status || 502;
+}
+
 function handleGraphApiError(error) {
   if (error.response) {
     const { status, data } = error.response;
     const metaError = data?.error || {};
+    const code = getInstagramErrorCode(status, metaError.code);
 
-    logger.error("Meta Graph API error", {
-      status,
-      code: metaError.code,
-      message: metaError.message,
-      type: metaError.type,
-      fbtrace: metaError.fbtrace_id,
-    });
-
-    // Common Meta error codes
-    const errorMessages = {
-      190: "Access token is invalid or expired. Please re-authenticate.",
-      100: "Invalid parameter. Check your request fields and IDs.",
-      200: "Permission error. This permission has not been granted.",
-      4: "Too many API calls. Rate limit exceeded.",
-      341: "Feed request limit reached. Try again later.",
-      10: "Application does not have permission for this action.",
-    };
-
-    const friendlyMessage =
-      errorMessages[metaError.code] ||
-      metaError.message ||
-      "Unknown Meta API error";
-
-    const err = new Error(friendlyMessage);
-    err.statusCode = status;
-    err.metaCode = metaError.code;
-    throw err;
+    throw new AppError(
+      metaError.message || "Instagram could not be reached right now.",
+      getInstagramStatus(status, code),
+      code,
+    );
   }
 
-  // Network error or other non-HTTP error
-  logger.error("Non-HTTP error calling Meta API", { error: error.message });
-  throw new Error(`Failed to reach Meta API: ${error.message}`);
+  throw new AppError(
+    "Instagram could not be reached right now.",
+    502,
+    "IG_FETCH_FAILED",
+  );
 }
 
 module.exports = {
   getInstagramPosts,
   getCarouselChildren,
   getInstagramProfile,
+  getGraphMe,
+  IG_API_VERSION,
+  GRAPH_BASE,
 };

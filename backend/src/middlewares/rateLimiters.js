@@ -6,6 +6,7 @@ const jsonHandler = (req, res) => {
   res.status(429).json({
     success: false,
     message: 'Too many requests. Please slow down and try again shortly.',
+    code: 'RATE_LIMITED',
     requestId: req.requestId,
   });
 };
@@ -46,4 +47,3 @@ module.exports = {
   adminLimiter,
   publicLimiter,
 };
-
