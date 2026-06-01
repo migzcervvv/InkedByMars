@@ -45,7 +45,7 @@ function loadTokenData() {
 
   // Fall back to env vars (survives cold starts if you set them)
   return {
-    access_token: process.env.INSTAGRAM_ACCESS_TOKEN,
+    access_token: process.env.META_ACCESS_TOKEN,
     expires_at: process.env.INSTAGRAM_TOKEN_EXPIRES_AT
       ? Number(process.env.INSTAGRAM_TOKEN_EXPIRES_AT)
       : null,
