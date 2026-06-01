@@ -15,25 +15,40 @@ const GRAPH_BASE = `${GRAPH_HOST}/${IG_API_VERSION}`;
 
 // Days before expiry to trigger a refresh (7-day buffer is safe)
 const REFRESH_THRESHOLD_DAYS = 7;
-
+let memoryTokenCache = {
+  access_token: null,
+  expires_at: null,
+};
 /**
  * Load the stored token data from disk.
  * Falls back to env var if no file exists (first run).
  */
-function loadTokenData() {
-  try {
-    if (fs.existsSync(TOKEN_FILE)) {
-      const data = JSON.parse(fs.readFileSync(TOKEN_FILE, "utf8"));
-      return data;
-    }
-  } catch (err) {
-    logger.warn("Could not read token store file", { error: err.message });
-  }
+// function loadTokenData() {
+//   try {
+//     if (fs.existsSync(TOKEN_FILE)) {
+//       const data = JSON.parse(fs.readFileSync(TOKEN_FILE, "utf8"));
+//       return data;
+//     }
+//   } catch (err) {
+//     logger.warn("Could not read token store file", { error: err.message });
+//   }
 
-  // First run: use the token from environment variable
+//   // First run: use the token from environment variable
+//   return {
+//     access_token: process.env.META_ACCESS_TOKEN,
+//     expires_at: null, // Unknown expiry — will be fetched on first validate
+//   };
+// }
+function loadTokenData() {
+  // Prefer memory cache (survives within same server instance)
+  if (memoryTokenCache.access_token) return memoryTokenCache;
+
+  // Fall back to env vars (survives cold starts if you set them)
   return {
-    access_token: process.env.META_ACCESS_TOKEN,
-    expires_at: null, // Unknown expiry — will be fetched on first validate
+    access_token: process.env.INSTAGRAM_ACCESS_TOKEN,
+    expires_at: process.env.INSTAGRAM_TOKEN_EXPIRES_AT
+      ? Number(process.env.INSTAGRAM_TOKEN_EXPIRES_AT)
+      : null,
   };
 }
 
@@ -42,11 +57,15 @@ function loadTokenData() {
  * In production, use a database or secret manager instead of a local file.
  */
 function saveTokenData(data) {
+  // Save to memory — available for the lifetime of this server instance
+  memoryTokenCache = { ...data };
+  // Keep the file write as a backup (nice to have, not relied on)
   try {
     fs.writeFileSync(TOKEN_FILE, JSON.stringify(data, null, 2), "utf8");
-    logger.info("Token data saved to disk");
   } catch (err) {
-    logger.error("Could not save token data", { error: err.message });
+    logger.warn("Could not save token to disk (non-fatal)", {
+      error: err.message,
+    });
   }
 }
 
@@ -173,9 +192,10 @@ async function graphTokenGet(url, params) {
   } catch (error) {
     const status = error.response?.status || 502;
     const metaError = error.response?.data?.error || {};
-    const code = metaError.code === 190 || status === 400 || status === 401
-      ? "IG_TOKEN_EXPIRED"
-      : "IG_FETCH_FAILED";
+    const code =
+      metaError.code === 190 || status === 400 || status === 401
+        ? "IG_TOKEN_EXPIRED"
+        : "IG_FETCH_FAILED";
 
     logger.error("Meta Graph token request failed", {
       url,

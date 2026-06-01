@@ -59,11 +59,18 @@ function shouldRetry(error) {
 }
 
 async function graphGet(url, params) {
+  const token = await getValidToken(); // get it here
   let attempt = 0;
 
   while (attempt <= MAX_RETRIES) {
     try {
-      return await axios.get(url, { params });
+      return await axios.get(url, {
+        params, // fields etc — no token here
+        timeout: 8000,
+        headers: {
+          Authorization: `Bearer ${token}`, // token goes here
+        },
+      });
     } catch (error) {
       const status = error.response?.status || null;
 
@@ -103,7 +110,8 @@ function normalizePost(post) {
 }
 
 function getFreshCachedPosts(limit) {
-  const fresh = postsCache.data && Date.now() - postsCache.fetchedAt < CACHE_TTL_MS;
+  const fresh =
+    postsCache.data && Date.now() - postsCache.fetchedAt < CACHE_TTL_MS;
   if (!fresh || postsCache.limit !== limit) return null;
 
   logger.info("Instagram posts cache hit", {
@@ -125,6 +133,13 @@ function setCachedPosts(limit, data) {
 }
 
 async function getInstagramPosts(limit = 12, cursor = null) {
+  if (!IG_USER_ID) {
+    throw new AppError(
+      "Instagram User ID is not configured.",
+      500,
+      "IG_MISCONFIGURED",
+    );
+  }
   if (!cursor) {
     const cached = getFreshCachedPosts(limit);
     if (cached) return cached;
@@ -134,7 +149,6 @@ async function getInstagramPosts(limit = 12, cursor = null) {
   const params = {
     fields: MEDIA_FIELDS,
     limit,
-    access_token: token,
   };
 
   if (cursor) {
@@ -197,7 +211,6 @@ async function getCarouselChildren(mediaId) {
   const url = `${GRAPH_BASE}/${mediaId}/children`;
   const response = await graphGet(url, {
     fields: "id,media_type,media_url,thumbnail_url",
-    access_token: token,
   });
 
   return response.data.data;
@@ -208,20 +221,13 @@ async function getInstagramProfile() {
   const url = `${GRAPH_BASE}/${IG_USER_ID}`;
   const response = await graphGet(url, {
     fields: PROFILE_FIELDS,
-    access_token: token,
   });
 
   return response.data;
 }
 
 async function getGraphMe() {
-  const token = await getValidToken();
-  const url = `${GRAPH_BASE}/me`;
-  const response = await graphGet(url, {
-    fields: "id,name",
-    access_token: token,
-  });
-
+  const response = await graphGet(`${GRAPH_BASE}/me`, { fields: "id,name" });
   return response.data;
 }
 
