@@ -81,7 +81,7 @@ export const INFLUENCES = [
 
 export const CLIENT_VALUES = [
   "Private one-on-one sessions only — no walk-ins",
-  "Custom designs every time — no flash, no templates",
+  "Custom designs by request — flash designs also available",
   "Full concept sketches before every appointment",
   "Aftercare guidance and complimentary touch-ups included",
   "Studio environment built for comfort, focus, and privacy",

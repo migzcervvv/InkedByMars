@@ -189,7 +189,7 @@ a {
   }
 
   .section-title {
-    @apply font-display text-5xl font-black italic leading-none text-ink md:text-6xl;
+    @apply font-display text-4xl font-black italic leading-none text-ink md:text-5xl;
   }
 
   .eyebrow {

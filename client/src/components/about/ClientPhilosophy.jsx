@@ -9,25 +9,29 @@ gsap.registerPlugin(ScrollTrigger);
 export function ClientPhilosophy() {
   const ref = useRef(null);
 
-  useGSAP(() => {
-    /* Studio image clip-path reveal */
-    gsap.from(".philosophy-image-frame", {
-      clipPath: "inset(0% 0% 100% 0%)",
-      duration: 1.4,
-      ease: "power4.inOut",
-      scrollTrigger: { trigger: ref.current, start: "top 72%" },
-    });
+  useGSAP(
+    () => {
+      /* Studio image clip-path reveal */
+      gsap.from(".philosophy-image-frame", {
+        clipPath: "inset(0% 0% 100% 0%)",
+        duration: 1.4,
+        ease: "power4.inOut",
+        scrollTrigger: { trigger: ref.current, start: "top 72%" },
+      });
 
-    /* Copy stagger */
-    gsap.from(".philosophy-copy > *", {
-      y: 36,
-      opacity: 0,
-      duration: 0.9,
-      stagger: 0.09,
-      ease: "power3.out",
-      scrollTrigger: { trigger: ref.current, start: "top 70%" },
-    });
-  }, [], ref);
+      /* Copy stagger */
+      gsap.from(".philosophy-copy > *", {
+        y: 36,
+        opacity: 0,
+        duration: 0.9,
+        stagger: 0.09,
+        ease: "power3.out",
+        scrollTrigger: { trigger: ref.current, start: "top 70%" },
+      });
+    },
+    [],
+    ref,
+  );
 
   return (
     <section
@@ -70,14 +74,13 @@ export function ClientPhilosophy() {
             </h2>
 
             <p className="mt-7 font-body text-2xl italic leading-snug text-ink">
-              Mars doesn't do walk-ins, flash sheets, or rushed appointments.
+              Mars doesn't do walk-ins or rushed appointments.
             </p>
 
             <p className="mt-4 font-body leading-relaxed text-ink/65">
               Every booking begins with a private consultation — by appointment
-              only. You'll leave the first session with a custom concept, not a
-              copied reference. The design phase is collaborative, iterative,
-              and completely unhurried.
+              only. The design phase is collaborative, iterative, and completely
+              unhurried.
             </p>
 
             {/* Values list */}

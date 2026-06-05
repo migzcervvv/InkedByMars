@@ -9,25 +9,29 @@ gsap.registerPlugin(ScrollTrigger);
 export function Specializations() {
   const ref = useRef(null);
 
-  useGSAP(() => {
-    gsap.from(".spec-header > *", {
-      y: 30,
-      opacity: 0,
-      duration: 0.9,
-      stagger: 0.08,
-      ease: "power3.out",
-      scrollTrigger: { trigger: ref.current, start: "top 75%" },
-    });
+  useGSAP(
+    () => {
+      gsap.from(".spec-header > *", {
+        y: 30,
+        opacity: 0,
+        duration: 0.9,
+        stagger: 0.08,
+        ease: "power3.out",
+        scrollTrigger: { trigger: ref.current, start: "top 75%" },
+      });
 
-    gsap.from(".spec-card", {
-      y: 60,
-      opacity: 0,
-      duration: 0.85,
-      stagger: 0.1,
-      ease: "power3.out",
-      scrollTrigger: { trigger: ref.current, start: "top 72%" },
-    });
-  }, [], ref);
+      gsap.from(".spec-card", {
+        y: 60,
+        opacity: 0,
+        duration: 0.85,
+        stagger: 0.1,
+        ease: "power3.out",
+        scrollTrigger: { trigger: ref.current, start: "top 72%" },
+      });
+    },
+    [],
+    ref,
+  );
 
   return (
     <section
@@ -47,10 +51,6 @@ export function Specializations() {
             </p>
             <h2 className="section-title mt-3 leading-none">The Work</h2>
           </div>
-          <p className="max-w-xs font-body text-sm leading-relaxed text-ink/55">
-            Four disciplines. One obsession — permanence, precision, and
-            emotional weight in every line.
-          </p>
         </div>
 
         {/* Cards — flush gutter, divided by 1px background */}

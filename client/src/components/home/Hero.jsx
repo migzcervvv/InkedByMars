@@ -2,6 +2,7 @@ import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { useEffect, useRef } from "react";
 
 import { InkParticles } from "../ui/InkParticles";
+import { Button } from "../ui/Button";
 
 const ease = [0.22, 1, 0.36, 1];
 
@@ -188,7 +189,7 @@ export function Hero() {
                 color: "var(--color-red-dark)",
               }}
             >
-              Home Studio Artist
+              Private Tattoo Studio
             </span>
           </motion.div>
 
@@ -199,42 +200,41 @@ export function Hero() {
             <span className="block overflow-hidden">
               <motion.span
                 variants={lineVariants}
-                className="block text-[10vw] italic md:text-[7vw]"
+                className="block text-[7vw] italic md:text-[5vw]"
               >
-                Skin
+                Fine line
               </motion.span>
             </span>
 
             <span className="block overflow-hidden">
               <motion.span
                 variants={lineVariants}
-                className="block text-[10vw] md:text-[7vw]"
+                className="block text-[7vw] md:text-[5vw]"
                 style={{
                   paddingLeft: "0.18em",
                 }}
               >
-                as a{" "}
+                Blackwork
                 <span
                   className="italic"
                   style={{
                     color: "var(--color-red-dark)",
                   }}
                 >
-                  canvas
+                  .
                 </span>
-                .
               </motion.span>
             </span>
 
             <span className="block overflow-hidden">
               <motion.span
                 variants={lineVariants}
-                className="block text-[10vw] italic md:text-[7vw]"
+                className="block text-[7vw] italic md:text-[5vw]"
                 style={{
                   color: "var(--color-leather)",
                 }}
               >
-                Ink as memory.
+                Custom ink.
               </motion.span>
             </span>
           </h1>
@@ -249,6 +249,9 @@ export function Hero() {
             Fine-line, black & grey, and editorial blackwork — composed slowly,
             worn for a lifetime. Booking by curated consultation only.
           </motion.p>
+          <motion.div variants={fadeUp} className="mt-8">
+            <Button to="/booking">Book Now</Button>
+          </motion.div>
         </motion.div>
 
         {/* Right images */}

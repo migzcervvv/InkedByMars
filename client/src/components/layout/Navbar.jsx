@@ -8,12 +8,9 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 gsap.registerPlugin(ScrollTrigger);
 
 const links = [
-  { label: "Work", to: "/" },
-  { label: "About", to: "/about" },
+  { label: "Book Now", to: "/booking", cta: true },
   { label: "Gallery", to: "/gallery" },
-  { label: "Availability", to: "/availability" },
-  { label: "Book", to: "/booking" },
-  { label: "Contact", to: "/contact" },
+  { label: "About", to: "/about" },
 ];
 
 export function Navbar() {
@@ -54,12 +51,19 @@ export function Navbar() {
           </NavLink>
 
           <div className="hidden items-center gap-8 md:flex">
+            <NavLink to="/" className="nav-link">
+              Home
+            </NavLink>
             {links.map((link) => (
               <NavLink
                 key={link.to}
                 to={link.to}
                 className={({ isActive }) =>
-                  `nav-link ${isActive ? "active" : ""}`
+                  link.cta
+                    ? `border border-red bg-red px-4 py-3 font-mono text-xs uppercase tracking-[0.18em] text-cream transition hover:border-red-dark hover:bg-red-dark ${
+                        isActive ? "bg-red-dark" : ""
+                      }`
+                    : `nav-link ${isActive ? "active" : ""}`
                 }
               >
                 {link.label}
@@ -96,6 +100,24 @@ export function Navbar() {
                 show: { transition: { staggerChildren: 0.09 } },
               }}
             >
+              <motion.div
+                variants={{
+                  hidden: { y: 28, opacity: 0 },
+                  show: { y: 0, opacity: 1 },
+                }}
+              >
+                <NavLink
+                  to="/"
+                  onClick={() => setOpen(false)}
+                  className={({ isActive }) =>
+                    `font-display text-5xl italic transition hover:text-red ${
+                      isActive ? "text-red" : "text-cream"
+                    }`
+                  }
+                >
+                  Home
+                </NavLink>
+              </motion.div>
               {links.map((link) => (
                 <motion.div
                   key={link.to}
@@ -108,9 +130,13 @@ export function Navbar() {
                     to={link.to}
                     onClick={() => setOpen(false)}
                     className={({ isActive }) =>
-                      `font-display text-5xl italic transition hover:text-red ${
-                        isActive ? "text-red" : "text-cream"
-                      }`
+                      link.cta
+                        ? `inline-flex border border-red bg-red px-5 py-3 font-display text-4xl italic text-cream transition hover:bg-red-dark ${
+                            isActive ? "bg-red-dark" : ""
+                          }`
+                        : `font-display text-5xl italic transition hover:text-red ${
+                            isActive ? "text-red" : "text-cream"
+                          }`
                     }
                   >
                     {link.label}

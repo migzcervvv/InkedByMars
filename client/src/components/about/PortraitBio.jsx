@@ -91,12 +91,6 @@ export function PortraitBio() {
             The Artist
           </p>
 
-          <h2 className="section-title mt-4 leading-none">
-            Skin As
-            <br />
-            Editorial
-          </h2>
-
           <p className="mt-7 font-body text-2xl italic leading-snug text-ink md:text-3xl">
             Intimate before it's loud. Deliberate before it's beautiful.
           </p>

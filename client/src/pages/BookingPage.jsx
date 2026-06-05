@@ -122,11 +122,11 @@ export default function BookingPage() {
     <section className="min-h-screen bg-bg px-6 pb-24 pt-32 lg:pb-32">
       <div className="mx-auto max-w-7xl">
         <p className="eyebrow">Appointments</p>
-        <h1 className="page-title">Book Ink</h1>
+        <h1 className="page-title">Book Now</h1>
         {bookingApi.loading ? (
           <Loader label="Loading calendar" />
         ) : (
-          <div className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
+          <div className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
             <div>
               {bookingApi.error && (
                 <div className="mb-4 border border-red bg-red/10 p-4 font-mono text-xs uppercase tracking-[0.14em] text-red">

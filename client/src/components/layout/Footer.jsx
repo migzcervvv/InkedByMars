@@ -1,4 +1,3 @@
-import { Camera, MessageCircle, Music2 } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export function Footer() {
@@ -13,8 +12,7 @@ export function Footer() {
             INKED BY <span className="text-red">MARS</span>
           </p>
           <p className="mt-4 max-w-xs font-body text-2xl italic text-cream/75">
-            Fine line, blackwork, and neo-traditional pieces made for warm skin
-            and lasting memory.
+            Fine line, blackwork, and custom tattoos.
           </p>
         </div>
         <div>
@@ -38,7 +36,14 @@ export function Footer() {
           </div>
         </div>
         <div>
-          <p className="footer-heading">Social</p>
+          <p className="footer-heading">Contact</p>
+
+          <a
+            href="mailto:inkedbymars@gmail.com"
+            className="mt-4 block font-mono text-xs uppercase tracking-[0.18em] text-cream/75 hover:text-red"
+          >
+            inkedbymars@gmail.com
+          </a>
 
           <a
             href="https://instagram.com/flash.designs.by.mars"
@@ -59,7 +64,7 @@ export function Footer() {
         </div>
       </div>
       <div className="border-t border-cream/10 px-6 py-5 text-center font-mono text-[0.65rem] uppercase tracking-[0.24em] text-cream/60">
-        Designed with &#129656; in Manila
+        Manila
       </div>
     </footer>
   );
