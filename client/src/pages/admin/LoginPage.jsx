@@ -29,35 +29,35 @@ export default function LoginPage() {
     [fetchUserProfile],
   );
 
-  useEffect(() => {
-    const loadFacebook = async () => {
-      const FB = await loadFacebookSDK();
-      FB.getLoginStatus((response) => {
-        statusChangeCallback(response);
-      });
-    };
-    loadFacebook();
-  }, [statusChangeCallback]);
+  // useEffect(() => {
+  //   const loadFacebook = async () => {
+  //     const FB = await loadFacebookSDK();
+  //     FB.getLoginStatus((response) => {
+  //       statusChangeCallback(response);
+  //     });
+  //   };
+  //   loadFacebook();
+  // }, [statusChangeCallback]);
 
   if (isAuthenticated) {
     return <Navigate to="/admin" replace />;
   }
 
-  const loginWithFacebook = () => {
-    setError("");
-    setLoading(true);
-    window.FB.login(
-      (response) => {
-        if (response.status === "connected") {
-          statusChangeCallback(response);
-        } else {
-          setError("Facebook login was cancelled or failed. Please try again.");
-          setLoading(false);
-        }
-      },
-      { scope: "public_profile,email" },
-    );
-  };
+  // const loginWithFacebook = () => {
+  //   setError("");
+  //   setLoading(true);
+  //   window.FB.login(
+  //     (response) => {
+  //       if (response.status === "connected") {
+  //         statusChangeCallback(response);
+  //       } else {
+  //         setError("Facebook login was cancelled or failed. Please try again.");
+  //         setLoading(false);
+  //       }
+  //     },
+  //     { scope: "public_profile,email" },
+  //   );
+  // };
 
   const submit = async (event) => {
     event.preventDefault();
@@ -143,9 +143,9 @@ export default function LoginPage() {
         </div>
         <Button
           className="mt-4 w-full"
-          disabled={loading}
+          disabled={true}
           type="button"
-          onClick={loginWithFacebook}
+          // onClick={loginWithFacebook}
         >
           Continue with Facebook
         </Button>
