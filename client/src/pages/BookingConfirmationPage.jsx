@@ -17,9 +17,7 @@ export default function BookingConfirmationPage() {
           Hold received.
         </h1>
         <p className="mx-auto mt-6 max-w-xl font-body text-3xl leading-tight text-ash">
-          {booking
-            ? `Your booking is reserved at ${formatDisplayDate(booking.preferredDate)} at ${booking.preferredTime}. This slot is reserved temporarily until our artist confirms.`
-            : "Your booking request was received. This slot is reserved temporarily until our artist confirms."}
+          Your booking is pending.
         </p>
         <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
           <Link

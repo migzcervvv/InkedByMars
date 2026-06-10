@@ -8,6 +8,7 @@ const { sendOk, sendCreated } = require('../utils/response');
 const { DAY_STATUS, SLOT_STATUS } = require('../config/constants');
 const scheduleService = require('../services/scheduleService');
 const holdCleanupService = require('../services/holdCleanupService');
+const availabilitySettingsService = require('../services/availabilitySettingsService');
 const logger = require('../utils/logger');
 
 const eachDate = (startDate, endDate) => {
@@ -23,6 +24,41 @@ const eachDate = (startDate, endDate) => {
   return dates;
 };
 
+
+/**
+ * GET /api/schedule/blocked-dates?month=YYYY-MM
+ * Admin - month-scoped blocked date list stored as ISO date strings.
+ */
+const getBlockedDates = asyncHandler(async (req, res) => {
+  const month = req.query.month || dayjs().format('YYYY-MM');
+  const blockedDates = await availabilitySettingsService.getBlockedDatesForMonth(month);
+  sendOk(res, { month, blockedDates });
+});
+
+/**
+ * PUT /api/schedule/blocked-dates
+ * Admin - replaces only the selected month's blocked dates.
+ */
+const updateBlockedDates = asyncHandler(async (req, res) => {
+  const { month, blockedDates = [] } = req.body;
+  const savedBlockedDates = await availabilitySettingsService.replaceBlockedDatesForMonth(
+    month,
+    blockedDates
+  );
+
+  logger.info('schedule.blocked_dates_updated', {
+    requestId: req.requestId,
+    adminId: req.admin?._id?.toString(),
+    month,
+    count: savedBlockedDates.length,
+  });
+
+  sendOk(
+    res,
+    { month, blockedDates: savedBlockedDates },
+    `Blocked dates updated for ${month}`
+  );
+});
 /**
  * GET /api/schedule
  * Admin — list schedules within optional date range
@@ -272,6 +308,8 @@ const applyOpeningWindow = asyncHandler(async (req, res, next) => {
 });
 
 module.exports = {
+  getBlockedDates,
+  updateBlockedDates,
   getAllSchedules,
   getScheduleByDate,
   blockDay,

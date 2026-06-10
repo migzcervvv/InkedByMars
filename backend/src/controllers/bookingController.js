@@ -8,6 +8,7 @@ const { BOOKING_STATUS, HOLD_EXPIRY_MINUTES } = require("../config/constants");
 const scheduleService = require("../services/scheduleService");
 const holdCleanupService = require("../services/holdCleanupService");
 const emailService = require("../services/emailService");
+const notificationService = require("../services/notificationService");
 const logger = require("../utils/logger");
 
 const getDefaultEndTime = async (date, startTime) => {
@@ -17,6 +18,12 @@ const getDefaultEndTime = async (date, startTime) => {
   return boundaries[startIndex + 1] || null;
 };
 
+
+const serializePublicBooking = (booking) => {
+  const data = booking.toObject ? booking.toObject() : { ...booking };
+  delete data.holdExpiresAt;
+  return data;
+};
 const isExpiredHold = (booking) => {
   return (
     booking.status === BOOKING_STATUS.ON_HOLD &&
@@ -156,11 +163,16 @@ const createBooking = asyncHandler(async (req, res, next) => {
     holdExpiresAt,
   });
 
-  // Fire-and-forget — do not block response
+  // Fire-and-forget - do not block response
   emailService.sendBookingPending(booking).catch(console.error);
-  emailService.sendAdminBookingHoldNotification(booking).catch(console.error);
+  notificationService.notifyAdminNewBooking(booking).catch(console.error);
 
-  sendCreated(res, { booking }, "Booking hold submitted successfully");
+  const responseBooking = req.admin ? booking : serializePublicBooking(booking);
+  sendCreated(
+    res,
+    { booking: responseBooking },
+    req.admin ? "Booking hold submitted successfully" : "Your booking is pending."
+  );
 });
 
 const confirmBooking = asyncHandler(async (req, res, next) => {

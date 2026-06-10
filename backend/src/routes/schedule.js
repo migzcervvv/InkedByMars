@@ -4,6 +4,8 @@ const express = require('express');
 const router = express.Router();
 
 const {
+  getBlockedDates,
+  updateBlockedDates,
   getAllSchedules,
   getScheduleByDate,
   blockDay,
@@ -20,6 +22,8 @@ const {
   blockSlotValidators,
   releaseSlotValidators,
   rangeQueryValidators,
+  monthQueryValidators,
+  blockedDatesValidators,
   applyOpeningWindowValidators,
 } = require('../validators/scheduleValidators');
 
@@ -31,6 +35,8 @@ const { requireAdmin } = require('../middlewares/auth');
 router.use(requireAdmin);
 
 router.get('/', rangeQueryValidators, validate, getAllSchedules);
+router.get('/blocked-dates', monthQueryValidators, validate, getBlockedDates);
+router.put('/blocked-dates', blockedDatesValidators, validate, updateBlockedDates);
 router.get('/:date', dateParamValidator, validate, getScheduleByDate);
 
 router.post('/block-day', blockDayValidators, validate, blockDay);

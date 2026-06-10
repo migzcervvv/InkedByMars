@@ -9,6 +9,14 @@ export const scheduleApi = {
     return http.get(`/schedule/${date}`)
   },
 
+  getBlockedDates(month) {
+    return http.get('/schedule/blocked-dates', { params: { month } })
+  },
+
+  saveBlockedDates(payload) {
+    return http.put('/schedule/blocked-dates', payload)
+  },
+
   blockDay(payload) {
     return http.post('/schedule/block-day', payload)
   },

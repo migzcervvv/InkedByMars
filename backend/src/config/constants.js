@@ -40,5 +40,5 @@ module.exports = {
     "22:00",
   ],
 
-  HOLD_EXPIRY_MINUTES: 30,
+  HOLD_EXPIRY_MINUTES: 48 * 60,
 };

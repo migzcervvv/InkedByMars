@@ -4,6 +4,7 @@ const dayjs = require('dayjs');
 const { randomUUID } = require('crypto');
 const Schedule = require('../models/Schedule');
 const { DEFAULT_TIME_SLOTS, SLOT_STATUS, DAY_STATUS } = require('../config/constants');
+const availabilitySettingsService = require('./availabilitySettingsService');
 
 const CLIENT_HOLD_PREFIX = 'client-hold:';
 
@@ -114,6 +115,8 @@ const isSlotBookable = (schedule, time) => {
 };
 
 const createClientHold = async (date, time, expiryMinutes = 30) => {
+  if (await availabilitySettingsService.isDateBlocked(date)) return null;
+
   const schedule = await getOrCreateSchedule(date);
   const slot = findSlot(schedule, time);
   if (!slot) return null;
@@ -197,6 +200,8 @@ const releaseClientHold = async ({ date, time, holdToken }) => {
 };
 
 const bindClientHoldToBooking = async ({ schedule, time, holdToken, bookingId, expiryMinutes = 30 }) => {
+  if (await availabilitySettingsService.isDateBlocked(schedule.date)) return null;
+
   const now = new Date();
   const holdExpiresAt = dayjs().add(expiryMinutes, 'minute').toDate();
 
@@ -227,6 +232,8 @@ const bindClientHoldToBooking = async ({ schedule, time, holdToken, bookingId, e
 };
 
 const holdSlotAtomically = async ({ date, time, bookingId, expiryMinutes = 30 }) => {
+  if (await availabilitySettingsService.isDateBlocked(date)) return null;
+
   const schedule = await getOrCreateSchedule(date);
   const now = new Date();
   const holdExpiresAt = dayjs().add(expiryMinutes, 'minute').toDate();
@@ -524,26 +531,48 @@ const expireStaleHolds = async () => {
  * Strips booking IDs and internal data.
  */
 const toPublicAvailability = (schedule) => {
+  const slots = schedule.timeSlots.map((slot) => {
+    // Expired holds appear as available to the public
+    const isExpiredHold =
+      slot.status === SLOT_STATUS.ON_HOLD &&
+      slot.holdExpiresAt &&
+      new Date() > slot.holdExpiresAt;
+
+    return {
+      time: slot.time,
+      status: isExpiredHold ? SLOT_STATUS.AVAILABLE : slot.status,
+      available: isExpiredHold
+        ? true
+        : slot.status === SLOT_STATUS.AVAILABLE,
+    };
+  });
+  const availableCount = slots.filter((slot) => slot.available).length;
+  const totalCount = slots.length;
+  const isBlocked =
+    schedule.dayStatus === DAY_STATUS.FULLY_CLOSED ||
+    schedule.dayStatus === DAY_STATUS.HOLIDAY;
+  const isFullyBooked = !isBlocked && totalCount > 0 && availableCount === 0;
+  const isPartiallyBooked =
+    !isBlocked && availableCount > 0 && availableCount < totalCount;
+
   return {
     date: schedule.date,
     dayStatus: schedule.dayStatus,
     closureReason: schedule.closureReason || null,
-    isFullyClosed: schedule.dayStatus !== DAY_STATUS.OPEN,
-    slots: schedule.timeSlots.map((slot) => {
-      // Expired holds appear as available to the public
-      const isExpiredHold =
-        slot.status === SLOT_STATUS.ON_HOLD &&
-        slot.holdExpiresAt &&
-        new Date() > slot.holdExpiresAt;
-
-      return {
-        time: slot.time,
-        status: isExpiredHold ? SLOT_STATUS.AVAILABLE : slot.status,
-        available: isExpiredHold
-          ? true
-          : slot.status === SLOT_STATUS.AVAILABLE,
-      };
-    }),
+    isFullyClosed: isBlocked,
+    isBlocked,
+    isFullyBooked,
+    isPartiallyBooked,
+    availabilityStatus: isBlocked
+      ? 'blocked'
+      : isFullyBooked
+        ? 'booked'
+        : isPartiallyBooked
+          ? 'partial'
+          : 'open',
+    availableCount,
+    totalCount,
+    slots,
   };
 };
 

@@ -22,7 +22,6 @@ export function BookingForm({
   selectedDate,
   selectedSlot,
   hold,
-  holdSecondsRemaining,
   onSubmit,
   submitting,
 }) {
@@ -84,7 +83,6 @@ export function BookingForm({
     }
   };
 
-  const countdown = `${String(Math.floor(holdSecondsRemaining / 60)).padStart(2, "0")}:${String(holdSecondsRemaining % 60).padStart(2, "0")}`;
 
   if (!selectedSlot) {
     return (
@@ -119,14 +117,7 @@ export function BookingForm({
       </div>
       {hold && (
         <div className="mb-5 border border-[#a66a18]/40 bg-[#d49a38]/20 p-3 text-sm text-ink">
-          <p className="font-semibold">
-            Your booking request has been received.
-          </p>
-          <p className="mt-1">
-            The selected time slot is temporarily reserved while waiting for
-            confirmation. This reservation will expire in{" "}
-            <span className="font-semibold">{countdown}</span>.
-          </p>
+          <p className="font-semibold">Your booking is pending.</p>
         </div>
       )}
 

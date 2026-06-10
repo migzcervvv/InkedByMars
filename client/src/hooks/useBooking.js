@@ -8,11 +8,24 @@ export function useBooking() {
   const { fetchDate } = availability
   const [bookingError, setBookingError] = useState(null)
 
-  const unavailableDates = useMemo(() => {
+  const blockedDates = useMemo(() => {
     return availability.availability
-      .filter((day) => day.isFullyClosed || day.availableCount === 0)
-      .map((day) => new Date(`${day.date}T00:00:00`))
+      .filter((day) => day.isBlocked || day.isFullyClosed || day.availabilityStatus === 'blocked')
+      .map((day) => day.date)
   }, [availability.availability])
+
+  const bookedDates = useMemo(() => {
+    return availability.availability
+      .filter((day) => {
+        const isBlocked = day.isBlocked || day.isFullyClosed || day.availabilityStatus === 'blocked'
+        return !isBlocked && (day.isFullyBooked || day.availableCount === 0)
+      })
+      .map((day) => day.date)
+  }, [availability.availability])
+
+  const unavailableDates = useMemo(() => {
+    return [...blockedDates, ...bookedDates].map((date) => new Date(`${date}T00:00:00`))
+  }, [blockedDates, bookedDates])
 
   const slotsByDate = useMemo(() => {
     const slots = {}
@@ -63,6 +76,8 @@ export function useBooking() {
     ...availability,
     appointments: slotsByDate,
     unavailableDates,
+    blockedDates,
+    bookedDates,
     loading: availability.loading,
     loadDate,
     holdSlot,

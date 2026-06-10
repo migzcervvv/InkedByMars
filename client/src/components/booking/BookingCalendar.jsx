@@ -1,5 +1,4 @@
-import { DayPicker } from 'react-day-picker'
-import 'react-day-picker/style.css'
+import { AvailabilityCalendar } from '../availability/AvailabilityCalendar'
 import { AppointmentSlot } from './AppointmentSlot'
 import { formatDisplayDate, toDateKey } from '../../utils/date'
 import { Loader } from '../ui/Loader'
@@ -7,18 +6,20 @@ import { Loader } from '../ui/Loader'
 export function BookingCalendar({
   availabilityByDate,
   dayAvailability,
-  unavailableDates,
+  blockedDates,
+  bookedDates,
+  calendarMonth,
   selectedDate,
   selectedSlot,
   holdLoading,
   onDateChange,
+  onMonthChange,
   onSlotChange,
   loading,
 }) {
   const dateKey = toDateKey(selectedDate)
   const summary = availabilityByDate[dateKey]
   const slots = dayAvailability?.slots || []
-  const disabled = (date) => date.getDay() === 0
   const isClosed = summary?.isFullyClosed || dayAvailability?.isFullyClosed
 
   return (
@@ -27,23 +28,19 @@ export function BookingCalendar({
         <p className="eyebrow">Choose Date</p>
         <h2 className="section-title mt-2 text-4xl">Availability</h2>
       </div>
-      <DayPicker
-        mode="single"
-        selected={selectedDate}
-        onSelect={(date) => date && onDateChange(date)}
-        disabled={disabled}
-        modifiers={{ noAvailable: unavailableDates }}
-        showOutsideDays
-        className="mars-day-picker"
+      <AvailabilityCalendar
+        month={calendarMonth}
+        availabilityByDate={availabilityByDate}
+        blockedDates={blockedDates}
+        bookedDates={bookedDates}
+        selectedDate={selectedDate}
+        onDateSelect={onDateChange}
+        onMonthChange={onMonthChange}
+        disableUnavailable
+        loading={loading}
       />
       <div className="mt-8">
         <p className="font-mono text-xs uppercase tracking-[0.18em] text-ash">{formatDisplayDate(selectedDate)}</p>
-        <div className="mt-3 flex flex-wrap gap-2 font-mono text-[0.62rem] uppercase tracking-[0.12em] text-ash">
-          <Legend tone="bg-cream/70" label="Available" />
-          <Legend tone="bg-[#d49a38]/70" label="Held" />
-          <Legend tone="bg-red" label="Confirmed" />
-          <Legend tone="bg-ash/45" label="Unavailable" />
-        </div>
         {dayAvailability?.closureReason && (
           <p className="mt-2 font-mono text-[0.68rem] uppercase tracking-[0.14em] text-red">
             {dayAvailability.closureReason}
@@ -55,12 +52,12 @@ export function BookingCalendar({
           </div>
         ) : (
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
-            {slots.length ? (
+            {slots.length && !isClosed ? (
               slots.map((slot) => (
                 <AppointmentSlot
                   key={slot.time}
                   time={slot.time}
-                  status={isClosed ? 'closed' : slot.status}
+                  status={slot.status}
                   selected={selectedSlot === slot.time}
                   loading={holdLoading === slot.time}
                   onSelect={() => onSlotChange(slot.time)}
@@ -75,14 +72,5 @@ export function BookingCalendar({
         )}
       </div>
     </section>
-  )
-}
-
-function Legend({ tone, label }) {
-  return (
-    <span className="inline-flex items-center gap-2">
-      <span className={`size-2 border border-ink/20 ${tone}`} />
-      {label}
-    </span>
   )
 }

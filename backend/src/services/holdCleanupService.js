@@ -4,6 +4,7 @@ const Booking = require('../models/Booking');
 const { BOOKING_STATUS } = require('../config/constants');
 const scheduleService = require('./scheduleService');
 const logger = require('../utils/logger');
+const notificationService = require('./notificationService');
 
 const expireStaleBookingHolds = async () => {
   const now = new Date();
@@ -39,6 +40,8 @@ const expireStaleBookingHolds = async () => {
       preferredDate: booking.preferredDate,
       preferredTime: booking.preferredTime,
     });
+
+    notificationService.notifyAdminBookingExpired(booking).catch(console.error);
   }
 
   await scheduleService.expireStaleHolds();

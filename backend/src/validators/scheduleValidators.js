@@ -109,6 +109,36 @@ const rangeQueryValidators = [
     .withMessage('endDate must be in YYYY-MM-DD format'),
 ];
 
+
+const monthQueryValidators = [
+  query('month')
+    .optional()
+    .matches(/^\d{4}-\d{2}$/)
+    .withMessage('month must be in YYYY-MM format'),
+];
+
+const blockedDatesValidators = [
+  body('month')
+    .notEmpty()
+    .withMessage('month is required')
+    .matches(/^\d{4}-\d{2}$/)
+    .withMessage('month must be in YYYY-MM format'),
+  body('blockedDates')
+    .isArray()
+    .withMessage('blockedDates must be an array'),
+  body('blockedDates.*')
+    .matches(/^\d{4}-\d{2}-\d{2}$/)
+    .withMessage('Each blocked date must be in YYYY-MM-DD format')
+    .custom((value, { req }) => {
+      if (!dayjs(value, 'YYYY-MM-DD', true).isValid()) {
+        throw new Error('Invalid blocked date');
+      }
+      if (!value.startsWith(`${req.body.month}-`)) {
+        throw new Error('Blocked dates must be within the selected month');
+      }
+      return true;
+    }),
+];
 const applyOpeningWindowValidators = [
   body('scope')
     .optional()
@@ -146,5 +176,7 @@ module.exports = {
   releaseSlotValidators,
   clientHoldValidators,
   rangeQueryValidators,
+  monthQueryValidators,
+  blockedDatesValidators,
   applyOpeningWindowValidators,
 };

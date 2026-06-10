@@ -4,46 +4,30 @@ import { BookingCalendar } from '../components/booking/BookingCalendar'
 import { BookingForm } from '../components/booking/BookingForm'
 import { Loader } from '../components/ui/Loader'
 import { useBooking } from '../hooks/useBooking'
-import { toDateKey } from '../utils/date'
+import { endOfMonth, startOfMonth, toDateKey } from '../utils/date'
 
 export default function BookingPage() {
   const bookingApi = useBooking()
   const navigate = useNavigate()
-  const { holdSlot, loadDate, refreshRange, releaseHold } = bookingApi
+  const { holdSlot, loadDate, refreshRange, releaseHold, setRange } = bookingApi
   const [selectedDate, setSelectedDate] = useState(new Date())
+  const [calendarMonth, setCalendarMonth] = useState(() => startOfMonth(new Date()))
   const [selectedSlot, setSelectedSlot] = useState(null)
   const [hold, setHold] = useState(null)
   const [holdLoading, setHoldLoading] = useState('')
-  const [holdSecondsRemaining, setHoldSecondsRemaining] = useState(0)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(null)
 
   useEffect(() => {
-    loadDate(selectedDate)
-  }, [loadDate, selectedDate])
+    setRange({
+      startDate: toDateKey(startOfMonth(calendarMonth)),
+      endDate: toDateKey(endOfMonth(calendarMonth)),
+    })
+  }, [calendarMonth, setRange])
 
   useEffect(() => {
-    if (!hold?.holdExpiresAt) {
-      return undefined
-    }
-
-    const tick = () => {
-      const seconds = Math.max(0, Math.floor((new Date(hold.holdExpiresAt).getTime() - Date.now()) / 1000))
-      setHoldSecondsRemaining(seconds)
-      if (seconds === 0) {
-        setHold(null)
-        setSelectedSlot(null)
-        setHoldSecondsRemaining(0)
-        setSubmitError({ message: 'Temporary hold expired. Select another time.' })
-        loadDate(selectedDate)
-        refreshRange()
-      }
-    }
-
-    tick()
-    const timer = window.setInterval(tick, 1000)
-    return () => window.clearInterval(timer)
-  }, [hold, loadDate, refreshRange, selectedDate])
+    loadDate(selectedDate)
+  }, [loadDate, selectedDate])
 
   const releaseCurrentHold = async () => {
     if (!hold?.holdToken) return
@@ -57,9 +41,9 @@ export default function BookingPage() {
   const handleDateChange = async (date) => {
     await releaseCurrentHold()
     setSelectedDate(date)
+    setCalendarMonth(startOfMonth(date))
     setSelectedSlot(null)
     setHold(null)
-    setHoldSecondsRemaining(0)
     setSubmitError(null)
   }
 
@@ -82,7 +66,6 @@ export default function BookingPage() {
     } catch (error) {
       setSelectedSlot(null)
       setHold(null)
-      setHoldSecondsRemaining(0)
       setSubmitError(error)
       await loadDate(selectedDate)
     } finally {
@@ -108,7 +91,6 @@ export default function BookingPage() {
         preferredTime: selectedSlot,
       })
       setHold(null)
-      setHoldSecondsRemaining(0)
       await loadDate(selectedDate)
       await refreshRange()
       navigate('/booking/confirmation', { state: { booking: result } })
@@ -136,12 +118,15 @@ export default function BookingPage() {
               <BookingCalendar
                 availabilityByDate={bookingApi.availabilityByDate}
                 dayAvailability={bookingApi.selectedDateAvailability}
-                unavailableDates={bookingApi.unavailableDates}
+                blockedDates={bookingApi.blockedDates}
+                bookedDates={bookingApi.bookedDates}
+                calendarMonth={calendarMonth}
                 selectedDate={selectedDate}
                 selectedSlot={selectedSlot}
                 loading={bookingApi.dateLoading}
                 holdLoading={holdLoading}
                 onDateChange={handleDateChange}
+                onMonthChange={setCalendarMonth}
                 onSlotChange={handleSlotChange}
               />
             </div>
@@ -155,7 +140,6 @@ export default function BookingPage() {
                 selectedDate={selectedDate}
                 selectedSlot={selectedSlot}
                 hold={hold}
-                holdSecondsRemaining={holdSecondsRemaining}
                 onSubmit={handleSubmit}
                 submitting={submitting}
               />

@@ -7,12 +7,53 @@ const asyncHandler = require('../utils/asyncHandler');
 const { sendOk } = require('../utils/response');
 const scheduleService = require('../services/scheduleService');
 const holdCleanupService = require('../services/holdCleanupService');
-const { DAY_STATUS, DEFAULT_TIME_SLOTS, HOLD_EXPIRY_MINUTES } = require('../config/constants');
+const availabilitySettingsService = require('../services/availabilitySettingsService');
+const {
+  DAY_STATUS,
+  DEFAULT_TIME_SLOTS,
+  HOLD_EXPIRY_MINUTES,
+  SLOT_STATUS,
+} = require('../config/constants');
+
+const openDayAvailability = (date) => ({
+  date,
+  dayStatus: DAY_STATUS.OPEN,
+  isFullyClosed: false,
+  isBlocked: false,
+  isFullyBooked: false,
+  isPartiallyBooked: false,
+  availabilityStatus: 'open',
+  closureReason: null,
+  availableCount: DEFAULT_TIME_SLOTS.length,
+  totalCount: DEFAULT_TIME_SLOTS.length,
+});
+
+const blockedDayAvailability = (date, closureReason = 'Blocked by admin') => ({
+  date,
+  dayStatus: DAY_STATUS.FULLY_CLOSED,
+  isFullyClosed: true,
+  isBlocked: true,
+  isFullyBooked: false,
+  isPartiallyBooked: false,
+  availabilityStatus: 'blocked',
+  closureReason,
+  availableCount: 0,
+  totalCount: DEFAULT_TIME_SLOTS.length,
+});
+
+const blockedDayDetails = (date, closureReason = 'Blocked by admin') => ({
+  ...blockedDayAvailability(date, closureReason),
+  slots: DEFAULT_TIME_SLOTS.map((time) => ({
+    time,
+    status: SLOT_STATUS.CLOSED,
+    available: false,
+  })),
+});
 
 /**
  * GET /api/public/availability?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
- * Public — returns availability summary for a date range
- * Safe for frontend consumption — no booking IDs or admin data
+ * Public - returns availability summary for a date range
+ * Safe for frontend consumption - no booking IDs or admin data
  */
 const getAvailability = asyncHandler(async (req, res, next) => {
   const startDate = req.query.startDate || dayjs().format('YYYY-MM-DD');
@@ -22,11 +63,14 @@ const getAvailability = asyncHandler(async (req, res, next) => {
     return next(new AppError('Date range cannot exceed 90 days', 400));
   }
 
-  const schedules = await Schedule.find({
-    date: { $gte: startDate, $lte: endDate },
-  })
-    .select('date dayStatus closureReason timeSlots')
-    .lean();
+  const [schedules, blockedDateSet] = await Promise.all([
+    Schedule.find({
+      date: { $gte: startDate, $lte: endDate },
+    })
+      .select('date dayStatus closureReason timeSlots')
+      .lean(),
+    availabilitySettingsService.getBlockedDateSet({ startDate, endDate }),
+  ]);
 
   // Index existing schedules by date
   const scheduleMap = {};
@@ -43,24 +87,12 @@ const getAvailability = asyncHandler(async (req, res, next) => {
     const dateStr = cursor.format('YYYY-MM-DD');
     const schedule = scheduleMap[dateStr];
 
-    if (!schedule) {
-      // No schedule doc = open with default slots
-      availability.push({
-        date: dateStr,
-        dayStatus: DAY_STATUS.OPEN,
-        isFullyClosed: false,
-        closureReason: null,
-        availableCount: DEFAULT_TIME_SLOTS.length,
-      });
+    if (blockedDateSet.has(dateStr)) {
+      availability.push(blockedDayAvailability(dateStr));
+    } else if (!schedule) {
+      availability.push(openDayAvailability(dateStr));
     } else {
-      const pub = scheduleService.toPublicAvailability(schedule);
-      availability.push({
-        date: pub.date,
-        dayStatus: pub.dayStatus,
-        isFullyClosed: pub.isFullyClosed,
-        closureReason: pub.closureReason,
-        availableCount: pub.slots.filter((s) => s.available).length,
-      });
+      availability.push(scheduleService.toPublicAvailability(schedule));
     }
 
     cursor = cursor.add(1, 'day');
@@ -71,20 +103,18 @@ const getAvailability = asyncHandler(async (req, res, next) => {
 
 /**
  * GET /api/public/availability/:date
- * Public — returns full slot breakdown for a single date
+ * Public - returns full slot breakdown for a single date
  */
-const getAvailabilityByDate = asyncHandler(async (req, res, next) => {
+const getAvailabilityByDate = asyncHandler(async (req, res) => {
   const { date } = req.params;
 
   // Past dates are not bookable
   if (dayjs(date).isBefore(dayjs().startOf('day'))) {
-    return sendOk(res, {
-      date,
-      dayStatus: DAY_STATUS.FULLY_CLOSED,
-      isFullyClosed: true,
-      closureReason: 'Date is in the past',
-      slots: [],
-    });
+    return sendOk(res, blockedDayDetails(date, 'Date is in the past'));
+  }
+
+  if (await availabilitySettingsService.isDateBlocked(date)) {
+    return sendOk(res, blockedDayDetails(date));
   }
 
   const schedule = await Schedule.findOne({ date })
@@ -92,15 +122,12 @@ const getAvailabilityByDate = asyncHandler(async (req, res, next) => {
     .lean();
 
   if (!schedule) {
-    // No document yet — return default open state
+    // No document yet - return default open state
     return sendOk(res, {
-      date,
-      dayStatus: DAY_STATUS.OPEN,
-      isFullyClosed: false,
-      closureReason: null,
+      ...openDayAvailability(date),
       slots: DEFAULT_TIME_SLOTS.map((time) => ({
         time,
-        status: 'available',
+        status: SLOT_STATUS.AVAILABLE,
         available: true,
       })),
     });
@@ -122,13 +149,14 @@ const createSlotHold = asyncHandler(async (req, res, next) => {
 
   sendOk(res, {
     hold: {
-      ...hold,
-      expiresInSeconds: HOLD_EXPIRY_MINUTES * 60,
+      holdToken: hold.holdToken,
+      date: hold.date,
+      time: hold.time,
     },
   }, 'Slot held temporarily');
 });
 
-const releaseSlotHold = asyncHandler(async (req, res, next) => {
+const releaseSlotHold = asyncHandler(async (req, res) => {
   const released = await scheduleService.releaseClientHold(req.body);
   sendOk(res, { released }, released ? 'Slot hold released' : 'Slot hold not found');
 });
