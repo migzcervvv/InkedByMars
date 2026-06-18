@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BookingCalendar } from '../components/booking/BookingCalendar'
 import { BookingForm } from '../components/booking/BookingForm'
-import { Loader } from '../components/ui/Loader'
 import { useBooking } from '../hooks/useBooking'
 import { endOfMonth, startOfMonth, toDateKey } from '../utils/date'
 
@@ -29,22 +28,27 @@ export default function BookingPage() {
     loadDate(selectedDate)
   }, [loadDate, selectedDate])
 
-  const releaseCurrentHold = async () => {
-    if (!hold?.holdToken) return
+  const releaseHoldValue = async (holdValue) => {
+    if (!holdValue?.holdToken) return
     await releaseHold({
-      date: hold.date,
-      time: hold.time,
-      holdToken: hold.holdToken,
+      date: holdValue.date,
+      time: holdValue.time,
+      holdToken: holdValue.holdToken,
     })
   }
 
-  const handleDateChange = async (date) => {
-    await releaseCurrentHold()
+  const releaseCurrentHold = () => releaseHoldValue(hold)
+
+  const handleDateChange = (date) => {
+    const previousHold = hold
+
     setSelectedDate(date)
     setCalendarMonth(startOfMonth(date))
     setSelectedSlot(null)
     setHold(null)
     setSubmitError(null)
+
+    void releaseHoldValue(previousHold)
   }
 
   const handleSlotChange = async (time) => {
@@ -105,47 +109,44 @@ export default function BookingPage() {
       <div className="mx-auto max-w-7xl">
         <p className="eyebrow">Appointments</p>
         <h1 className="page-title">Book Now</h1>
-        {bookingApi.loading ? (
-          <Loader label="Loading calendar" />
-        ) : (
-          <div className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
-            <div>
-              {bookingApi.error && (
-                <div className="mb-4 border border-red bg-red/10 p-4 font-mono text-xs uppercase tracking-[0.14em] text-red">
-                  {bookingApi.error.message || "Can't reach the server. Check your connection or try again in a moment."}
-                </div>
-              )}
-              <BookingCalendar
-                availabilityByDate={bookingApi.availabilityByDate}
-                dayAvailability={bookingApi.selectedDateAvailability}
-                blockedDates={bookingApi.blockedDates}
-                bookedDates={bookingApi.bookedDates}
-                calendarMonth={calendarMonth}
-                selectedDate={selectedDate}
-                selectedSlot={selectedSlot}
-                loading={bookingApi.dateLoading}
-                holdLoading={holdLoading}
-                onDateChange={handleDateChange}
-                onMonthChange={setCalendarMonth}
-                onSlotChange={handleSlotChange}
-              />
-            </div>
-            <div>
-              {submitError && (
-                <div className="mb-4 border border-red bg-red/10 p-4 font-mono text-xs uppercase tracking-[0.14em] text-red">
-                  {submitError.message || "Can't reach the server. Check your connection or try again in a moment."}
-                </div>
-              )}
-              <BookingForm
-                selectedDate={selectedDate}
-                selectedSlot={selectedSlot}
-                hold={hold}
-                onSubmit={handleSubmit}
-                submitting={submitting}
-              />
-            </div>
+        <div className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
+          <div>
+            {bookingApi.error && (
+              <div className="mb-4 border border-red bg-red/10 p-4 font-mono text-xs uppercase tracking-[0.14em] text-red">
+                {bookingApi.error.message || "Can't reach the server. Check your connection or try again in a moment."}
+              </div>
+            )}
+            <BookingCalendar
+              availabilityByDate={bookingApi.availabilityByDate}
+              dayAvailability={bookingApi.selectedDateAvailability}
+              blockedDates={bookingApi.blockedDates}
+              bookedDates={bookingApi.bookedDates}
+              calendarMonth={calendarMonth}
+              selectedDate={selectedDate}
+              selectedSlot={selectedSlot}
+              loading={bookingApi.dateLoading}
+              rangeLoading={bookingApi.loading}
+              holdLoading={holdLoading}
+              onDateChange={handleDateChange}
+              onMonthChange={setCalendarMonth}
+              onSlotChange={handleSlotChange}
+            />
           </div>
-        )}
+          <div>
+            {submitError && (
+              <div className="mb-4 border border-red bg-red/10 p-4 font-mono text-xs uppercase tracking-[0.14em] text-red">
+                {submitError.message || "Can't reach the server. Check your connection or try again in a moment."}
+              </div>
+            )}
+            <BookingForm
+              selectedDate={selectedDate}
+              selectedSlot={selectedSlot}
+              hold={hold}
+              onSubmit={handleSubmit}
+              submitting={submitting}
+            />
+          </div>
+        </div>
       </div>
     </section>
   )

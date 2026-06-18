@@ -7,7 +7,6 @@ const { sendOk, sendCreated } = require("../utils/response");
 const { BOOKING_STATUS, HOLD_EXPIRY_MINUTES } = require("../config/constants");
 const scheduleService = require("../services/scheduleService");
 const holdCleanupService = require("../services/holdCleanupService");
-const emailService = require("../services/emailService");
 const notificationService = require("../services/notificationService");
 const logger = require("../utils/logger");
 
@@ -164,7 +163,7 @@ const createBooking = asyncHandler(async (req, res, next) => {
   });
 
   // Fire-and-forget - do not block response
-  emailService.sendBookingPending(booking).catch(console.error);
+  notificationService.sendBookingPending(booking).catch(console.error);
   notificationService.notifyAdminNewBooking(booking).catch(console.error);
 
   const responseBooking = req.admin ? booking : serializePublicBooking(booking);
@@ -235,7 +234,7 @@ const confirmBooking = asyncHandler(async (req, res, next) => {
     blockedSlots: rangeResult.slotTimes,
   });
 
-  emailService
+  notificationService
     .sendBookingConfirmation(booking, { endTime })
     .catch(console.error);
 
@@ -289,7 +288,7 @@ const updateBookingStatus = asyncHandler(async (req, res, next) => {
 
     booking.preferredTime = startTime;
     booking.holdExpiresAt = null;
-    emailService
+    notificationService
       .sendBookingConfirmation(booking, { endTime })
       .catch(console.error);
   }
@@ -333,7 +332,7 @@ const updateBookingStatus = asyncHandler(async (req, res, next) => {
   // Slot management based on new status
   if (status === BOOKING_STATUS.CANCELLED) {
     await scheduleService.releaseBookingSlots({ bookingId: booking._id });
-    emailService.sendBookingCancellation(booking).catch(console.error);
+    notificationService.sendBookingCancellation(booking).catch(console.error);
   }
 
   if (status === BOOKING_STATUS.COMPLETED) {

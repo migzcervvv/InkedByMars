@@ -12,14 +12,25 @@ export function useAvailability(initialStartDate = new Date(), initialEndDate = 
   const [loading, setLoading] = useState(true)
   const [dateLoading, setDateLoading] = useState(false)
   const [error, setError] = useState(null)
+  const rangeRef = useRef(range)
   const dateRequestId = useRef(0)
+  const { startDate, endDate } = range
 
   const setRange = useCallback((nextRange) => {
+    const current = rangeRef.current
+    const resolved = typeof nextRange === 'function' ? nextRange(current) : nextRange
+
+    if (
+      current.startDate === resolved.startDate &&
+      current.endDate === resolved.endDate
+    ) {
+      return
+    }
+
+    rangeRef.current = resolved
     setLoading(true)
     setError(null)
-    setRangeState((current) =>
-      typeof nextRange === 'function' ? nextRange(current) : nextRange,
-    )
+    setRangeState(resolved)
   }, [])
 
   const refreshRange = useCallback(async (nextRange = range) => {
@@ -44,6 +55,7 @@ export function useAvailability(initialStartDate = new Date(), initialEndDate = 
     dateRequestId.current = requestId
     setDateLoading(true)
     setError(null)
+    setSelectedDateAvailability(null)
 
     try {
       const data = await publicApi.getAvailabilityByDate(date)
@@ -61,10 +73,11 @@ export function useAvailability(initialStartDate = new Date(), initialEndDate = 
   }, [])
 
   useEffect(() => {
+    rangeRef.current = { startDate, endDate }
     const controller = new AbortController()
 
     publicApi.getAvailability(
-      { startDate: range.startDate, endDate: range.endDate },
+      { startDate, endDate },
       { signal: controller.signal },
     )
       .then((data) => {
@@ -82,7 +95,7 @@ export function useAvailability(initialStartDate = new Date(), initialEndDate = 
     return () => {
       controller.abort()
     }
-  }, [range.startDate, range.endDate])
+  }, [startDate, endDate])
 
   const availabilityByDate = useMemo(() => {
     return availability.reduce((map, day) => {

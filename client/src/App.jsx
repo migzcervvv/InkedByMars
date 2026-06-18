@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { Route, Routes, useLocation } from "react-router-dom";
 import { AnimatePresence, LazyMotion, domAnimation } from "framer-motion";
 import { gsap } from "gsap";
@@ -6,122 +6,46 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { Navbar } from "./components/layout/Navbar";
 import { Footer } from "./components/layout/Footer";
 import { PageTransition } from "./components/layout/PageTransition";
-import { Loader } from "./components/ui/Loader";
 import { ScrollToTop } from "./components/ui/ScrollToTop";
 import { ErrorBoundary } from "./components/ui/ErrorBoundary";
 import { AdminLayout } from "./layouts/AdminLayout";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
 import { loadFacebookSDK } from "./lib/facebook";
-import { fetchHealth } from "./api/healthApi";
+import HomePage from "./pages/HomePage";
+import GalleryPage from "./pages/GalleryPage";
+import BookingPage from "./pages/BookingPage";
+import BookingConfirmationPage from "./pages/BookingConfirmationPage";
+import AvailabilityPage from "./pages/AvailabilityPage";
+import ContactPage from "./pages/ContactPage";
+import NotFoundPage from "./pages/NotFoundPage";
+import AboutPage from "./pages/AboutPage";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import LoginPage from "./pages/admin/LoginPage";
+import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
+import AdminBookingsPage from "./pages/admin/AdminBookingsPage";
+import AdminSchedulePage from "./pages/admin/AdminSchedulePage";
+import AdminAvailabilityPage from "./pages/admin/AdminAvailabilityPage";
+import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
 
 gsap.registerPlugin(ScrollTrigger);
 
-const HomePage = lazy(() => import("./pages/HomePage"));
-const GalleryPage = lazy(() => import("./pages/GalleryPage"));
-const BookingPage = lazy(() => import("./pages/BookingPage"));
-const BookingConfirmationPage = lazy(
-  () => import("./pages/BookingConfirmationPage"),
-);
-const AvailabilityPage = lazy(() => import("./pages/AvailabilityPage"));
-const ContactPage = lazy(() => import("./pages/ContactPage"));
-const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
-const AboutPage = lazy(() => import("./pages/AboutPage"));
-const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
-const LoginPage = lazy(() => import("./pages/admin/LoginPage"));
-const AdminDashboardPage = lazy(
-  () => import("./pages/admin/AdminDashboardPage"),
-);
-const AdminBookingsPage = lazy(() => import("./pages/admin/AdminBookingsPage"));
-const AdminSchedulePage = lazy(() => import("./pages/admin/AdminSchedulePage"));
-const AdminAvailabilityPage = lazy(
-  () => import("./pages/admin/AdminAvailabilityPage"),
-);
-const AdminSettingsPage = lazy(() => import("./pages/admin/AdminSettingsPage"));
-
 function App() {
-  const [serverReady, setServerReady] = useState(false);
-  const [showWarmup, setShowWarmup] = useState(false);
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith("/admin");
-  const ready = serverReady || isAdminRoute;
 
   useEffect(() => {
     loadFacebookSDK();
   }, []);
 
-  useEffect(() => {
-    if (isAdminRoute) return undefined;
-
-    let cancelled = false;
-    let pollTimer = null;
-    const slowTimer = window.setTimeout(() => {
-      if (!cancelled) setShowWarmup(true);
-    }, 2000);
-
-    const checkHealth = async () => {
-      try {
-        const health = await fetchHealth();
-        if (cancelled) return;
-        if (health.status === "ok") {
-          window.clearTimeout(slowTimer);
-          if (pollTimer) window.clearTimeout(pollTimer);
-          setServerReady(true);
-          setShowWarmup(false);
-          return;
-        }
-      } catch {
-        // Retry below.
-      }
-
-      if (!cancelled) {
-        pollTimer = window.setTimeout(checkHealth, 3000);
-      }
-    };
-
-    checkHealth();
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(slowTimer);
-      if (pollTimer) window.clearTimeout(pollTimer);
-    };
-  }, [isAdminRoute]);
-
   return (
     <LazyMotion features={domAnimation}>
-      {!ready ? (
-        showWarmup ? <ServerWarmupBanner /> : null
-      ) : (
-        <>
-          <ScrollToTop />
-          {!isAdminRoute && <ScrollProgress />}
-          <CustomCursor />
-          {!isAdminRoute && <Navbar />}
-          <AnimatedRoutes />
-          {!isAdminRoute && <Footer />}
-        </>
-      )}
+      <ScrollToTop />
+      {!isAdminRoute && <ScrollProgress />}
+      <CustomCursor />
+      {!isAdminRoute && <Navbar />}
+      <AnimatedRoutes />
+      {!isAdminRoute && <Footer />}
     </LazyMotion>
-  );
-}
-
-function ServerWarmupBanner() {
-  return (
-    <section className="fixed inset-0 z-[100] grid place-items-center bg-ink px-6 text-center text-cream">
-      <div className="w-full max-w-xl">
-        <p className="eyebrow">Server</p>
-        <h1 className="mt-4 font-display text-5xl italic leading-none md:text-7xl">
-          Waking up the server
-        </h1>
-        <p className="mx-auto mt-5 max-w-md font-body text-3xl leading-tight text-cream/75">
-          Waking up the server — this takes about 30 seconds on first load.
-          Hang tight!
-        </p>
-        <div className="mt-8 h-1 overflow-hidden bg-cream/15">
-          <div className="h-full w-1/3 animate-[warmup_1.2s_ease-in-out_infinite] bg-red" />
-        </div>
-      </div>
-    </section>
   );
 }
 
@@ -138,107 +62,102 @@ function AnimatedRoutes() {
 
   return (
     <ErrorBoundary key={location.pathname}>
-      <Suspense fallback={<Loader label="Entering studio" />}>
-        <AnimatePresence mode="wait">
-          <Routes location={location} key={location.pathname}>
-            <Route
-              path="/"
-              element={
-                <PageWithTitle title="Inked By Mars - Tattoo Artist">
-                  <PageTransition>
-                    <HomePage />
-                  </PageTransition>
-                </PageWithTitle>
-              }
-            />
-            <Route
-              path="/gallery"
-              element={
-                <PageWithTitle title="Gallery - Inked By Mars">
-                  <PageTransition>
-                    <GalleryPage />
-                  </PageTransition>
-                </PageWithTitle>
-              }
-            />
-            <Route
-              path="/booking/confirmation"
-              element={
-                <PageWithTitle title="Booking Received - Inked By Mars">
-                  <PageTransition>
-                    <BookingConfirmationPage />
-                  </PageTransition>
-                </PageWithTitle>
-              }
-            />
-            <Route
-              path="/booking"
-              element={
-                <PageWithTitle title="Book a Session - Inked By Mars">
-                  <PageTransition>
-                    <BookingPage />
-                  </PageTransition>
-                </PageWithTitle>
-              }
-            />
-            <Route
-              path="/availability"
-              element={
+      <AnimatePresence mode="wait">
+        <Routes location={location} key={location.pathname}>
+          <Route
+            path="/"
+            element={
+              <PageWithTitle title="Inked By Mars - Tattoo Artist">
                 <PageTransition>
-                  <AvailabilityPage />
+                  <HomePage />
                 </PageTransition>
-              }
-            />
-            <Route
-              path="/contact"
-              element={
+              </PageWithTitle>
+            }
+          />
+          <Route
+            path="/gallery"
+            element={
+              <PageWithTitle title="Gallery - Inked By Mars">
                 <PageTransition>
-                  <ContactPage />
+                  <GalleryPage />
                 </PageTransition>
-              }
-            />
-            <Route
-              path="/about"
-              element={
+              </PageWithTitle>
+            }
+          />
+          <Route
+            path="/booking/confirmation"
+            element={
+              <PageWithTitle title="Booking Received - Inked By Mars">
                 <PageTransition>
-                  <AboutPage />
+                  <BookingConfirmationPage />
                 </PageTransition>
-              }
-            />
-            <Route
-              path="/privacy-policy"
-              element={
+              </PageWithTitle>
+            }
+          />
+          <Route
+            path="/booking"
+            element={
+              <PageWithTitle title="Book a Session - Inked By Mars">
                 <PageTransition>
-                  <PrivacyPolicy />
+                  <BookingPage />
                 </PageTransition>
-              }
-            />
-            <Route path="/admin/login" element={<LoginPage />} />
-            <Route element={<ProtectedRoute />}>
-              <Route path="/admin" element={<AdminLayout />}>
-                <Route index element={<AdminDashboardPage />} />
-                <Route path="bookings" element={<AdminBookingsPage />} />
-                <Route path="schedule" element={<AdminSchedulePage />} />
-                <Route
-                  path="availability"
-                  element={<AdminAvailabilityPage />}
-                />
-                <Route path="settings" element={<AdminSettingsPage />} />
-              </Route>
+              </PageWithTitle>
+            }
+          />
+          <Route
+            path="/availability"
+            element={
+              <PageTransition>
+                <AvailabilityPage />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="/contact"
+            element={
+              <PageTransition>
+                <ContactPage />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="/about"
+            element={
+              <PageTransition>
+                <AboutPage />
+              </PageTransition>
+            }
+          />
+          <Route
+            path="/privacy-policy"
+            element={
+              <PageTransition>
+                <PrivacyPolicy />
+              </PageTransition>
+            }
+          />
+          <Route path="/admin/login" element={<LoginPage />} />
+          <Route element={<ProtectedRoute />}>
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<AdminDashboardPage />} />
+              <Route path="bookings" element={<AdminBookingsPage />} />
+              <Route path="schedule" element={<AdminSchedulePage />} />
+              <Route path="availability" element={<AdminAvailabilityPage />} />
+              <Route path="settings" element={<AdminSettingsPage />} />
             </Route>
-            <Route
-              path="*"
-              element={
-                <PageWithTitle title="Page Not Found - Inked By Mars">
-                  <PageTransition>
-                    <NotFoundPage />
-                  </PageTransition>
-                </PageWithTitle>
-              }
-            />
-          </Routes>
-        </AnimatePresence>
-      </Suspense>
+          </Route>
+          <Route
+            path="*"
+            element={
+              <PageWithTitle title="Page Not Found - Inked By Mars">
+                <PageTransition>
+                  <NotFoundPage />
+                </PageTransition>
+              </PageWithTitle>
+            }
+          />
+        </Routes>
+      </AnimatePresence>
     </ErrorBoundary>
   );
 }

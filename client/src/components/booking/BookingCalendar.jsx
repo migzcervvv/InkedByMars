@@ -16,6 +16,7 @@ export function BookingCalendar({
   onMonthChange,
   onSlotChange,
   loading,
+  rangeLoading = false,
 }) {
   const dateKey = toDateKey(selectedDate)
   const summary = availabilityByDate[dateKey]
@@ -37,7 +38,7 @@ export function BookingCalendar({
         onDateSelect={onDateChange}
         onMonthChange={onMonthChange}
         disableUnavailable
-        loading={loading}
+        loading={rangeLoading}
       />
       <div className="mt-8">
         <p className="font-mono text-xs uppercase tracking-[0.18em] text-ash">{formatDisplayDate(selectedDate)}</p>
