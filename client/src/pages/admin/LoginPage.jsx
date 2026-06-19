@@ -12,22 +12,22 @@ export default function LoginPage() {
   const [form, setForm] = useState({ name: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const fetchUserProfile = useCallback(() => {
-    window.FB.api("/me", { fields: "id,name,email,picture" }, () => {
-      navigate(location.state?.from?.pathname || "/admin", { replace: true });
-    });
-  }, [location.state?.from?.pathname, navigate]);
+  // const fetchUserProfile = useCallback(() => {
+  //   window.FB.api("/me", { fields: "id,name,email,picture" }, () => {
+  //     navigate(location.state?.from?.pathname || "/admin", { replace: true });
+  //   });
+  // }, [location.state?.from?.pathname, navigate]);
 
-  const statusChangeCallback = useCallback(
-    (response) => {
-      if (response.status === "connected") {
-        fetchUserProfile();
-      } else if (response.status === "not_authorized") {
-        setError("Facebook is not authorized for this app.");
-      }
-    },
-    [fetchUserProfile],
-  );
+  // const statusChangeCallback = useCallback(
+  //   (response) => {
+  //     if (response.status === "connected") {
+  //       fetchUserProfile();
+  //     } else if (response.status === "not_authorized") {
+  //       setError("Facebook is not authorized for this app.");
+  //     }
+  //   },
+  //   [fetchUserProfile],
+  // );
 
   // useEffect(() => {
   //   const loadFacebook = async () => {
