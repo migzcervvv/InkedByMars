@@ -17,7 +17,9 @@ export default function BookingConfirmationPage() {
           Hold received.
         </h1>
         <p className="mx-auto mt-6 max-w-xl font-body text-3xl leading-tight text-ash">
-          Your booking is pending.
+          Your booking is reserved at {formatDisplayDate(booking.preferredDate)}{" "}
+          at {booking.preferredTime}. Please check your email for confirmation
+          and further details.
         </p>
         <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
           <Link

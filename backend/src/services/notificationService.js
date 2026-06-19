@@ -34,19 +34,6 @@ const escapeHtml = (value) =>
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 
-const renderReferenceImages = (booking) => {
-  const images = booking.referenceImages || [];
-  if (!images.length) return "<p>No reference images attached.</p>";
-
-  return images
-    .filter((image) => image.url)
-    .map(
-      (image) =>
-        `<p><a href="${escapeHtml(image.url)}">Reference image</a></p>`,
-    )
-    .join("");
-};
-
 const buildExpiredBookingMessage = (bookingData) =>
   [
     "[InkedByMars] Booking request expired",
@@ -56,17 +43,66 @@ const buildExpiredBookingMessage = (bookingData) =>
     "Status: Expired",
   ].join("\n");
 
+const extractBase64Parts = (dataUri) => {
+  const str = Buffer.isBuffer(dataUri)
+    ? dataUri.toString("base64")
+    : String(dataUri ?? "");
+
+  if (Buffer.isBuffer(dataUri)) {
+    return { mimeType: "image/webp", data: str };
+  }
+
+  const match = str.match(/^data:([^;]+);base64,(.+)$/);
+  if (!match) return null;
+  return { mimeType: match[1], data: match[2] };
+};
+
+const buildReferenceImageAttachments = (booking) => {
+  if (!booking.referenceImages?.length) return [];
+  return booking.referenceImages
+    .map((image, i) => {
+      const parts = extractBase64Parts(image);
+      if (!parts) return null;
+      const ext = parts.mimeType.split("/")[1] || "jpg";
+      return {
+        filename: `ref-${i}.${ext}`,
+        content: Buffer.from(parts.data, "base64"),
+        contentType: parts.mimeType,
+        cid: `refimage_${i}`,
+      };
+    })
+    .filter(Boolean);
+};
+
+const buildReferenceImageHtml = (booking) => {
+  if (!booking.referenceImages?.length) return "";
+  return booking.referenceImages
+    .map(
+      (_, i) =>
+        `<img src="cid:refimage_${i}" style="max-width:300px;display:block;margin:8px 0;" alt="Reference ${i + 1}">`,
+    )
+    .join("");
+};
+
 const buildAdminBookingHoldNotification = (booking) => {
   const reference = getBookingReference(booking);
   const reviewUrl = getAdminReviewUrl(booking);
   const subject = `New booking hold ${reference}`;
+
   const text = [
     `New booking hold ${reference}`,
     `Client: ${booking.clientName}`,
     `Email: ${booking.email}`,
     `Phone: ${booking.phone}`,
-    `Selected start: ${booking.preferredDate} ${booking.preferredTime}`,
-    `Tattoo: ${booking.tattooIdea}`,
+    `Selected start: ${new Date(booking.preferredDate).toLocaleDateString(
+      "en-US",
+      {
+        month: "short",
+        day: "2-digit",
+        year: "numeric",
+      },
+    )} ${booking.preferredTime}`,
+    `IG Handle: ${booking.instagramHandle}`,
     `Placement: ${booking.tattooPlacement}`,
     `Size: ${booking.tattooSize}`,
     `Notes: ${booking.notes || "None"}`,
@@ -78,16 +114,24 @@ const buildAdminBookingHoldNotification = (booking) => {
     <p><strong>Client:</strong> ${escapeHtml(booking.clientName)}</p>
     <p><strong>Email:</strong> ${escapeHtml(booking.email)}</p>
     <p><strong>Phone:</strong> ${escapeHtml(booking.phone)}</p>
-    <p><strong>Selected start:</strong> ${escapeHtml(booking.preferredDate)} ${escapeHtml(booking.preferredTime)}</p>
-    <p><strong>Tattoo:</strong> ${escapeHtml(booking.tattooIdea)}</p>
+    <p><strong>Selected start:</strong> ${escapeHtml(
+      new Date(booking.preferredDate).toLocaleDateString("en-US", {
+        month: "short",
+        day: "2-digit",
+        year: "numeric",
+      }),
+    )} ${escapeHtml(booking.preferredTime)}</p>
+    <p><strong>IG Handle:</strong> ${escapeHtml(booking.instagramHandle)}</p>
     <p><strong>Placement:</strong> ${escapeHtml(booking.tattooPlacement)}</p>
     <p><strong>Size:</strong> ${escapeHtml(booking.tattooSize)}</p>
     <p><strong>Notes:</strong><br>${escapeHtml(booking.notes || "None")}</p>
-    <div>${renderReferenceImages(booking)}</div>
+    <div>${buildReferenceImageHtml(booking)}</div>
     <p><a href="${escapeHtml(reviewUrl)}">Review booking</a></p>
   `;
 
-  return { subject, text, html };
+  const attachments = buildReferenceImageAttachments(booking);
+
+  return { subject, text, html, attachments };
 };
 
 const createTransporter = () => {
@@ -106,7 +150,7 @@ const createTransporter = () => {
   });
 };
 
-const sendEmail = async ({ to, subject, text, html }) => {
+const sendEmail = async ({ to, subject, text, html, attachments }) => {
   if (!to) return;
   const transporter = createTransporter();
   if (!transporter) {
@@ -120,6 +164,7 @@ const sendEmail = async ({ to, subject, text, html }) => {
     subject,
     text,
     html,
+    attachments,
   });
 };
 
@@ -206,19 +251,31 @@ const notificationService = {
     await sendEmail({
       to: booking.email,
       subject: "Booking Received",
-      text: `Hi ${booking.clientName}, we received your booking hold for ${booking.preferredDate} at ${booking.preferredTime}. This time is temporarily reserved until admin review.`,
+      text: `Hi ${booking.clientName}, we received your booking hold for ${new Date(
+        booking.preferredDate,
+      ).toLocaleDateString("en-US", {
+        month: "short",
+        day: "2-digit",
+        year: "numeric",
+      })} at ${booking.preferredTime}. This time is temporarily reserved until admin review.`,
       html: `
         <p>Hi <strong>${escapeHtml(booking.clientName)}</strong>,</p>
 
         <p>
           Your booking request has been received for
-          <strong>${escapeHtml(booking.preferredDate)}</strong>
+          <strong>${escapeHtml(
+            new Date(booking.preferredDate).toLocaleDateString("en-US", {
+              month: "short",
+              day: "2-digit",
+              year: "numeric",
+            }),
+          )}</strong>
           at
           <strong>${escapeHtml(booking.preferredTime)}</strong>.
         </p>
 
         <p>
-          To confirm your appointment, please send your required deposit to
+          To confirm your appointment, please send your payment deposit to
           <strong>@inkedbymars</strong> on instagram and include a screenshot of this email
           as proof of your booking.
         </p>
@@ -247,7 +304,14 @@ const notificationService = {
             Great news! Your appointment has been confirmed.
 
             Booking Details:
-            - Date: ${booking.preferredDate}
+            - Date: ${new Date(booking.preferredDate).toLocaleDateString(
+              "en-US",
+              {
+                month: "short",
+                day: "2-digit",
+                year: "numeric",
+              },
+            )}
             - Time: ${booking.preferredTime}${endText}
 
             Please arrive on time and come prepared for your session. If you have any questions or need to discuss your appointment, feel free to contact us.
@@ -263,18 +327,24 @@ const notificationService = {
         <p><strong>Booking Details</strong></p>
 
         <ul>
-          <li><strong>Date:</strong> ${escapeHtml(booking.preferredDate)}</li>
+          <li><strong>Date:</strong> ${escapeHtml(
+            new Date(booking.preferredDate).toLocaleDateString("en-US", {
+              month: "short",
+              day: "2-digit",
+              year: "numeric",
+            }),
+          )}</li>
           <li><strong>Time:</strong> ${escapeHtml(`${booking.preferredTime}${endText}`)}</li>
         </ul>
 
         <p>
-          Please don't be late on your scheduled appointment. I'll only have 15 mins grace period for waiting. If you're than 15 mins late,
+          Please don't be late on your scheduled appointment. If you're more than 15 mins late,
            your appointment will be cancelled or rescheduled on a later time of the day or another date. 
            Deposit will not be refunded and you will be charged with an additional Php 200.00
         </p>
 
         <p>
-          Thank you for choosing <strong>Inked by Mars</strong>. We look forward
+          Thank you for choosing <strong>InkedbyMars</strong>. We look forward
           to seeing you!
         </p>
       `,
@@ -290,7 +360,14 @@ const notificationService = {
           We're writing to let you know that your appointment has been cancelled.
 
           Cancelled Booking:
-          - Date: ${booking.preferredDate}
+          - Date: ${new Date(booking.preferredDate).toLocaleDateString(
+            "en-US",
+            {
+              month: "short",
+              day: "2-digit",
+              year: "numeric",
+            },
+          )}
           - Time: ${booking.preferredTime}
 
           If you would still like to book a session, you're welcome to submit a new booking request at any time.
@@ -307,7 +384,13 @@ const notificationService = {
         <p><strong>Cancelled Booking</strong></p>
 
         <ul>
-          <li><strong>Date:</strong> ${escapeHtml(booking.preferredDate)}</li>
+          <li><strong>Date:</strong> ${escapeHtml(
+            new Date(booking.preferredDate).toLocaleDateString("en-US", {
+              month: "short",
+              day: "2-digit",
+              year: "numeric",
+            }),
+          )}</li>
           <li><strong>Time:</strong> ${escapeHtml(booking.preferredTime)}</li>
         </ul>
 
