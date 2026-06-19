@@ -1,165 +1,156 @@
-'use strict';
+"use strict";
 
-const { body, param } = require('express-validator');
-const { BOOKING_STATUS } = require('../config/constants');
-const dayjs = require('dayjs');
+const { body, param } = require("express-validator");
+const { BOOKING_STATUS } = require("../config/constants");
+const dayjs = require("dayjs");
 
 const createBookingValidators = [
-  body('clientName')
+  body("clientName")
     .trim()
     .notEmpty()
-    .withMessage('Client name is required')
+    .withMessage("Client name is required")
     .isLength({ max: 100 })
-    .withMessage('Name cannot exceed 100 characters'),
+    .withMessage("Name cannot exceed 100 characters"),
 
-  body('email')
+  body("email")
     .isEmail()
-    .withMessage('Provide a valid email address')
+    .withMessage("Provide a valid email address")
     .normalizeEmail(),
 
-  body('phone')
+  body("phone").trim().notEmpty().withMessage("Phone number is required"),
+
+  body("instagramHandle")
     .trim()
     .notEmpty()
-    .withMessage('Phone number is required'),
+    .withMessage("Instagram handle is required")
+    .isLength({ max: 100 })
+    .withMessage("Instagram handle cannot exceed 100 characters"),
 
-  body('tattooIdea')
+  body("tattooPlacement")
     .trim()
     .notEmpty()
-    .withMessage('Tattoo idea is required')
-    .isLength({ max: 2000 })
-    .withMessage('Tattoo idea cannot exceed 2000 characters'),
+    .withMessage("Tattoo placement is required"),
 
-  body('tattooPlacement')
-    .trim()
-    .notEmpty()
-    .withMessage('Tattoo placement is required'),
-
-  body('tattooSize')
+  body("tattooSize")
     .optional()
-    .isIn(['tiny', 'small', 'medium', 'large', 'extra_large', 'custom'])
-    .withMessage('Invalid tattoo size'),
+    .isIn(["tiny", "small", "medium", "large", "extra_large", "custom"])
+    .withMessage("Invalid tattoo size"),
 
-  body('preferredDate')
+  body("preferredDate")
     .notEmpty()
-    .withMessage('Preferred date is required')
+    .withMessage("Preferred date is required")
     .matches(/^\d{4}-\d{2}-\d{2}$/)
-    .withMessage('Date must be in YYYY-MM-DD format')
+    .withMessage("Date must be in YYYY-MM-DD format")
     .custom((value) => {
-      if (!dayjs(value, 'YYYY-MM-DD', true).isValid()) {
-        throw new Error('Invalid date');
+      if (!dayjs(value, "YYYY-MM-DD", true).isValid()) {
+        throw new Error("Invalid date");
       }
-      if (dayjs(value).isBefore(dayjs().startOf('day'))) {
-        throw new Error('Preferred date cannot be in the past');
+      if (dayjs(value).isBefore(dayjs().startOf("day"))) {
+        throw new Error("Preferred date cannot be in the past");
       }
       return true;
     }),
 
-  body('preferredTime')
+  body("preferredTime")
     .notEmpty()
-    .withMessage('Preferred time is required')
+    .withMessage("Preferred time is required")
     .matches(/^\d{2}:\d{2}$/)
-    .withMessage('Time must be in HH:MM 24h format'),
+    .withMessage("Time must be in HH:MM 24h format"),
 
-  body('notes')
+  body("notes")
     .optional()
     .trim()
     .isLength({ max: 1000 })
-    .withMessage('Notes cannot exceed 1000 characters'),
+    .withMessage("Notes cannot exceed 1000 characters"),
 
-  body('referenceImages')
+  body("referenceImages")
     .optional()
     .isArray({ max: 4 })
-    .withMessage('Reference images must be an array with at most 4 items'),
+    .withMessage("Reference images must be an array with at most 4 items"),
 
-  body('referenceImages.*.url')
+  body("referenceImages.*.url")
     .optional()
     .isString()
     .isLength({ max: 750000 })
-    .withMessage('Reference image payload is too large'),
+    .withMessage("Reference image payload is too large"),
 
-  body('referenceImages.*.publicId')
+  body("referenceImages.*.publicId")
     .optional()
     .isString()
     .isLength({ max: 200 })
-    .withMessage('Reference image public ID is too long'),
+    .withMessage("Reference image public ID is too long"),
 ];
 
 const updateBookingStatusValidators = [
-  param('id')
-    .isMongoId()
-    .withMessage('Invalid booking ID'),
+  param("id").isMongoId().withMessage("Invalid booking ID"),
 
-  body('status')
+  body("status")
     .notEmpty()
-    .withMessage('Status is required')
+    .withMessage("Status is required")
     .isIn(Object.values(BOOKING_STATUS))
-    .withMessage(`Status must be one of: ${Object.values(BOOKING_STATUS).join(', ')}`),
+    .withMessage(
+      `Status must be one of: ${Object.values(BOOKING_STATUS).join(", ")}`,
+    ),
 
-  body('reason')
+  body("reason")
     .optional()
     .trim()
     .isLength({ max: 500 })
-    .withMessage('Reason cannot exceed 500 characters'),
+    .withMessage("Reason cannot exceed 500 characters"),
 
-  body('adminNotes')
+  body("adminNotes")
     .optional()
     .trim()
     .isLength({ max: 1000 })
-    .withMessage('Admin notes cannot exceed 1000 characters'),
+    .withMessage("Admin notes cannot exceed 1000 characters"),
 ];
 
 const confirmBookingValidators = [
-  param('id')
-    .isMongoId()
-    .withMessage('Invalid booking ID'),
+  param("id").isMongoId().withMessage("Invalid booking ID"),
 
-  body('date')
+  body("date")
     .optional()
     .matches(/^\d{4}-\d{2}-\d{2}$/)
-    .withMessage('Date must be in YYYY-MM-DD format')
+    .withMessage("Date must be in YYYY-MM-DD format")
     .custom((value) => {
-      if (!dayjs(value, 'YYYY-MM-DD', true).isValid()) {
-        throw new Error('Invalid date');
+      if (!dayjs(value, "YYYY-MM-DD", true).isValid()) {
+        throw new Error("Invalid date");
       }
       return true;
     }),
 
-  body('startTime')
+  body("startTime")
     .notEmpty()
-    .withMessage('Start time is required')
+    .withMessage("Start time is required")
     .matches(/^\d{2}:\d{2}$/)
-    .withMessage('Start time must be in HH:MM 24h format'),
+    .withMessage("Start time must be in HH:MM 24h format"),
 
-  body('endTime')
+  body("endTime")
     .notEmpty()
-    .withMessage('End time is required')
+    .withMessage("End time is required")
     .matches(/^\d{2}:\d{2}$/)
-    .withMessage('End time must be in HH:MM 24h format')
+    .withMessage("End time must be in HH:MM 24h format")
     .custom((value, { req }) => {
       if (value <= req.body.startTime) {
-        throw new Error('End time must be after start time');
+        throw new Error("End time must be after start time");
       }
       return true;
     }),
 
-  body('adminNotes')
+  body("adminNotes")
     .optional()
     .trim()
     .isLength({ max: 1000 })
-    .withMessage('Admin notes cannot exceed 1000 characters'),
+    .withMessage("Admin notes cannot exceed 1000 characters"),
 
-  body('reason')
+  body("reason")
     .optional()
     .trim()
     .isLength({ max: 500 })
-    .withMessage('Reason cannot exceed 500 characters'),
+    .withMessage("Reason cannot exceed 500 characters"),
 ];
 
-const mongoIdParam = [
-  param('id')
-    .isMongoId()
-    .withMessage('Invalid ID format'),
-];
+const mongoIdParam = [param("id").isMongoId().withMessage("Invalid ID format")];
 
 module.exports = {
   createBookingValidators,
