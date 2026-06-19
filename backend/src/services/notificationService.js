@@ -159,7 +159,7 @@ const sendEmail = async ({ to, subject, text, html, attachments }) => {
   }
 
   await transporter.sendMail({
-    from: process.env.ADMIN_GMAIL_USER,
+    from: `"InkedByMars" <${process.env.ADMIN_GMAIL_USER}>`,
     to,
     subject,
     text,
