@@ -135,17 +135,18 @@ const buildAdminBookingHoldNotification = (booking) => {
 };
 
 const createTransporter = () => {
-  if (!process.env.ADMIN_GMAIL_USER || !process.env.ADMIN_GMAIL_APP_PASSWORD) {
+  if (!process.env.BREVO_SMTP_USER || !process.env.BREVO_SMTP_KEY) {
     return null;
   }
 
   return nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 465,
-    secure: true,
+    host: "smtp-relay.brevo.com",
+    port: 2525,
+    secure: false,
+    requireTLS: true,
     auth: {
-      user: process.env.ADMIN_GMAIL_USER,
-      pass: process.env.ADMIN_GMAIL_APP_PASSWORD,
+      user: process.env.BREVO_SMTP_USER,
+      pass: process.env.BREVO_SMTP_KEY,
     },
   });
 };
@@ -159,7 +160,7 @@ const sendEmail = async ({ to, subject, text, html, attachments }) => {
   }
 
   await transporter.sendMail({
-    from: `"InkedByMars" <${process.env.ADMIN_GMAIL_USER}>`,
+    from: `"InkedByMars" <${process.env.BREVO_SENDER_EMAIL}>`,
     to,
     subject,
     text,
