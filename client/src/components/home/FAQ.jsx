@@ -42,8 +42,8 @@ const faqSections = [
         a: "Yes, to confirm your appointment, you must settle your reservation fee (200php) within 24 hours. Please don't forget to send a screenshot of your payment.",
       },
       {
-        q: "What should I do if I need to cancel my appointment?",
-        a: "For cancelled appointments, we require at least 48 hours' notice to reschedule without penalty. Cancellations made with less than 48 hours' notice will forfeit the reservation fee.",
+        q: "What should I do if I need to reschedule my appointment?",
+        a: "For rescheduled appointments, we require at least 48 hours' notice to reschedule without penalty. Cancellations made with less than 48 hours' notice will forfeit the reservation fee.",
       },
     ],
   },

@@ -85,13 +85,11 @@ const getBookingById = asyncHandler(async (req, res, next) => {
  * Validates slot availability and creates a temporary booking hold.
  */
 const createBooking = asyncHandler(async (req, res, next) => {
-  const { preferredDate, preferredTime, holdToken } = req.body;
+  const { preferredDate, preferredTime } = req.body;
 
   await holdCleanupService.expireStaleBookingHolds();
-  const schedule = await scheduleService.getOrCreateSchedule(preferredDate);
 
   const bookingData = { ...req.body };
-  delete bookingData.holdToken;
   if (req.admin) {
     bookingData.createdByAdmin = true;
     bookingData.createdByAdminId = req.admin._id;
@@ -123,20 +121,12 @@ const createBooking = asyncHandler(async (req, res, next) => {
     throw error;
   }
 
-  const holdExpiresAt = holdToken
-    ? await scheduleService.bindClientHoldToBooking({
-        schedule,
-        time: preferredTime,
-        holdToken,
-        bookingId: booking._id,
-        expiryMinutes: HOLD_EXPIRY_MINUTES,
-      })
-    : await scheduleService.holdSlotAtomically({
-        date: preferredDate,
-        time: preferredTime,
-        bookingId: booking._id,
-        expiryMinutes: HOLD_EXPIRY_MINUTES,
-      });
+  const holdExpiresAt = await scheduleService.holdSlotAtomically({
+    date: preferredDate,
+    time: preferredTime,
+    bookingId: booking._id,
+    expiryMinutes: HOLD_EXPIRY_MINUTES,
+  });
 
   if (!holdExpiresAt) {
     await booking.deleteOne();

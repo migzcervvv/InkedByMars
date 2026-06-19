@@ -16,12 +16,12 @@ export function BookingConfirmation({ booking, onAnother }) {
           <Check size={36} />
         </div>
         <h2 className="mt-6 font-display text-6xl italic text-ink">
-          Hold received.
+          Booking Confirmed!
         </h2>
         <p className="mt-6 font-body text-3xl leading-tight text-ash">
           Your booking is reserved at {formatDisplayDate(booking.preferredDate)}{" "}
-          at {booking.preferredTime}. This slot is reserved temporarily until
-          our artist confirms. Thank you!
+          at {booking.preferredTime}. Please check your email for confirmation
+          and further details.
         </p>
         <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
           <Button variant="ghost" onClick={onAnother}>

@@ -11,7 +11,6 @@ export function BookingCalendar({
   calendarMonth,
   selectedDate,
   selectedSlot,
-  holdLoading,
   onDateChange,
   onMonthChange,
   onSlotChange,
@@ -60,7 +59,6 @@ export function BookingCalendar({
                   time={slot.time}
                   status={slot.status}
                   selected={selectedSlot === slot.time}
-                  loading={holdLoading === slot.time}
                   onSelect={() => onSlotChange(slot.time)}
                 />
               ))

@@ -6,12 +6,10 @@ const AppError = require('../utils/AppError');
 const asyncHandler = require('../utils/asyncHandler');
 const { sendOk } = require('../utils/response');
 const scheduleService = require('../services/scheduleService');
-const holdCleanupService = require('../services/holdCleanupService');
 const availabilitySettingsService = require('../services/availabilitySettingsService');
 const {
   DAY_STATUS,
   DEFAULT_TIME_SLOTS,
-  HOLD_EXPIRY_MINUTES,
   SLOT_STATUS,
 } = require('../config/constants');
 
@@ -138,27 +136,4 @@ const getAvailabilityByDate = asyncHandler(async (req, res) => {
   sendOk(res, publicData);
 });
 
-const createSlotHold = asyncHandler(async (req, res, next) => {
-  const { date, time } = req.body;
-
-  await holdCleanupService.expireStaleBookingHolds();
-  const hold = await scheduleService.createClientHold(date, time, HOLD_EXPIRY_MINUTES);
-  if (!hold) {
-    return next(new AppError(`The time slot ${time} on ${date} is not available.`, 409));
-  }
-
-  sendOk(res, {
-    hold: {
-      holdToken: hold.holdToken,
-      date: hold.date,
-      time: hold.time,
-    },
-  }, 'Slot held temporarily');
-});
-
-const releaseSlotHold = asyncHandler(async (req, res) => {
-  const released = await scheduleService.releaseClientHold(req.body);
-  sendOk(res, { released }, released ? 'Slot hold released' : 'Slot hold not found');
-});
-
-module.exports = { getAvailability, getAvailabilityByDate, createSlotHold, releaseSlotHold };
+module.exports = { getAvailability, getAvailabilityByDate };

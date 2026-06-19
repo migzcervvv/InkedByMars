@@ -8,12 +8,10 @@ import { endOfMonth, startOfMonth, toDateKey } from '../utils/date'
 export default function BookingPage() {
   const bookingApi = useBooking()
   const navigate = useNavigate()
-  const { holdSlot, loadDate, refreshRange, releaseHold, setRange } = bookingApi
+  const { loadDate, refreshRange, setRange } = bookingApi
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [calendarMonth, setCalendarMonth] = useState(() => startOfMonth(new Date()))
   const [selectedSlot, setSelectedSlot] = useState(null)
-  const [hold, setHold] = useState(null)
-  const [holdLoading, setHoldLoading] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(null)
 
@@ -28,53 +26,17 @@ export default function BookingPage() {
     loadDate(selectedDate)
   }, [loadDate, selectedDate])
 
-  const releaseHoldValue = async (holdValue) => {
-    if (!holdValue?.holdToken) return
-    await releaseHold({
-      date: holdValue.date,
-      time: holdValue.time,
-      holdToken: holdValue.holdToken,
-    })
-  }
-
-  const releaseCurrentHold = () => releaseHoldValue(hold)
-
   const handleDateChange = (date) => {
-    const previousHold = hold
-
     setSelectedDate(date)
     setCalendarMonth(startOfMonth(date))
     setSelectedSlot(null)
-    setHold(null)
     setSubmitError(null)
-
-    void releaseHoldValue(previousHold)
   }
 
-  const handleSlotChange = async (time) => {
-    if (time === selectedSlot || holdLoading) return
-
-    setHoldLoading(time)
+  const handleSlotChange = (time) => {
+    if (time === selectedSlot) return
     setSubmitError(null)
-
-    try {
-      await releaseCurrentHold()
-      const nextHold = await holdSlot({
-        date: toDateKey(selectedDate),
-        time,
-      })
-      setSelectedSlot(time)
-      setHold(nextHold)
-      await loadDate(selectedDate)
-      await refreshRange()
-    } catch (error) {
-      setSelectedSlot(null)
-      setHold(null)
-      setSubmitError(error)
-      await loadDate(selectedDate)
-    } finally {
-      setHoldLoading('')
-    }
+    setSelectedSlot(time)
   }
 
   const handleSubmit = async (form) => {
@@ -85,7 +47,6 @@ export default function BookingPage() {
       const { references, source, ...bookingFields } = form
       const result = await bookingApi.submitBooking({
         ...bookingFields,
-        holdToken: hold?.holdToken,
         referenceImages: references.map((reference) => ({
           url: reference.dataUrl,
           publicId: reference.name,
@@ -94,7 +55,6 @@ export default function BookingPage() {
         preferredDate: toDateKey(selectedDate),
         preferredTime: selectedSlot,
       })
-      setHold(null)
       await loadDate(selectedDate)
       await refreshRange()
       navigate('/booking/confirmation', { state: { booking: result } })
@@ -126,7 +86,6 @@ export default function BookingPage() {
               selectedSlot={selectedSlot}
               loading={bookingApi.dateLoading}
               rangeLoading={bookingApi.loading}
-              holdLoading={holdLoading}
               onDateChange={handleDateChange}
               onMonthChange={setCalendarMonth}
               onSlotChange={handleSlotChange}
@@ -141,7 +100,6 @@ export default function BookingPage() {
             <BookingForm
               selectedDate={selectedDate}
               selectedSlot={selectedSlot}
-              hold={hold}
               onSubmit={handleSubmit}
               submitting={submitting}
             />

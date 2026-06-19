@@ -61,23 +61,12 @@ export function BookingDetailModal({
             label="When"
             value={`${formatDisplayDate(booking.preferredDate)} at ${formatDisplayTime(booking.preferredTime)}`}
           />
-          <Info label="Contact" value={`${booking.email} / ${booking.phone}`} />
+          <Info
+            label="Contact"
+            value={`${booking.email} / ${booking.phone} / ${booking.instagramHandle}`}
+          />
           <Info label="Placement" value={booking.tattooPlacement} />
           <Info label="Size" value={booking.tattooSize} />
-        </div>
-
-        <div className="mt-5 border border-ink/10 bg-white/45 p-4">
-          <p className="font-mono text-[0.68rem] uppercase tracking-[0.16em] text-red">
-            Idea
-          </p>
-          <p className="mt-2 font-body text-2xl leading-tight text-ink">
-            {booking.tattooIdea}
-          </p>
-          {booking.notes && (
-            <p className="mt-3 whitespace-pre-wrap font-body text-xl leading-tight text-ash">
-              {booking.notes}
-            </p>
-          )}
         </div>
 
         {references.length > 0 && (

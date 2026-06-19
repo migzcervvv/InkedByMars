@@ -207,7 +207,33 @@ const notificationService = {
       to: booking.email,
       subject: "Booking Received",
       text: `Hi ${booking.clientName}, we received your booking hold for ${booking.preferredDate} at ${booking.preferredTime}. This time is temporarily reserved until admin review.`,
-      html: `<p>Hi ${escapeHtml(booking.clientName)},</p><p>Your selected time on <strong>${escapeHtml(booking.preferredDate)}</strong> at <strong>${escapeHtml(booking.preferredTime)}</strong> is temporarily reserved until admin review.</p>`,
+      html: `
+        <p>Hi <strong>${escapeHtml(booking.clientName)}</strong>,</p>
+
+        <p>
+          Your booking request has been received for
+          <strong>${escapeHtml(booking.preferredDate)}</strong>
+          at
+          <strong>${escapeHtml(booking.preferredTime)}</strong>.
+        </p>
+
+        <p>
+          To confirm your appointment, please send your required deposit to
+          <strong>@inkedbymars</strong> on instagram and include a screenshot of this email
+          as proof of your booking.
+        </p>
+
+        <p>
+          Your appointment will be held for <strong>24 hours only</strong>.
+          If payment is not received within that period, the reservation will
+          be automatically cancelled and the slot may be made available to
+          other clients.
+        </p>
+
+        <p>
+          Thank you, and we look forward to our session with you!
+        </p>
+      `,
     });
   },
 
@@ -216,8 +242,42 @@ const notificationService = {
     await sendEmail({
       to: booking.email,
       subject: "Booking Confirmed",
-      text: `Hi ${booking.clientName}, your booking on ${booking.preferredDate} at ${booking.preferredTime}${endText} is confirmed.`,
-      html: `<p>Hi ${escapeHtml(booking.clientName)},</p><p>Your booking on <strong>${escapeHtml(booking.preferredDate)}</strong> at <strong>${escapeHtml(`${booking.preferredTime}${endText}`)}</strong> is confirmed.</p>`,
+      text: `Hi ${booking.clientName},
+
+            Great news! Your appointment has been confirmed.
+
+            Booking Details:
+            - Date: ${booking.preferredDate}
+            - Time: ${booking.preferredTime}${endText}
+
+            Please arrive on time and come prepared for your session. If you have any questions or need to discuss your appointment, feel free to contact us.
+
+            Thank you for choosing Inked by Mars. We look forward to seeing you!`,
+      html: `
+        <p>Hi <strong>${escapeHtml(booking.clientName)}</strong>,</p>
+
+        <p>
+          Great news! Your appointment has been <strong>confirmed</strong>.
+        </p>
+
+        <p><strong>Booking Details</strong></p>
+
+        <ul>
+          <li><strong>Date:</strong> ${escapeHtml(booking.preferredDate)}</li>
+          <li><strong>Time:</strong> ${escapeHtml(`${booking.preferredTime}${endText}`)}</li>
+        </ul>
+
+        <p>
+          Please don't be late on your scheduled appointment. I'll only have 15 mins grace period for waiting. If you're than 15 mins late,
+           your appointment will be cancelled or rescheduled on a later time of the day or another date. 
+           Deposit will not be refunded and you will be charged with an additional Php 200.00
+        </p>
+
+        <p>
+          Thank you for choosing <strong>Inked by Mars</strong>. We look forward
+          to seeing you!
+        </p>
+      `,
     });
   },
 
@@ -225,8 +285,41 @@ const notificationService = {
     await sendEmail({
       to: booking.email,
       subject: "Booking Cancelled",
-      text: `Hi ${booking.clientName}, your booking on ${booking.preferredDate} at ${booking.preferredTime} has been cancelled.`,
-      html: `<p>Hi ${escapeHtml(booking.clientName)},</p><p>Your booking on <strong>${escapeHtml(booking.preferredDate)}</strong> at <strong>${escapeHtml(booking.preferredTime)}</strong> has been cancelled.</p>`,
+      text: `Hi ${booking.clientName},
+
+          We're writing to let you know that your appointment has been cancelled.
+
+          Cancelled Booking:
+          - Date: ${booking.preferredDate}
+          - Time: ${booking.preferredTime}
+
+          If you would still like to book a session, you're welcome to submit a new booking request at any time.
+
+          Thank you for your understanding.`,
+      html: `
+        <p>Hi <strong>${escapeHtml(booking.clientName)}</strong>,</p>
+
+        <p>
+          We're writing to let you know that your appointment has been
+          <strong>cancelled</strong>.
+        </p>
+
+        <p><strong>Cancelled Booking</strong></p>
+
+        <ul>
+          <li><strong>Date:</strong> ${escapeHtml(booking.preferredDate)}</li>
+          <li><strong>Time:</strong> ${escapeHtml(booking.preferredTime)}</li>
+        </ul>
+
+        <p>
+          If you would still like to schedule a session, you are welcome to
+          submit a new booking request at any time.
+        </p>
+
+        <p>
+          Thank you for your understanding.
+        </p>
+      `,
     });
   },
 };

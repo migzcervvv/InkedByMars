@@ -47,7 +47,7 @@ export function BookingTable({ bookings, onSelect }) {
                 </span>
               </div>
               <p className="mt-3 line-clamp-3 font-body text-xl leading-tight text-ash">
-                {booking.tattooIdea}
+                {booking.instagramHandle}
               </p>
             </article>
           ))}
@@ -59,7 +59,7 @@ export function BookingTable({ bookings, onSelect }) {
             <tr>
               <th className="px-4 py-3">Client</th>
               <th className="px-4 py-3">Date</th>
-              <th className="px-4 py-3">Tattoo</th>
+              <th className="px-4 py-3">IG Handle</th>
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3 text-right">Open</th>
             </tr>
@@ -82,8 +82,8 @@ export function BookingTable({ bookings, onSelect }) {
                     {formatDisplayTime(booking.preferredTime)}
                   </span>
                 </td>
-                <td className="max-w-xs px-4 py-4 font-body text-xl leading-tight text-ash">
-                  {booking.tattooIdea}
+                <td className="max-w-xs px-4 py-4 font-body text-md leading-tight text-ash">
+                  {booking.instagramHandle}
                 </td>
                 <td className="px-4 py-4">
                   <BookingStatusBadge status={booking.status} />

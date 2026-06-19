@@ -11,7 +11,7 @@ const initial = {
   email: "",
   phone: "",
   source: "",
-  tattooIdea: "",
+  instagramHandle: "",
   tattooPlacement: "",
   tattooSize: "",
   notes: "",
@@ -21,7 +21,6 @@ const initial = {
 export function BookingForm({
   selectedDate,
   selectedSlot,
-  hold,
   onSubmit,
   submitting,
 }) {
@@ -33,11 +32,11 @@ export function BookingForm({
     () => [
       {
         label: "Your Info",
-        required: ["clientName", "email", "phone", "source"],
+        required: ["clientName", "email", "phone", "instagramHandle"],
       },
       {
         label: "Your Tattoo",
-        required: ["tattooIdea", "tattooPlacement", "tattooSize"],
+        required: ["tattooPlacement", "tattooSize"],
       },
       { label: "Review", required: [] },
     ],
@@ -83,7 +82,6 @@ export function BookingForm({
     }
   };
 
-
   if (!selectedSlot) {
     return (
       <section className="booking-panel flex min-h-[420px] items-center justify-center text-center">
@@ -115,12 +113,6 @@ export function BookingForm({
           {selectedSlot}
         </p>
       </div>
-      {hold && (
-        <div className="mb-5 border border-[#a66a18]/40 bg-[#d49a38]/20 p-3 text-sm text-ink">
-          <p className="font-semibold">Your booking is pending.</p>
-        </div>
-      )}
-
       <AnimatePresence mode="wait">
         <motion.div
           key={step}
@@ -155,27 +147,18 @@ export function BookingForm({
                 error={errors.phone}
                 onChange={setField}
               />
-              <Select
-                label="How did you find us?"
-                name="source"
-                value={form.source}
-                error={errors.source}
+              <Field
+                label="What is your instagram handle?"
+                name="instagramHandle"
+                value={form.instagramHandle}
+                error={errors.instagramHandle}
                 onChange={setField}
-                options={["Instagram", "Referral", "Google", "Walk-in"]}
               />
             </>
           )}
 
           {step === 1 && (
             <>
-              <Select
-                label="Tattoo style"
-                name="tattooIdea"
-                value={form.tattooIdea}
-                error={errors.tattooIdea}
-                onChange={setField}
-                options={tattooStyles}
-              />
               <Field
                 label="Placement on body"
                 name="tattooPlacement"
@@ -227,7 +210,7 @@ export function BookingForm({
                 </div>
               )}
               <label className="field-label">
-                Additional notes
+                Kindly specify the details of the tattoo you have in mind :)
                 <textarea
                   className="field-input min-h-28 resize-none"
                   value={form.notes}
@@ -248,11 +231,11 @@ export function BookingForm({
                 <Summary label="Artist" value="InkedByMars" />
                 <Summary
                   label="Client"
-                  value={`${form.clientName} / ${form.email} / ${form.phone}`}
+                  value={`${form.clientName} - ${form.instagramHandle} / ${form.email} / ${form.phone}`}
                 />
                 <Summary
                   label="Tattoo"
-                  value={`${form.tattooIdea}, ${form.tattooSize}, ${form.tattooPlacement}`}
+                  value={`${form.tattooSize}, ${form.tattooPlacement}`}
                 />
                 <Summary label="Notes" value={form.notes || "No notes added"} />
                 <Summary
@@ -283,7 +266,7 @@ export function BookingForm({
           </Button>
         ) : (
           <Button onClick={() => onSubmit(form)} disabled={submitting}>
-            {submitting ? "Submitting..." : "Submit Hold"}
+            {submitting ? "Submitting..." : "Submit Request"}
           </Button>
         )}
       </div>

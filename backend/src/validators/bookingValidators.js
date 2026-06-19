@@ -66,12 +66,6 @@ const createBookingValidators = [
     .isLength({ max: 1000 })
     .withMessage('Notes cannot exceed 1000 characters'),
 
-  body('holdToken')
-    .optional()
-    .trim()
-    .isUUID()
-    .withMessage('Invalid hold token'),
-
   body('referenceImages')
     .optional()
     .isArray({ max: 4 })

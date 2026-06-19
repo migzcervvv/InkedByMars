@@ -1,12 +1,9 @@
 'use strict';
 
 const dayjs = require('dayjs');
-const { randomUUID } = require('crypto');
 const Schedule = require('../models/Schedule');
 const { DEFAULT_TIME_SLOTS, SLOT_STATUS, DAY_STATUS } = require('../config/constants');
 const availabilitySettingsService = require('./availabilitySettingsService');
-
-const CLIENT_HOLD_PREFIX = 'client-hold:';
 
 /**
  * Fetch or create a schedule document for a given date string (YYYY-MM-DD).
@@ -112,123 +109,6 @@ const isSlotBookable = (schedule, time) => {
   }
 
   return slot.status === SLOT_STATUS.AVAILABLE;
-};
-
-const createClientHold = async (date, time, expiryMinutes = 30) => {
-  if (await availabilitySettingsService.isDateBlocked(date)) return null;
-
-  const schedule = await getOrCreateSchedule(date);
-  const slot = findSlot(schedule, time);
-  if (!slot) return null;
-
-  const now = new Date();
-  if (schedule.dayStatus !== DAY_STATUS.OPEN) return null;
-  if (
-    slot.status !== SLOT_STATUS.AVAILABLE &&
-    !(slot.status === SLOT_STATUS.ON_HOLD && slot.holdExpiresAt && new Date(slot.holdExpiresAt) <= now)
-  ) {
-    return null;
-  }
-
-  const holdToken = randomUUID();
-  const holdExpiresAt = dayjs().add(expiryMinutes, 'minute').toDate();
-  const reason = `${CLIENT_HOLD_PREFIX}${holdToken}`;
-
-  const result = await Schedule.updateOne(
-    {
-      _id: schedule._id,
-      dayStatus: DAY_STATUS.OPEN,
-      timeSlots: {
-        $elemMatch: {
-          time,
-          $or: [
-            { status: SLOT_STATUS.AVAILABLE },
-            { status: SLOT_STATUS.ON_HOLD, holdExpiresAt: { $lte: now } },
-          ],
-        },
-      },
-    },
-    {
-      $set: {
-        'timeSlots.$.status': SLOT_STATUS.ON_HOLD,
-        'timeSlots.$.bookingId': null,
-        'timeSlots.$.holdExpiresAt': holdExpiresAt,
-        'timeSlots.$.reason': reason,
-      },
-    }
-  );
-
-  if (result.modifiedCount !== 1) return null;
-
-  return {
-    holdToken,
-    holdExpiresAt,
-    date,
-    time,
-  };
-};
-
-const releaseClientHold = async ({ date, time, holdToken }) => {
-  if (!holdToken) return false;
-
-  const schedule = await Schedule.findOne({ date });
-  if (!schedule) return false;
-
-  const result = await Schedule.updateOne(
-    {
-      _id: schedule._id,
-      timeSlots: {
-        $elemMatch: {
-          time,
-          status: SLOT_STATUS.ON_HOLD,
-          bookingId: null,
-          reason: `${CLIENT_HOLD_PREFIX}${holdToken}`,
-        },
-      },
-    },
-    {
-      $set: {
-        'timeSlots.$.status': SLOT_STATUS.AVAILABLE,
-        'timeSlots.$.bookingId': null,
-        'timeSlots.$.holdExpiresAt': null,
-        'timeSlots.$.reason': null,
-      },
-    }
-  );
-
-  return result.modifiedCount === 1;
-};
-
-const bindClientHoldToBooking = async ({ schedule, time, holdToken, bookingId, expiryMinutes = 30 }) => {
-  if (await availabilitySettingsService.isDateBlocked(schedule.date)) return null;
-
-  const now = new Date();
-  const holdExpiresAt = dayjs().add(expiryMinutes, 'minute').toDate();
-
-  const result = await Schedule.updateOne(
-    {
-      _id: schedule._id,
-      dayStatus: DAY_STATUS.OPEN,
-      timeSlots: {
-        $elemMatch: {
-          time,
-          status: SLOT_STATUS.ON_HOLD,
-          bookingId: null,
-          reason: `${CLIENT_HOLD_PREFIX}${holdToken}`,
-          holdExpiresAt: { $gt: now },
-        },
-      },
-    },
-    {
-      $set: {
-        'timeSlots.$.bookingId': bookingId,
-        'timeSlots.$.holdExpiresAt': holdExpiresAt,
-        'timeSlots.$.reason': null,
-      },
-    }
-  );
-
-  return result.modifiedCount === 1 ? holdExpiresAt : null;
 };
 
 const holdSlotAtomically = async ({ date, time, bookingId, expiryMinutes = 30 }) => {
@@ -577,15 +457,11 @@ const toPublicAvailability = (schedule) => {
 };
 
 module.exports = {
-  CLIENT_HOLD_PREFIX,
   getOrCreateSchedule,
   findSlot,
   getSlotBoundaryTimes,
   getSlotTimesInRange,
   isSlotBookable,
-  createClientHold,
-  releaseClientHold,
-  bindClientHoldToBooking,
   holdSlotAtomically,
   markSlotBooked,
   blockConfirmedRange,
