@@ -61,15 +61,23 @@ const buildReferenceImageAttachments = (booking) => {
   if (!booking.referenceImages?.length) return [];
   return booking.referenceImages
     .map((image, i) => {
-      const parts = extractBase64Parts(image);
-      if (!parts) return null;
-      const ext = parts.mimeType.split("/")[1] || "jpg";
-      return {
-        filename: `ref-${i}.${ext}`,
-        content: Buffer.from(parts.data, "base64"),
-        contentType: parts.mimeType,
-        cid: `refimage_${i}`,
-      };
+      try {
+        const parts = extractBase64Parts(image);
+        if (!parts) return null;
+        const ext = parts.mimeType.split("/")[1] || "jpg";
+        return {
+          filename: `ref-${i}.${ext}`,
+          content: Buffer.from(parts.data, "base64"),
+          contentType: parts.mimeType,
+          cid: `refimage_${i}`,
+        };
+      } catch (err) {
+        logger.warn("notification.image_attachment_failed", {
+          index: i,
+          error: err.message,
+        });
+        return null;
+      }
     })
     .filter(Boolean);
 };
@@ -194,6 +202,7 @@ const notificationService = {
       subject: adminEmail.subject,
       message: adminEmail.text,
       html: adminEmail.html,
+      attachments: adminEmail.attachments,
     });
   },
 
@@ -205,7 +214,7 @@ const notificationService = {
     });
   },
 
-  async notifyAdmin({ subject, message, html }) {
+  async notifyAdmin({ subject, message, html, attachments }) {
     const emailEnabled = envEnabled(
       "NOTIFICATION_EMAIL_ENABLED",
       this.channels.email.enabled,
@@ -224,6 +233,7 @@ const notificationService = {
           subject,
           text: message,
           html,
+          attachments,
         }),
       );
     }
