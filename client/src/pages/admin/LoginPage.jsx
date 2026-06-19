@@ -9,7 +9,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated, login } = useAuth();
-  const [form, setForm] = useState({ email: "", password: "" });
+  const [form, setForm] = useState({ name: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const fetchUserProfile = useCallback(() => {
@@ -99,15 +99,15 @@ export default function LoginPage() {
         )}
         <div className="mt-6 grid gap-4">
           <label className="grid gap-2 font-mono text-xs uppercase tracking-[0.16em]">
-            Email
+            Name
             <input
               className="border border-cream/20 bg-cream/10 px-4 py-3 font-body text-2xl normal-case tracking-normal text-cream outline-none focus:border-red"
-              type="email"
-              value={form.email}
+              type="text"
+              value={form.name}
               onChange={(event) =>
                 setForm((current) => ({
                   ...current,
-                  email: event.target.value,
+                  name: event.target.value,
                 }))
               }
               required

@@ -1,30 +1,34 @@
-'use strict';
+"use strict";
 
-const Admin = require('../models/Admin');
-const AppError = require('../utils/AppError');
-const asyncHandler = require('../utils/asyncHandler');
-const { sendOk, sendCreated, sendCookieWithToken } = require('../utils/response');
-const logger = require('../utils/logger');
+const Admin = require("../models/Admin");
+const AppError = require("../utils/AppError");
+const asyncHandler = require("../utils/asyncHandler");
+const {
+  sendOk,
+  sendCreated,
+  sendCookieWithToken,
+} = require("../utils/response");
+const logger = require("../utils/logger");
 
 /**
  * POST /api/auth/login
  * Public
  */
 const login = asyncHandler(async (req, res, next) => {
-  const { email, password } = req.body;
+  const { name, password } = req.body;
 
-  const admin = await Admin.findOne({ email }).select('+password');
+  const admin = await Admin.findOne({ name }).select("+password");
   if (!admin || !(await admin.comparePassword(password))) {
-    logger.warn('auth.login_failed', {
+    logger.warn("auth.login_failed", {
       requestId: req.requestId,
-      email,
+      name,
       ip: req.ip,
     });
-    return next(new AppError('Invalid credentials', 401));
+    return next(new AppError("Invalid credentials", 401));
   }
 
   if (!admin.isActive) {
-    return next(new AppError('Account is deactivated', 403));
+    return next(new AppError("Account is deactivated", 403));
   }
 
   admin.lastLogin = new Date();
@@ -32,22 +36,26 @@ const login = asyncHandler(async (req, res, next) => {
 
   const token = sendCookieWithToken(res, admin);
 
-  logger.info('auth.login_success', {
+  logger.info("auth.login_success", {
     requestId: req.requestId,
     adminId: admin._id.toString(),
-    email: admin.email,
+    name: admin.name,
     role: admin.role,
   });
 
-  sendOk(res, {
-    token,
-    admin: {
-      id: admin._id,
-      name: admin.name,
-      email: admin.email,
-      role: admin.role,
+  sendOk(
+    res,
+    {
+      token,
+      admin: {
+        id: admin._id,
+        name: admin.name,
+        email: admin.email,
+        role: admin.role,
+      },
     },
-  }, 'Login successful');
+    "Login successful",
+  );
 });
 
 /**
@@ -59,29 +67,33 @@ const register = asyncHandler(async (req, res, next) => {
 
   const existing = await Admin.findOne({ email });
   if (existing) {
-    return next(new AppError('An admin with this email already exists', 409));
+    return next(new AppError("An admin with this email already exists", 409));
   }
 
   const admin = await Admin.create({ name, email, password, role });
 
   const token = sendCookieWithToken(res, admin);
 
-  logger.info('auth.admin_registered', {
+  logger.info("auth.admin_registered", {
     requestId: req.requestId,
     createdAdminId: admin._id.toString(),
     createdBy: req.admin?._id?.toString() || null,
     role: admin.role,
   });
 
-  sendCreated(res, {
-    token,
-    admin: {
-      id: admin._id,
-      name: admin.name,
-      email: admin.email,
-      role: admin.role,
+  sendCreated(
+    res,
+    {
+      token,
+      admin: {
+        id: admin._id,
+        name: admin.name,
+        email: admin.email,
+        role: admin.role,
+      },
     },
-  }, 'Admin account created');
+    "Admin account created",
+  );
 });
 
 /**
@@ -89,17 +101,17 @@ const register = asyncHandler(async (req, res, next) => {
  * Protected
  */
 const logout = asyncHandler(async (req, res, next) => {
-  res.cookie('token', 'none', {
+  res.cookie("token", "none", {
     expires: new Date(Date.now() + 10 * 1000),
     httpOnly: true,
   });
 
-  logger.info('auth.logout', {
+  logger.info("auth.logout", {
     requestId: req.requestId,
     adminId: req.admin?._id?.toString() || null,
   });
 
-  sendOk(res, {}, 'Logged out successfully');
+  sendOk(res, {}, "Logged out successfully");
 });
 
 /**
