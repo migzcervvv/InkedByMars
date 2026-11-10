@@ -1,0 +1,26 @@
+import { useEffect } from 'react'
+import { gsap } from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
+
+gsap.registerPlugin(ScrollTrigger)
+
+export function useStudioMotion(scope) {
+  useEffect(() => {
+    const media = gsap.matchMedia()
+    media.add('(prefers-reduced-motion: no-preference)', () => {
+      const context = gsap.context(() => {
+        gsap.from('[data-hero-line]', { y: 30, opacity: 0.25, stagger: 0.09, duration: 0.8, ease: 'power3.out' })
+        gsap.to('[data-parallax]', { yPercent: -8, ease: 'none', scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: 0.25 } })
+        gsap.from('[data-seal]', { rotation: -18, scale: 1.1, duration: 1.2, ease: 'power3.out' })
+        gsap.utils.toArray('[data-reveal]').forEach(element => {
+          gsap.from(element, { y: 28, opacity: 0.85, duration: 0.65, ease: 'power3.out', scrollTrigger: { trigger: element, start: 'top 98%', once: true } })
+        })
+        gsap.utils.toArray('[data-stencil]').forEach(element => {
+          gsap.from(element, { clipPath: 'inset(0 0 12% 0)', scale: 1.025, duration: 1.1, ease: 'power3.out', scrollTrigger: { trigger: element, start: 'top 94%', once: true } })
+        })
+      }, scope)
+      return () => context.revert()
+    })
+    return () => media.revert()
+  }, [scope])
+}

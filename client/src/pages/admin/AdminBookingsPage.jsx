@@ -169,7 +169,7 @@ export default function AdminBookingsPage() {
 
       <div className="flex flex-wrap items-center justify-between gap-3 border border-[#a66a18]/30 bg-[#d49a38]/15 p-4">
         <div>
-          <p className="font-mono text-[0.68rem] uppercase tracking-[0.16em] text-[#7a5410]">Pending holds</p>
+          <p className="font-body text-[0.68rem] uppercase tracking-[0.16em] text-[#7a5410]">Pending holds</p>
           <p className="mt-1 font-body text-3xl leading-none text-ink">{pendingHoldCount} on this page</p>
         </div>
         <Button
@@ -184,11 +184,11 @@ export default function AdminBookingsPage() {
         </Button>
       </div>
 
-      {error && <div className="border border-red bg-red/10 p-4 font-mono text-xs uppercase tracking-[0.14em] text-red">{error.message}</div>}
+      {error && <div className="border border-red bg-red/10 p-4 font-body text-xs uppercase tracking-[0.14em] text-red">{error.message}</div>}
       {loading ? <Loader label="Loading bookings" /> : <BookingTable bookings={bookings} onSelect={openBooking} />}
 
       {pagination && (
-        <div className="flex items-center justify-between gap-3 font-mono text-xs uppercase tracking-[0.14em] text-ash">
+        <div className="flex items-center justify-between gap-3 font-body text-xs uppercase tracking-[0.14em] text-ash">
           <span>Page {pagination.page} of {pagination.pages || 1}</span>
           <div className="flex gap-2">
             <Button variant="ghost" disabled={filters.page <= 1} onClick={() => goToPage(filters.page - 1)}>Prev</Button>

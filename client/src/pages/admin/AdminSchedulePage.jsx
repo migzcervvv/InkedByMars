@@ -63,7 +63,7 @@ export default function AdminSchedulePage() {
   return (
     <section className="grid gap-5 p-5 lg:grid-cols-[360px_1fr] lg:p-8">
       <aside className="border border-ink/10 bg-white/55 p-5">
-        <p className="font-mono text-xs uppercase tracking-[0.16em] text-red">Calendar management</p>
+        <p className="font-body text-xs uppercase tracking-[0.16em] text-red">Calendar management</p>
         <h2 className="mt-2 font-display text-4xl italic">Daily Schedule</h2>
         <div className="mt-6 grid gap-4">
           <label className="field-label">
@@ -81,17 +81,17 @@ export default function AdminSchedulePage() {
       </aside>
 
       <div className="border border-ink/10 bg-white/55 p-5">
-        {error && <div className="mb-4 border border-red bg-red/10 p-3 font-mono text-xs uppercase tracking-[0.14em] text-red">{error.message}</div>}
+        {error && <div className="mb-4 border border-red bg-red/10 p-3 font-body text-xs uppercase tracking-[0.14em] text-red">{error.message}</div>}
         {loading ? (
           <Loader label="Loading schedule" />
         ) : (
           <>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="font-mono text-xs uppercase tracking-[0.16em] text-ash">{schedule?.date}</p>
+                <p className="font-body text-xs uppercase tracking-[0.16em] text-ash">{schedule?.date}</p>
                 <h2 className="font-display text-4xl italic">{schedule?.dayStatus}</h2>
               </div>
-              {schedule?.closureReason && <p className="font-mono text-xs uppercase tracking-[0.14em] text-red">{schedule.closureReason}</p>}
+              {schedule?.closureReason && <p className="font-body text-xs uppercase tracking-[0.14em] text-red">{schedule.closureReason}</p>}
             </div>
             <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
               {slots.map((slot) => (

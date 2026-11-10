@@ -7,23 +7,16 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview",
-    "mock-api": "json-server --watch src/data/db.json --port 3001"
+    "test": "node --test src/features/booking/bookingModel.test.js src/components/availability/calendarModel.test.js src/api/requestPolicy.test.js",
+    "preview": "vite preview"
   },
   "dependencies": {
-    "@tailwindcss/postcss": "^4.3.0",
     "@tailwindcss/vite": "^4.3.0",
-    "autoprefixer": "^10.5.0",
     "axios": "^1.16.0",
-    "framer-motion": "^12.38.0",
     "gsap": "^3.15.0",
-    "json-server": "^1.0.0-beta.15",
     "lucide-react": "^1.14.0",
-    "postcss": "^8.5.14",
     "react": "^18.3.1",
-    "react-day-picker": "^10.0.0",
     "react-dom": "^18.3.1",
-    "react-intersection-observer": "^10.0.3",
     "react-router-dom": "^6.30.2",
     "tailwindcss": "^4.3.0"
   },

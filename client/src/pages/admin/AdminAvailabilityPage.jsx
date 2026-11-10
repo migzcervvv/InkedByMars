@@ -20,10 +20,6 @@ export default function AdminAvailabilityPage() {
 
   useEffect(() => {
     let active = true
-    setLoading(true)
-    setError(null)
-    setMessage('')
-
     scheduleApi.getBlockedDates(currentMonth)
       .then((data) => {
         if (active) setBlockedDates(data.blockedDates || [])
@@ -52,6 +48,13 @@ export default function AdminAvailabilityPage() {
     setMessage('')
   }
 
+  const changeMonth = (date) => {
+    setLoading(true)
+    setError(null)
+    setMessage('')
+    setMonth(date)
+  }
+
   const save = async () => {
     setSaving(true)
     setError(null)
@@ -71,20 +74,20 @@ export default function AdminAvailabilityPage() {
   return (
     <section className="grid gap-5 p-5 lg:p-8">
       <div className="border border-ink/10 bg-white/55 p-4">
-        <p className="font-mono text-xs uppercase tracking-[0.16em] text-red">Blocked Dates</p>
-        <h1 className="mt-2 font-display text-4xl font-black italic leading-none text-ink">Monthly day selector</h1>
+        <p className="font-body text-xs uppercase tracking-[0.16em] text-red">Blocked Dates</p>
+        <h2 className="mt-2 font-display text-4xl font-black italic leading-none text-ink">Blocked studio days</h2>
         <p className="mt-3 max-w-2xl font-body text-2xl leading-tight text-ash">
           Select individual dates to block for the displayed month, then save the month.
         </p>
       </div>
 
       {error && (
-        <div className="border border-red bg-red/10 p-4 font-mono text-xs uppercase tracking-[0.14em] text-red">
+        <div className="border border-red bg-red/10 p-4 font-body text-xs uppercase tracking-[0.14em] text-red">
           {error.message || 'Unable to update blocked dates.'}
         </div>
       )}
       {message && (
-        <div className="border border-ink/15 bg-cream/50 p-4 font-mono text-xs uppercase tracking-[0.14em] text-ink">
+        <div className="border border-ink/15 bg-cream/50 p-4 font-body text-xs uppercase tracking-[0.14em] text-ink">
           {message}
         </div>
       )}
@@ -98,15 +101,15 @@ export default function AdminAvailabilityPage() {
             blockedDates={blockedDates}
             selectedDate={null}
             onDateSelect={toggleDate}
-            onMonthChange={setMonth}
+            onMonthChange={changeMonth}
           />
 
           <aside className="border border-ink/10 bg-white/55 p-5">
-            <p className="font-mono text-xs uppercase tracking-[0.16em] text-red">{currentMonth}</p>
+            <p className="font-body text-xs uppercase tracking-[0.16em] text-red">{currentMonth}</p>
             <h2 className="mt-2 font-display text-3xl italic text-ink">{blockedDates.length} blocked</h2>
             <div className="mt-5 flex flex-wrap gap-2">
               {blockedDates.length ? blockedDates.map((date) => (
-                <span key={date} className="border border-leather/25 bg-leather/10 px-3 py-2 font-mono text-[0.68rem] uppercase tracking-[0.12em] text-ink">
+                <span key={date} className="border border-leather/25 bg-leather/10 px-3 py-2 font-body text-[0.68rem] uppercase tracking-[0.12em] text-ink">
                   {date}
                 </span>
               )) : (

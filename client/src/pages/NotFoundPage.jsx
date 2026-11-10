@@ -1,16 +1,3 @@
 import { Button } from '../components/ui/Button'
-
-export default function NotFoundPage() {
-  return (
-    <section className="grid min-h-screen place-items-center bg-leather px-6 text-center text-cream">
-      <div>
-        <p className="eyebrow text-red">404</p>
-        <h1 className="font-display text-7xl italic">Page Not Found</h1>
-        <p className="mx-auto mt-5 max-w-md font-body text-3xl italic leading-tight text-cream/70">
-          This page doesn't exist. Head back home?
-        </p>
-        <Button to="/" className="mt-8">Home</Button>
-      </div>
-    </section>
-  )
-}
+import { usePageMeta } from '../hooks/usePageMeta'
+export default function NotFoundPage() { usePageMeta('Page not found', 'This page could not be found. Return to Inked by Mars to explore the work or request an appointment.'); return <section className="frame recovery-page"><h1>Lost in the ink?</h1><p>This page isn’t here. The studio, the work, and booking are a click away.</p><Button to="/">Back home</Button></section> }

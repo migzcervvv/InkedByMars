@@ -9,7 +9,7 @@ export function ProtectedRoute({ roles }) {
 
   if (booting) {
     return (
-      <div className="grid min-h-screen place-items-center bg-cream">
+      <div className="grid min-h-svh place-items-center bg-cream">
         <Loader label="Checking studio keys" />
       </div>
     )

@@ -3,117 +3,78 @@ import { publicApi } from '../api/publicApi'
 import { addMonths, toDateKey } from '../utils/date'
 
 export function useAvailability(initialStartDate = new Date(), initialEndDate = addMonths(new Date(), 2)) {
-  const [range, setRangeState] = useState({
-    startDate: toDateKey(initialStartDate),
-    endDate: toDateKey(initialEndDate),
-  })
+  const [range, setRangeState] = useState(() => ({ startDate: toDateKey(initialStartDate), endDate: toDateKey(initialEndDate) }))
   const [availability, setAvailability] = useState([])
   const [selectedDateAvailability, setSelectedDateAvailability] = useState(null)
   const [loading, setLoading] = useState(true)
   const [dateLoading, setDateLoading] = useState(false)
-  const [error, setError] = useState(null)
+  const [rangeError, setRangeError] = useState(null)
+  const [dateError, setDateError] = useState(null)
   const rangeRef = useRef(range)
-  const dateRequestId = useRef(0)
+  const rangeRequest = useRef(0)
+  const dateRequest = useRef(0)
+  const dateController = useRef(null)
+  const mounted = useRef(false)
   const { startDate, endDate } = range
 
-  const setRange = useCallback((nextRange) => {
-    const current = rangeRef.current
-    const resolved = typeof nextRange === 'function' ? nextRange(current) : nextRange
-
-    if (
-      current.startDate === resolved.startDate &&
-      current.endDate === resolved.endDate
-    ) {
-      return
-    }
-
-    rangeRef.current = resolved
-    setLoading(true)
-    setError(null)
-    setRangeState(resolved)
+  const setRange = useCallback(nextRange => {
+    const next = typeof nextRange === 'function' ? nextRange(rangeRef.current) : nextRange
+    if (next.startDate === rangeRef.current.startDate && next.endDate === rangeRef.current.endDate) return
+    rangeRef.current = next
+    rangeRequest.current += 1
+    dateRequest.current += 1
+    dateController.current?.abort()
+    setAvailability([]); setSelectedDateAvailability(null); setDateLoading(false); setDateError(null)
+    setLoading(true); setRangeError(null); setRangeState(next)
   }, [])
 
-  const refreshRange = useCallback(async (nextRange = range) => {
-    setLoading(true)
-    setError(null)
-
+  const refreshRange = useCallback(async () => {
+    const requestId = ++rangeRequest.current
+    setLoading(true); setRangeError(null)
     try {
-      const data = await publicApi.getAvailability(nextRange)
+      const data = await publicApi.getAvailability(rangeRef.current)
+      if (!mounted.current || requestId !== rangeRequest.current) return []
       setAvailability(data.availability || [])
       return data.availability || []
-    } catch (nextError) {
-      setError(nextError)
+    } catch (error) {
+      if (mounted.current && requestId === rangeRequest.current) { setAvailability([]); setRangeError(error) }
       return []
-    } finally {
-      setLoading(false)
-    }
-  }, [range])
+    } finally { if (mounted.current && requestId === rangeRequest.current) setLoading(false) }
+  }, [])
 
-  const fetchDate = useCallback(async (date) => {
+  const fetchDate = useCallback(async date => {
     if (!date) return null
-    const requestId = dateRequestId.current + 1
-    dateRequestId.current = requestId
-    setDateLoading(true)
-    setError(null)
-    setSelectedDateAvailability(null)
-
+    dateController.current?.abort()
+    const controller = new AbortController()
+    dateController.current = controller
+    const requestId = ++dateRequest.current
+    setDateLoading(true); setDateError(null); setSelectedDateAvailability(null)
     try {
-      const data = await publicApi.getAvailabilityByDate(date)
-      if (requestId !== dateRequestId.current) return null
+      const data = await publicApi.getAvailabilityByDate(date, { signal: controller.signal })
+      if (!mounted.current || requestId !== dateRequest.current) return null
       setSelectedDateAvailability(data)
       return data
-    } catch (nextError) {
-      if (requestId !== dateRequestId.current) return null
-      if (nextError.isCanceled) return null
-      setError(nextError)
+    } catch (error) {
+      if (mounted.current && !controller.signal.aborted && requestId === dateRequest.current) setDateError(error)
       return null
-    } finally {
-      if (requestId === dateRequestId.current) setDateLoading(false)
-    }
+    } finally { if (mounted.current && requestId === dateRequest.current) setDateLoading(false) }
   }, [])
 
   useEffect(() => {
-    rangeRef.current = { startDate, endDate }
+    mounted.current = true
+    return () => { mounted.current = false; dateController.current?.abort(); dateRequest.current += 1; rangeRequest.current += 1 }
+  }, [])
+
+  useEffect(() => {
     const controller = new AbortController()
-
-    publicApi.getAvailability(
-      { startDate, endDate },
-      { signal: controller.signal },
-    )
-      .then((data) => {
-        setAvailability(data.availability || [])
-      })
-      .catch((nextError) => {
-        if (!nextError.isCanceled && nextError.name !== 'CanceledError' && nextError.code !== 'ERR_CANCELED') {
-          setError(nextError)
-        }
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false)
-      })
-
-    return () => {
-      controller.abort()
-    }
+    const requestId = ++rangeRequest.current
+    publicApi.getAvailability({ startDate, endDate }, { signal: controller.signal })
+      .then(data => { if (!controller.signal.aborted && requestId === rangeRequest.current) setAvailability(data.availability || []) })
+      .catch(error => { if (!controller.signal.aborted && requestId === rangeRequest.current) setRangeError(error) })
+      .finally(() => { if (!controller.signal.aborted && requestId === rangeRequest.current) setLoading(false) })
+    return () => controller.abort()
   }, [startDate, endDate])
 
-  const availabilityByDate = useMemo(() => {
-    return availability.reduce((map, day) => {
-      map[day.date] = day
-      return map
-    }, {})
-  }, [availability])
-
-  return {
-    range,
-    setRange,
-    availability,
-    availabilityByDate,
-    selectedDateAvailability,
-    loading,
-    dateLoading,
-    error,
-    refreshRange,
-    fetchDate,
-  }
+  const availabilityByDate = useMemo(() => Object.fromEntries(availability.map(day => [day.date, day])), [availability])
+  return { range, setRange, availability, availabilityByDate, selectedDateAvailability, loading, dateLoading, rangeError, dateError, error: rangeError || dateError, refreshRange, fetchDate }
 }

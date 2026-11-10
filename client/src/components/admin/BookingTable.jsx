@@ -5,7 +5,7 @@ import { formatDisplayDate, formatDisplayTime } from "../../utils/date";
 export function BookingTable({ bookings, onSelect }) {
   if (!bookings.length) {
     return (
-      <div className="border border-ink/10 bg-white/45 p-8 text-center font-mono text-xs uppercase tracking-[0.16em] text-ash">
+      <div className="border border-ink/10 bg-white/45 p-8 text-center font-body text-xs uppercase tracking-[0.16em] text-ash">
         No bookings match these filters.
       </div>
     );
@@ -26,7 +26,7 @@ export function BookingTable({ bookings, onSelect }) {
                   <p className="font-body text-2xl leading-none text-ink">
                     {booking.clientName}
                   </p>
-                  <p className="mt-1 break-all font-mono text-[0.68rem] text-ash">
+                  <p className="mt-1 break-all font-body text-[0.68rem] text-ash">
                     {booking.email}
                   </p>
                 </div>
@@ -41,7 +41,7 @@ export function BookingTable({ bookings, onSelect }) {
               </div>
               <div className="mt-4 flex flex-wrap items-center gap-2">
                 <BookingStatusBadge status={booking.status} />
-                <span className="font-mono text-[0.68rem] uppercase tracking-[0.1em] text-ash">
+                <span className="font-body text-[0.68rem] uppercase tracking-[0.1em] text-ash">
                   {formatDisplayDate(booking.preferredDate)} at{" "}
                   {formatDisplayTime(booking.preferredTime)}
                 </span>
@@ -54,8 +54,8 @@ export function BookingTable({ bookings, onSelect }) {
       </div>
 
       <div className="hidden overflow-x-auto border border-ink/10 bg-white/55 md:block">
-        <table className="min-w-full border-collapse text-left">
-          <thead className="border-b border-ink/10 bg-ink/5 font-mono text-[0.68rem] uppercase tracking-[0.14em] text-ash">
+        <table className="min-w-full border-collapse text-left" data-ui>
+          <thead className="border-b border-ink/10 bg-ink/5 font-body text-[0.68rem] uppercase tracking-[0.14em] text-ash"> {/* taste-skill-ignore: real administrative table header rule */}
             <tr>
               <th className="px-4 py-3">Client</th>
               <th className="px-4 py-3">Date</th>
@@ -64,18 +64,18 @@ export function BookingTable({ bookings, onSelect }) {
               <th className="px-4 py-3 text-right">Open</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-ink/10">
+          <tbody className="divide-y divide-ink/10"> {/* taste-skill-ignore: real administrative table row rules */}
             {bookings.map((booking) => (
               <tr key={booking._id} className="transition hover:bg-red/5">
                 <td className="px-4 py-4">
                   <p className="font-body text-2xl leading-none text-ink">
                     {booking.clientName}
                   </p>
-                  <p className="mt-1 font-mono text-[0.68rem] text-ash">
+                  <p className="mt-1 font-body text-[0.68rem] text-ash">
                     {booking.email}
                   </p>
                 </td>
-                <td className="px-4 py-4 font-mono text-xs uppercase tracking-[0.1em]">
+                <td className="px-4 py-4 font-body text-xs uppercase tracking-[0.1em]">
                   {formatDisplayDate(booking.preferredDate)}
                   <br />
                   <span className="text-ash">

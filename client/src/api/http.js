@@ -2,6 +2,7 @@ import axios from 'axios'
 import { API_BASE_URL, API_TIMEOUT_MS } from '../config/app'
 import { getStoredToken } from '../lib/storage'
 import { normalizeApiError } from '../utils/errors'
+import { shouldClearAdminSession } from './requestPolicy'
 
 let unauthorizedHandler = null
 const DEBUG_API = import.meta.env.VITE_API_DEBUG === 'true'
@@ -51,7 +52,7 @@ http.interceptors.response.use(
 
     const normalized = normalizeApiError(error)
 
-    if (normalized.status === 401 && unauthorizedHandler) {
+    if (shouldClearAdminSession(normalized.status, config.url) && unauthorizedHandler) {
       unauthorizedHandler(normalized)
     }
 

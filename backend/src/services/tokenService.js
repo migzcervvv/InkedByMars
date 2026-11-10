@@ -5,6 +5,7 @@ const fs = require("fs");
 const path = require("path");
 const logger = require("../utils/logger");
 const AppError = require("../utils/AppError");
+const { normalizeTokenExpiry } = require('../utils/tokenExpiry');
 
 const TOKEN_FILE = path.join(__dirname, "../../.token-store.json");
 const IG_API_VERSION = process.env.IG_API_VERSION || "v25.0";
@@ -46,9 +47,7 @@ function loadTokenData() {
   // Fall back to env vars (survives cold starts if you set them)
   return {
     access_token: process.env.META_ACCESS_TOKEN,
-    expires_at: process.env.INSTAGRAM_TOKEN_EXPIRES_AT
-      ? Number(process.env.INSTAGRAM_TOKEN_EXPIRES_AT)
-      : null,
+    expires_at: normalizeTokenExpiry(process.env.INSTAGRAM_TOKEN_EXPIRES_AT),
   };
 }
 
@@ -188,7 +187,7 @@ function sanitizeParams(params) {
 
 async function graphTokenGet(url, params) {
   try {
-    return await axios.get(url, { params });
+    return await axios.get(url, { params, timeout: 10000 });
   } catch (error) {
     const status = error.response?.status || 502;
     const metaError = error.response?.data?.error || {};

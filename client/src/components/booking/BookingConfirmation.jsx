@@ -1,34 +1,11 @@
-import { motion } from "framer-motion";
-import { Check } from "lucide-react";
-import { Button } from "../ui/Button";
-import { formatDisplayDate } from "../../utils/date";
+import { Check } from 'lucide-react'
+import { studio } from '../../config/studio'
+import { formatDisplayDate, formatDisplayTime } from '../../utils/date'
+import { Button } from '../ui/Button'
 
 export function BookingConfirmation({ booking, onAnother }) {
-  return (
-    <motion.section
-      className="booking-panel flex min-h-[560px] items-center justify-center text-center"
-      initial={{ scale: 0.8, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      transition={{ type: "spring", stiffness: 180, damping: 18 }}
-    >
-      <div className="max-w-md">
-        <div className="mx-auto grid size-20 place-items-center rounded-full bg-red text-cream">
-          <Check size={36} />
-        </div>
-        <h2 className="mt-6 font-display text-6xl italic text-ink">
-          Booking Confirmed!
-        </h2>
-        <p className="mt-6 font-body text-3xl leading-tight text-ash">
-          Your booking is reserved at {formatDisplayDate(booking.preferredDate)}{" "}
-          at {booking.preferredTime}. Please check your email for confirmation
-          and further details.
-        </p>
-        <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-          <Button variant="ghost" onClick={onAnother}>
-            Book Another
-          </Button>
-        </div>
-      </div>
-    </motion.section>
-  );
+  const confirmed = booking.status === 'confirmed'
+  const validDate = /^\d{4}-\d{2}-\d{2}$/.test(booking.preferredDate || '')
+  const validTime = /^\d{2}:\d{2}$/.test(booking.preferredTime || '')
+  return <section className="frame receipt-section" aria-labelledby="receipt-heading"><div className="receipt-mark"><Check size={34} aria-hidden="true" /></div><div><h2 id="receipt-heading">{confirmed ? 'Your session is confirmed.' : 'Request received.'}</h2><p>{confirmed ? 'Your appointment has been confirmed by the studio.' : 'Mars will review your idea and get in touch using the details you provided. Your selected time is a request, not a confirmed appointment.'}</p><dl className="receipt-details"><div><dt>Requested session</dt><dd>{validDate ? formatDisplayDate(booking.preferredDate) : 'Check your request details'}{validTime && ` at ${formatDisplayTime(booking.preferredTime)}`}<br />Philippine time</dd></div><div><dt>Studio</dt><dd>{studio.location}</dd></div><div><dt>Status</dt><dd>{confirmed ? 'Confirmed' : 'Awaiting studio review'}</dd></div></dl><p>Keep the studio’s reply for your appointment details. You can contact <a href={studio.instagram} target="_blank" rel="noreferrer">{studio.instagramHandle}</a> with any questions.</p><div className="receipt-actions"><Button to="/works">Explore the works</Button><Button variant="ghost" onClick={onAnother}>Start another request</Button></div></div></section>
 }

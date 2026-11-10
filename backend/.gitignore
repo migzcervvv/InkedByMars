@@ -1,5 +1,17 @@
-node_modules/
+# Shared dependency, log, cache, and editor rules live in ../.gitignore.
+# Environment values and persisted Instagram tokens must stay local.
 .env
-*.log
+.env.*
+!.env.example
+!.env.*.example
+!.env.sample
+!.env.template
+.token-store.json
+.token-store.json.*
+node_modules/
 dist/
-.DS_Store
+coverage/
+logs/
+*.log
+*.err
+*.local

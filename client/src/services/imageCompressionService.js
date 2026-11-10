@@ -24,7 +24,9 @@
 // ─── Configuration ────────────────────────────────────────────────────────────
 
 /** Maximum allowed output file size in bytes. */
-const MAX_OUTPUT_BYTES = 2 * 1024 * 1024; // 2 MB
+// 540 kB becomes about 720 kB of base64 plus its prefix, below the API's
+// 750,000-character per-image limit. Four references stay below the 8 MB body limit.
+const MAX_OUTPUT_BYTES = 540000;
 
 /** MIME type for all output images. */
 const OUTPUT_MIME = "image/webp";
@@ -257,7 +259,7 @@ const compressToTarget = async (img) => {
     }
 
     if (blob.size <= MAX_OUTPUT_BYTES) {
-      return blob; // ✓ target reached — stop immediately
+      return blob; // Target reached — stop immediately
     }
   }
 
@@ -273,7 +275,7 @@ const compressToTarget = async (img) => {
       }
 
       if (blob.size <= MAX_OUTPUT_BYTES) {
-        return blob; // ✓ target reached
+        return blob; // Target reached
       }
     }
   }
@@ -310,6 +312,9 @@ const compressToTarget = async (img) => {
  * @throws {Error} If the file type is unsupported or decoding fails.
  */
 export const processImage = async (file) => {
+  if (file.size > 20 * 1024 * 1024) {
+    throw new Error(`${file.name}: choose an image smaller than 20 MB.`);
+  }
   // 1. Validate MIME type ─────────────────────────────────────────────────────
   if (!SUPPORTED_TYPES.has(file.type)) {
     throw new Error(
@@ -321,6 +326,7 @@ export const processImage = async (file) => {
   // 2. Fast path: already valid WebP within the size limit ───────────────────
   if (file.type === "image/webp" && file.size <= MAX_OUTPUT_BYTES) {
     const dataUrl = await blobToDataUrl(file);
+    if (dataUrl.length > 750000) throw new Error(`${file.name}: the prepared image is too large.`);
     return {
       name: replaceExtension(file.name, "webp"),
       size: file.size,
@@ -337,6 +343,10 @@ export const processImage = async (file) => {
 
   // 5. Encode to data URL for state storage ──────────────────────────────────
   const dataUrl = await blobToDataUrl(blob);
+
+  if (dataUrl.length > 750000) {
+    throw new Error(`${file.name}: this image could not be made small enough. Choose a smaller image.`);
+  }
 
   return {
     name: replaceExtension(file.name, "webp"),

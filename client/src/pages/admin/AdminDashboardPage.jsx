@@ -50,7 +50,7 @@ export default function AdminDashboardPage() {
               return (
                 <article key={card.key} className="border border-ink/10 bg-white/55 p-5">
                   <div className="flex items-center justify-between gap-4">
-                    <p className="font-mono text-xs uppercase tracking-[0.16em] text-ash">{card.label}</p>
+                    <p className="font-body text-xs uppercase tracking-[0.16em] text-ash">{card.label}</p>
                     <Icon size={20} className="text-red" />
                   </div>
                   <p className="mt-5 font-display text-5xl italic leading-none">{data.stats?.[card.key] || 0}</p>
@@ -65,7 +65,7 @@ export default function AdminDashboardPage() {
                 <div key={booking._id} className="flex flex-wrap items-center justify-between gap-3 border border-ink/10 bg-cream/60 p-4">
                   <div>
                     <p className="font-body text-2xl leading-none">{booking.clientName}</p>
-                    <p className="mt-1 font-mono text-[0.68rem] uppercase tracking-[0.12em] text-ash">
+                    <p className="mt-1 font-body text-[0.68rem] uppercase tracking-[0.12em] text-ash">
                       {formatDisplayDate(booking.preferredDate)} at {formatDisplayTime(booking.preferredTime)}
                     </p>
                   </div>

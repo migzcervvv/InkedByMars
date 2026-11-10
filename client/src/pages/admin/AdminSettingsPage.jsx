@@ -60,7 +60,7 @@ export default function AdminSettingsPage() {
   return (
     <section className="p-5 lg:p-8">
       <div className="max-w-3xl border border-ink/10 bg-white/55 p-5">
-        <p className="font-mono text-xs uppercase tracking-[0.16em] text-red">
+        <p className="font-body text-xs uppercase tracking-[0.16em] text-red">
           Schedule Settings
         </p>
 
@@ -138,13 +138,13 @@ export default function AdminSettingsPage() {
         </div>
 
         {message && (
-          <p className="mt-5 border border-ink/10 bg-cream/80 p-3 font-mono text-xs uppercase tracking-[0.12em] text-ash">
+          <p className="mt-5 border border-ink/10 bg-cream/80 p-3 font-body text-xs uppercase tracking-[0.12em] text-ash">
             {message}
           </p>
         )}
 
         {error && (
-          <p className="mt-5 border border-red bg-red/10 p-3 font-mono text-xs uppercase tracking-[0.12em] text-red">
+          <p className="mt-5 border border-red bg-red/10 p-3 font-body text-xs uppercase tracking-[0.12em] text-red">
             {error}
           </p>
         )}
