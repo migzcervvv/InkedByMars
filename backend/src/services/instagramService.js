@@ -1,14 +1,13 @@
-const axios = require("axios");
+const axios = require("../bindings/http");
 const { getValidToken } = require("./tokenService");
 const logger = require("../utils/logger");
 const AppError = require("../utils/AppError");
 
-const IG_API_VERSION = process.env.IG_API_VERSION || "v25.0";
-const GRAPH_HOST = (process.env.GRAPH_BASE || "https://graph.facebook.com")
+const apiVersion = () => require('../bindings/runtime').env().IG_API_VERSION || "v25.0";
+const graphBase = () => ((require('../bindings/runtime').env().GRAPH_BASE || "https://graph.facebook.com")
   .replace(/\/+$/, "")
-  .replace(/\/v\d+\.\d+$/, "");
-const GRAPH_BASE = `${GRAPH_HOST}/${IG_API_VERSION}`;
-const IG_USER_ID = process.env.INSTAGRAM_USER_ID;
+  .replace(/\/v\d+\.\d+$/, "")) + "/" + apiVersion();
+const userId = () => require('../bindings/runtime').env().INSTAGRAM_USER_ID;
 const CACHE_TTL_MS = 10 * 60 * 1000;
 const MAX_RETRIES = 2;
 
@@ -78,6 +77,7 @@ async function graphGet(url, params) {
         url: getSanitizedUrl(url, params),
         status,
         responseBody: error.response?.data || null,
+        transport: { name: error.name, code: error.code || null, causeCode: error.cause?.code || null, upstreamStatus: error.upstreamStatus || null },
         attempt: attempt + 1,
       });
 
@@ -133,7 +133,7 @@ function setCachedPosts(limit, data) {
 }
 
 async function getInstagramPosts(limit = 12, cursor = null) {
-  if (!IG_USER_ID) {
+  if (!userId()) {
     throw new AppError(
       "Instagram User ID is not configured.",
       500,
@@ -154,9 +154,9 @@ async function getInstagramPosts(limit = 12, cursor = null) {
     params.after = cursor;
   }
 
-  const url = `${GRAPH_BASE}/${IG_USER_ID}/media`;
+  const url = `${graphBase()}/${userId()}/media`;
   logger.info("Fetching Instagram posts", {
-    version: IG_API_VERSION,
+    version: apiVersion(),
     limit,
     hasCursor: !!cursor,
   });
@@ -206,7 +206,7 @@ async function getInstagramPosts(limit = 12, cursor = null) {
 }
 
 async function getCarouselChildren(mediaId) {
-  const url = `${GRAPH_BASE}/${mediaId}/children`;
+  const url = `${graphBase()}/${mediaId}/children`;
   const response = await graphGet(url, {
     fields: "id,media_type,media_url,thumbnail_url",
   });
@@ -215,7 +215,7 @@ async function getCarouselChildren(mediaId) {
 }
 
 async function getInstagramProfile() {
-  const url = `${GRAPH_BASE}/${IG_USER_ID}`;
+  const url = `${graphBase()}/${userId()}`;
   const response = await graphGet(url, {
     fields: PROFILE_FIELDS,
   });
@@ -224,7 +224,7 @@ async function getInstagramProfile() {
 }
 
 async function getGraphMe() {
-  const response = await graphGet(`${GRAPH_BASE}/me`, { fields: "id,name" });
+  const response = await graphGet(`${graphBase()}/me`, { fields: "id,name" });
   return response.data;
 }
 
@@ -267,6 +267,6 @@ module.exports = {
   getCarouselChildren,
   getInstagramProfile,
   getGraphMe,
-  IG_API_VERSION,
-  GRAPH_BASE,
+  get IG_API_VERSION() { return apiVersion(); },
+  get GRAPH_BASE() { return graphBase(); },
 };

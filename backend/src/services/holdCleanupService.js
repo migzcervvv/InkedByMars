@@ -41,31 +41,11 @@ const expireStaleBookingHolds = async () => {
       preferredTime: booking.preferredTime,
     });
 
-    notificationService.notifyAdminBookingExpired(booking).catch(console.error);
+    await notificationService.notifyAdminBookingExpired(booking);
   }
 
   await scheduleService.expireStaleHolds();
   return bookings.length;
 };
 
-const startHoldCleanupJob = ({ intervalMs = 60 * 1000 } = {}) => {
-  const run = () => {
-    expireStaleBookingHolds().catch((error) => {
-      logger.error('booking.hold_cleanup_failed', {
-        message: error.message,
-        stack: error.stack,
-      });
-    });
-  };
-
-  const timer = setInterval(run, intervalMs);
-  timer.unref?.();
-  run();
-
-  return timer;
-};
-
-module.exports = {
-  expireStaleBookingHolds,
-  startHoldCleanupJob,
-};
+module.exports = { expireStaleBookingHolds };

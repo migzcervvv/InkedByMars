@@ -49,14 +49,13 @@ const adminSchema = new mongoose.Schema(
 );
 
 // Hash password before saving
-adminSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) return next();
+adminSchema.pre('save', async function () {
+  if (!this.isModified('password')) return;
   const salt = await bcrypt.genSalt(12);
   this.password = await bcrypt.hash(this.password, salt);
   if (!this.isNew) {
     this.passwordChangedAt = Date.now() - 1000;
   }
-  next();
 });
 
 // Compare entered password with stored hash
@@ -68,8 +67,8 @@ adminSchema.methods.comparePassword = async function (enteredPassword) {
 adminSchema.methods.getSignedJwt = function () {
   return jwt.sign(
     { id: this._id, role: this.role },
-    process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRE }
+    require('../bindings/runtime').env().JWT_SECRET,
+    { expiresIn: require('../bindings/runtime').env().JWT_EXPIRE }
   );
 };
 
@@ -82,4 +81,4 @@ adminSchema.methods.changedPasswordAfter = function (jwtIssuedAt) {
   return false;
 };
 
-module.exports = mongoose.model('Admin', adminSchema);
+module.exports = require('../bindings/model').boundModel('Admin', adminSchema);

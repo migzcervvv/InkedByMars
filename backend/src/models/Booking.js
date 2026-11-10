@@ -43,12 +43,7 @@ const bookingSchema = new mongoose.Schema(
       enum: ["tiny", "small", "medium", "large", "extra_large", "custom"],
       default: "medium",
     },
-    referenceImages: [
-      {
-        url: { type: String },
-        publicId: { type: String },
-      },
-    ],
+    referenceImages: [{ type: String, validate: require("../services/mediaService").isMediaKey }],
 
     // Scheduling
     preferredDate: {
@@ -141,4 +136,10 @@ bookingSchema.index({ email: 1 });
 bookingSchema.index({ status: 1 });
 bookingSchema.index({ preferredDate: 1 });
 
-module.exports = mongoose.model("Booking", bookingSchema);
+bookingSchema.set('toJSON', { transform(document, value) {
+  const runtime = require('../bindings/runtime');
+  const origin = runtime.env().PUBLIC_MEDIA_BASE_URL || runtime.current()?.origin;
+  if (origin) value.referenceImages = (value.referenceImages || []).map(key => ({ key, url: require('../services/mediaService').mediaUrl(key, origin) }));
+  return value;
+} });
+module.exports = require('../bindings/model').boundModel("Booking", bookingSchema);

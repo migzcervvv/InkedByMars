@@ -1,18 +1,14 @@
 // Handles token validation, storage, and auto-refresh
 // The access token is the most critical piece of infrastructure — treat it carefully
-const axios = require("axios");
-const fs = require("fs");
-const path = require("path");
+const axios = require("../bindings/http");
 const logger = require("../utils/logger");
 const AppError = require("../utils/AppError");
 const { normalizeTokenExpiry } = require('../utils/tokenExpiry');
 
-const TOKEN_FILE = path.join(__dirname, "../../.token-store.json");
-const IG_API_VERSION = process.env.IG_API_VERSION || "v25.0";
-const GRAPH_HOST = (process.env.GRAPH_BASE || "https://graph.facebook.com")
+const apiVersion = () => require('../bindings/runtime').env().IG_API_VERSION || "v25.0";
+const graphBase = () => ((require('../bindings/runtime').env().GRAPH_BASE || "https://graph.facebook.com")
   .replace(/\/+$/, "")
-  .replace(/\/v\d+\.\d+$/, "");
-const GRAPH_BASE = `${GRAPH_HOST}/${IG_API_VERSION}`;
+  .replace(/\/v\d+\.\d+$/, "")) + "/" + apiVersion();
 
 // Days before expiry to trigger a refresh (7-day buffer is safe)
 const REFRESH_THRESHOLD_DAYS = 7;
@@ -25,52 +21,26 @@ let memoryTokenCache = {
   access_token: null,
   expires_at: null,
 };
-/**
- * Load the stored token data from disk.
- * Falls back to env var if no file exists (first run).
- */
-// function loadTokenData() {
-//   try {
-//     if (fs.existsSync(TOKEN_FILE)) {
-//       const data = JSON.parse(fs.readFileSync(TOKEN_FILE, "utf8"));
-//       return data;
-//     }
-//   } catch (err) {
-//     logger.warn("Could not read token store file", { error: err.message });
-//   }
-
-//   // First run: use the token from environment variable
-//   return {
-//     access_token: process.env.META_ACCESS_TOKEN,
-//     expires_at: null, // Unknown expiry — will be fetched on first validate
-//   };
-// }
-function loadTokenData() {
+async function loadTokenData() {
   // Prefer memory cache (survives within same server instance)
   if (memoryTokenCache.access_token) return memoryTokenCache;
 
+  const stored = await require('../bindings/credentials').load();
+  if (stored?.access_token) { memoryTokenCache = stored; return stored; }
   // Fall back to env vars (survives cold starts if you set them)
   return {
-    access_token: process.env.META_ACCESS_TOKEN,
-    expires_at: normalizeTokenExpiry(process.env.INSTAGRAM_TOKEN_EXPIRES_AT),
+    access_token: require('../bindings/runtime').env().META_ACCESS_TOKEN,
+    expires_at: normalizeTokenExpiry(require('../bindings/runtime').env().INSTAGRAM_TOKEN_EXPIRES_AT),
   };
 }
 
 /**
- * Persist token data to disk so it survives server restarts.
- * In production, use a database or secret manager instead of a local file.
+ * Persist encrypted token data in MongoDB when an encryption key is configured.
+ * No filesystem storage is used by the Worker.
  */
-function saveTokenData(data) {
-  // Save to memory — available for the lifetime of this server instance
+async function saveTokenData(data) {
   memoryTokenCache = { ...data };
-  // Keep the file write as a backup (nice to have, not relied on)
-  try {
-    fs.writeFileSync(TOKEN_FILE, JSON.stringify(data, null, 2), "utf8");
-  } catch (err) {
-    logger.warn("Could not save token to disk (non-fatal)", {
-      error: err.message,
-    });
-  }
+  await require('../bindings/credentials').save(data);
 }
 
 /**
@@ -78,8 +48,8 @@ function saveTokenData(data) {
  * The app_id|app_secret combo acts as an app access token for this endpoint.
  */
 async function debugToken(token) {
-  const appAccessToken = `${process.env.META_APP_ID}|${process.env.META_APP_SECRET}`;
-  const url = `${GRAPH_BASE}/debug_token`;
+  const appAccessToken = `${require('../bindings/runtime').env().META_APP_ID}|${require('../bindings/runtime').env().META_APP_SECRET}`;
+  const url = `${graphBase()}/debug_token`;
 
   const params = {
     input_token: token,
@@ -91,16 +61,16 @@ async function debugToken(token) {
 }
 
 /**
- * Exchange the current long-lived token for a fresh one.
- * Meta resets the 60-day clock on each successful exchange.
+ * Attempt the Facebook token exchange supported by Meta.
+ * Renewal is not guaranteed; use the actual expiry returned by Meta.
  */
 async function refreshToken(currentToken) {
-  const url = `${GRAPH_BASE}/oauth/access_token`;
+  const url = `${graphBase()}/oauth/access_token`;
 
   const response = await graphTokenGet(url, {
     grant_type: "fb_exchange_token",
-    client_id: process.env.META_APP_ID,
-    client_secret: process.env.META_APP_SECRET,
+    client_id: require('../bindings/runtime').env().META_APP_ID,
+    client_secret: require('../bindings/runtime').env().META_APP_SECRET,
     fb_exchange_token: currentToken,
   });
 
@@ -108,7 +78,7 @@ async function refreshToken(currentToken) {
   const expiresAt = Date.now() + expires_in * 1000;
 
   const tokenData = { access_token, expires_at: expiresAt };
-  saveTokenData(tokenData);
+  await saveTokenData(tokenData);
   logger.info("Token refreshed successfully", {
     expiresAt: new Date(expiresAt).toISOString(),
   });
@@ -122,7 +92,7 @@ async function refreshToken(currentToken) {
  * Call this at the start of any service function that needs the token.
  */
 async function getValidToken() {
-  const tokenData = loadTokenData();
+  const tokenData = await loadTokenData();
   const { access_token, expires_at } = tokenData;
 
   if (!access_token) {
@@ -177,7 +147,7 @@ async function getValidToken() {
       }
       const expiresAt = normalizeTokenExpiry(info.expires_at);
       inspectionRetryAfter = 0;
-      saveTokenData({ access_token, expires_at: expiresAt });
+      await saveTokenData({ access_token, expires_at: expiresAt });
       logger.info("Token validated on first run", {
         expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
         scopes: info.scopes,
@@ -224,6 +194,7 @@ async function graphTokenGet(url, params) {
       params: sanitizeParams(params),
       status,
       responseBody: error.response?.data || null,
+      transport: { name: error.name, code: error.code || null, causeCode: error.cause?.code || null, upstreamStatus: error.upstreamStatus || null },
     });
 
     throw new AppError(

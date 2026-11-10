@@ -3,8 +3,8 @@
 const dayjs = require('dayjs');
 const Schedule = require('../models/Schedule');
 const AppError = require('../utils/AppError');
-const asyncHandler = require('../utils/asyncHandler');
-const { sendOk, sendCreated } = require('../utils/response');
+const { fail } = require('../utils/honoResponse');
+const { sendOk, sendCreated } = require('../utils/honoResponse');
 const { DAY_STATUS, SLOT_STATUS } = require('../config/constants');
 const scheduleService = require('../services/scheduleService');
 const holdCleanupService = require('../services/holdCleanupService');
@@ -29,17 +29,19 @@ const eachDate = (startDate, endDate) => {
  * GET /api/schedule/blocked-dates?month=YYYY-MM
  * Admin - month-scoped blocked date list stored as ISO date strings.
  */
-const getBlockedDates = asyncHandler(async (req, res) => {
+const getBlockedDates = async (c) => {
+  const req = c.get('input');
   const month = req.query.month || dayjs().format('YYYY-MM');
   const blockedDates = await availabilitySettingsService.getBlockedDatesForMonth(month);
-  sendOk(res, { month, blockedDates });
-});
+  return sendOk(c, { month, blockedDates });
+};
 
 /**
  * PUT /api/schedule/blocked-dates
  * Admin - replaces only the selected month's blocked dates.
  */
-const updateBlockedDates = asyncHandler(async (req, res) => {
+const updateBlockedDates = async (c) => {
+  const req = c.get('input');
   const { month, blockedDates = [] } = req.body;
   const savedBlockedDates = await availabilitySettingsService.replaceBlockedDatesForMonth(
     month,
@@ -53,17 +55,17 @@ const updateBlockedDates = asyncHandler(async (req, res) => {
     count: savedBlockedDates.length,
   });
 
-  sendOk(
-    res,
+  return sendOk(c,
     { month, blockedDates: savedBlockedDates },
     `Blocked dates updated for ${month}`
   );
-});
+};
 /**
  * GET /api/schedule
  * Admin — list schedules within optional date range
  */
-const getAllSchedules = asyncHandler(async (req, res, next) => {
+const getAllSchedules = async (c) => {
+  const req = c.get('input');
   const filter = {};
 
   if (req.query.startDate || req.query.endDate) {
@@ -74,23 +76,25 @@ const getAllSchedules = asyncHandler(async (req, res, next) => {
 
   const schedules = await Schedule.find(filter).sort({ date: 1 }).lean();
 
-  sendOk(res, { schedules });
-});
+  return sendOk(c, { schedules });
+};
 
 /**
  * GET /api/schedule/:date
  * Admin — full schedule for a specific date, creating if not exists
  */
-const getScheduleByDate = asyncHandler(async (req, res, next) => {
+const getScheduleByDate = async (c) => {
+  const req = c.get('input');
   const schedule = await scheduleService.getOrCreateSchedule(req.params.date);
-  sendOk(res, { schedule });
-});
+  return sendOk(c, { schedule });
+};
 
 /**
  * POST /api/schedule/block-day
  * Admin — close an entire day (fully, partially, or holiday)
  */
-const blockDay = asyncHandler(async (req, res, next) => {
+const blockDay = async (c) => {
+  const req = c.get('input');
   const { date, dayStatus, closureReason } = req.body;
 
   const schedule = await scheduleService.getOrCreateSchedule(date);
@@ -117,25 +121,26 @@ const blockDay = asyncHandler(async (req, res, next) => {
     dayStatus,
   });
 
-  sendOk(res, { schedule }, `Day ${date} marked as ${dayStatus}`);
-});
+  return sendOk(c, { schedule }, `Day ${date} marked as ${dayStatus}`);
+};
 
 /**
  * POST /api/schedule/block-slot
  * Admin — close a single time slot
  */
-const blockSlot = asyncHandler(async (req, res, next) => {
+const blockSlot = async (c) => {
+  const req = c.get('input');
   const { date, time, reason } = req.body;
 
   const schedule = await scheduleService.getOrCreateSchedule(date);
 
   const slot = scheduleService.findSlot(schedule, time);
   if (!slot) {
-    return next(new AppError(`Time slot ${time} does not exist on ${date}`, 404));
+    return fail(new AppError(`Time slot ${time} does not exist on ${date}`, 404));
   }
 
   if (slot.status === SLOT_STATUS.BOOKED) {
-    return next(
+    return fail(
       new AppError(
         `Slot ${time} is already booked. Cancel the booking first or use override.`,
         409
@@ -153,25 +158,26 @@ const blockSlot = asyncHandler(async (req, res, next) => {
     reason,
   });
 
-  sendOk(res, { schedule }, `Slot ${time} on ${date} closed`);
-});
+  return sendOk(c, { schedule }, `Slot ${time} on ${date} closed`);
+};
 
 /**
  * POST /api/schedule/release-slot
  * Admin — release a closed or held slot back to available
  */
-const releaseSlot = asyncHandler(async (req, res, next) => {
+const releaseSlot = async (c) => {
+  const req = c.get('input');
   const { date, time } = req.body;
 
   const schedule = await scheduleService.getOrCreateSchedule(date);
 
   const slot = scheduleService.findSlot(schedule, time);
   if (!slot) {
-    return next(new AppError(`Time slot ${time} does not exist on ${date}`, 404));
+    return fail(new AppError(`Time slot ${time} does not exist on ${date}`, 404));
   }
 
   if (slot.status === SLOT_STATUS.BOOKED) {
-    return next(
+    return fail(
       new AppError(
         `Slot ${time} is booked. Cancel the associated booking to free it.`,
         409
@@ -188,21 +194,22 @@ const releaseSlot = asyncHandler(async (req, res, next) => {
     time,
   });
 
-  sendOk(res, { schedule }, `Slot ${time} on ${date} released`);
-});
+  return sendOk(c, { schedule }, `Slot ${time} on ${date} released`);
+};
 
 /**
  * POST /api/schedule/override-slot
  * Admin — force-change a slot's status regardless of current state
  */
-const overrideSlot = asyncHandler(async (req, res, next) => {
+const overrideSlot = async (c) => {
+  const req = c.get('input');
   const { date, time, status, reason } = req.body;
 
   const schedule = await scheduleService.getOrCreateSchedule(date);
 
   const slot = scheduleService.findSlot(schedule, time);
   if (!slot) {
-    return next(new AppError(`Time slot ${time} does not exist on ${date}`, 404));
+    return fail(new AppError(`Time slot ${time} does not exist on ${date}`, 404));
   }
 
   slot.status = status;
@@ -214,32 +221,34 @@ const overrideSlot = asyncHandler(async (req, res, next) => {
 
   await schedule.save();
 
-  sendOk(res, { schedule }, `Slot ${time} on ${date} overridden to ${status}`);
-});
+  return sendOk(c, { schedule }, `Slot ${time} on ${date} overridden to ${status}`);
+};
 
 /**
  * POST /api/schedule/expire-holds
  * Admin — manually trigger hold expiry (normally run by a job)
  */
-const expireHolds = asyncHandler(async (req, res, next) => {
+const expireHolds = async (c) => {
+  const req = c.get('input');
   const expiredBookings = await holdCleanupService.expireStaleBookingHolds();
-  sendOk(res, { expiredBookings }, 'Stale holds expired');
-});
+  return sendOk(c, { expiredBookings }, 'Stale holds expired');
+};
 
-const applyOpeningWindow = asyncHandler(async (req, res, next) => {
+const applyOpeningWindow = async (c) => {
+  const req = c.get('input');
   const { startDate, endDate, openTime, closeTime, reason = 'Outside opening hours' } = req.body;
 
   if (dayjs(endDate).isBefore(dayjs(startDate))) {
-    return next(new AppError('endDate must be on or after startDate', 400));
+    return fail(new AppError('endDate must be on or after startDate', 400));
   }
 
   if (closeTime <= openTime) {
-    return next(new AppError('closeTime must be after openTime', 400));
+    return fail(new AppError('closeTime must be after openTime', 400));
   }
 
   const dates = eachDate(startDate, endDate);
   if (dates.length > 120) {
-    return next(new AppError('Opening window range cannot exceed 120 days', 400));
+    return fail(new AppError('Opening window range cannot exceed 120 days', 400));
   }
 
   let updatedSlots = 0;
@@ -293,8 +302,7 @@ const applyOpeningWindow = asyncHandler(async (req, res, next) => {
     skippedBookedSlots,
   });
 
-  sendOk(
-    res,
+  return sendOk(c,
     {
       schedules,
       summary: {
@@ -305,7 +313,7 @@ const applyOpeningWindow = asyncHandler(async (req, res, next) => {
     },
     'Opening hours applied'
   );
-});
+};
 
 module.exports = {
   getBlockedDates,

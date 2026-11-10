@@ -1,0 +1,10 @@
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const {streamUpload,isMediaKey}=require('./mediaService');
+const makeFixed=()=>new TransformStream();
+function request(bytes,type='image/png',extra=false){const form=new FormData();form.append('file',new Blob([bytes],{type}),'../../unsafe.png');if(extra)form.append('file',new Blob([bytes],{type}),'extra.png');return new Request('http://test/upload',{method:'POST',body:form});}
+function bucket(){return {chunks:0,bytes:0,deleted:[],async put(key,body){assert.ok(body instanceof ReadableStream);const reader=body.getReader();while(true){const {value,done}=await reader.read();if(done)break;this.chunks++;this.bytes+=value.byteLength;}return {key};},async delete(key){this.deleted.push(key);}};}
+test('large multipart files use a stream and preserve bytes without collecting the whole file',async()=>{const bytes=new Uint8Array(4*1024*1024);bytes.set([137,80,78,71,13,10,26,10]);const r2=bucket();const key=await streamUpload(request(bytes),r2,bytes.length,20*1024*1024,makeFixed);assert.ok(isMediaKey(key));assert.equal(r2.bytes,bytes.length);assert.equal(r2.deleted.length,0);});
+test('bad signatures roll back object storage',async()=>{const r2=bucket();await assert.rejects(streamUpload(request(new Uint8Array(30)),r2,30,100,makeFixed),{statusCode:415});assert.equal(r2.deleted.length,1);});
+test('declared length mismatch and multiple files cannot leave successful orphan uploads',async()=>{const bytes=new Uint8Array(30);bytes.set([137,80,78,71,13,10,26,10]);for(const [size,extra]of[[29,false],[30,true]]){const r2=bucket();await assert.rejects(streamUpload(request(bytes,'image/png',extra),r2,size,100,makeFixed));assert.equal(r2.deleted.length,1);}});
+test('oversized and unsupported uploads fail before storing data',async()=>{const r2=bucket();await assert.rejects(streamUpload(request(new Uint8Array(30)),r2,21*1024*1024),{statusCode:413});await assert.rejects(streamUpload(request(new Uint8Array(30),'image/svg+xml'),r2,30,100,makeFixed),{statusCode:415});assert.equal(r2.bytes,0);});

@@ -1,0 +1,47 @@
+name = "inked-by-mars-api"
+main = "src/worker.js"
+compatibility_date = "2026-11-10"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+
+[vars]
+NODE_ENV = "development"
+CLIENT_URL = "http://localhost:5173,http://127.0.0.1:5173"
+JWT_EXPIRE = "7d"
+JWT_COOKIE_EXPIRE = "7"
+IG_API_VERSION = "v25.0"
+NOTIFICATION_EMAIL_ENABLED = "false"
+
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "inked-by-mars-media"
+preview_bucket_name = "inked-by-mars-media-preview"
+
+[[durable_objects.bindings]]
+name = "DATABASE"
+class_name = "DatabaseAPI"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["DatabaseAPI"]
+
+[[ratelimits]]
+name = "UPLOAD_LIMITER"
+namespace_id = "1001"
+simple = { limit = 12, period = 60 }
+
+[[ratelimits]]
+name = "AUTH_LIMITER"
+namespace_id = "1002"
+simple = { limit = 10, period = 60 }
+
+[[ratelimits]]
+name = "API_LIMITER"
+namespace_id = "1003"
+simple = { limit = 120, period = 60 }
+
+[triggers]
+crons = ["*/5 * * * *"]
+
+[observability]
+enabled = true

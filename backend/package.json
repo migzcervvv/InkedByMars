@@ -2,34 +2,27 @@
   "name": "tattoo-admin-backend",
   "version": "1.0.0",
   "description": "Production-ready admin panel backend for tattoo artist booking system",
-  "main": "src/server.js",
+  "main": "src/worker.js",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "nodemon src/server.js",
-    "seed:admin": "node src/utils/seedAdmin.js"
+    "dev": "wrangler dev --local --port 8787",
+    "start": "wrangler dev --local --port 8787",
+    "build": "wrangler deploy --dry-run --outdir dist",
+    "deploy": "wrangler deploy",
+    "test": "node --test src/**/*.test.cjs",
+    "seed:admin": "node src/utils/seedAdmin.js",
+    "db:indexes": "node scripts/indexes.cjs"
   },
   "dependencies": {
-    "axios": "^1.16.1",
     "bcryptjs": "^2.4.3",
-    "cookie-parser": "^1.4.7",
-    "cors": "^2.8.6",
+    "busboy": "^1.6.0",
     "dayjs": "^1.11.20",
-    "debug": "^4.4.3",
     "dotenv": "^16.6.1",
-    "express": "^4.21.2",
-    "express-rate-limit": "^7.5.1",
     "express-validator": "^7.3.2",
-    "fs": "^0.0.1-security",
-    "helmet": "^7.2.0",
+    "hono": "^4.13.17",
     "jsonwebtoken": "^9.0.3",
-    "mongoose": "^8.24.0",
-    "morgan": "^1.10.1",
-    "node-cache": "^5.1.2",
-    "nodemailer": "^8.0.11",
-    "path": "^0.12.7",
-    "uuid": "^9.0.1"
+    "mongoose": "^9.12.1"
   },
   "devDependencies": {
-    "nodemon": "^3.1.14"
+    "wrangler": "^4.159.0"
   }
 }

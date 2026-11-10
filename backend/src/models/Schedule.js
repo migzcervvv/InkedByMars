@@ -60,4 +60,4 @@ const scheduleSchema = new mongoose.Schema(
 
 // date field already carries a unique index via `unique: true` in schema definition
 
-module.exports = mongoose.model('Schedule', scheduleSchema);
+module.exports = require('../bindings/model').boundModel('Schedule', scheduleSchema);

@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const axios = require('axios');
+const axios = require('../bindings/http');
 const fs = require('node:fs');
 const logger = require('../utils/logger');
 
@@ -90,8 +90,7 @@ test('a valid token without an expiration timestamp does not cause an invalid-da
     return profile;
   });
   assert.equal((await service.getInstagramProfile()).id, '123');
-  const persisted = JSON.parse(writes.mock.calls[0].arguments[1]);
-  assert.equal(persisted.expires_at, null);
+  assert.equal(writes.mock.callCount(), 0, 'Workers never persist tokens to local disk');
 });
 
 test('an actual authentication failure on refresh is never treated as a transient outage', async t => {

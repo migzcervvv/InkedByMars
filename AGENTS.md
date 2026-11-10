@@ -4,7 +4,7 @@
 
 - Maintain three primary public pages: Home (`/`, including the artist biography and studio contact), Booking (`/booking`, including availability, request and receipt), and Works (`/works`, connected to the existing server-side Instagram integration).
 - Keep authenticated administration at `/admin/*`. Redirect older public URLs to the matching page/section. Privacy is a shared accessible dialog, not a fourth primary page.
-- Preserve the React 18 / Vite 8 / Tailwind 4 frontend and Express / MongoDB backend. Improve boundaries inside this stack; do not replace working integrations with mock services.
+- Preserve the React 18 / Vite 8 / Tailwind 4 frontend. The backend uses Hono on Cloudflare Workers, MongoDB through Mongoose 9 and a database-owning Durable Object, and Cloudflare R2 for media. Do not reintroduce an Express server or replace working integrations with mock services.
 - Use `GOALS.md` for acceptance criteria and `PLAN.md` for implementation status and verification evidence.
 
 ## Architecture
@@ -14,6 +14,7 @@
 - `client/src/components`: shared layout, accessible UI primitives and reusable domain components, including the same calendar used in public booking and administration.
 - `client/src/api`: HTTP transport and endpoint adapters only. `services` handles transformation/file processing; `hooks` handles reusable asynchronous state; `config` contains public business configuration.
 - `backend/src`: retain routes -> validators/middleware -> controllers -> services/models. Instagram credentials, token refresh, slot locking, email and authentication stay server-side.
+- `backend/src/bindings`: Worker environment scope, database model resolution, native HTTP and encrypted credential persistence. R2 uploads stream through the binding; never buffer whole files with formData()/arrayBuffer() or store base64/binary media in MongoDB. Keep secrets in ignored .dev.vars locally and Wrangler secrets remotely.
 - Keep one source for contact details, brand data and supported work categories. Do not duplicate content inside page components.
 
 ## Design and motion
@@ -29,7 +30,7 @@
 
 - Unknown or failed availability is never displayed as available. Prevent stale range/date responses from replacing newer selections.
 - A selected slot is a preference, not a server-side hold. Display request/hold/confirmed states truthfully. Resolve conflicts through server responses and refresh availability.
-- Keep form inputs across date/time changes. Use native forms, visible labels, linked errors, upload progress/failures and keyboard navigation. Validate encoded image size against server limits.
+- Keep form inputs across date/time changes. Use native forms, visible labels, linked errors, upload progress/failures and keyboard navigation. Verify streamed upload type and byte count against server limits; booking JSON carries only validated R2 object keys.
 - Never persist booking PII, references or credentials in new client storage. Receipt state may remain in component memory; a reload gets a deliberate recovery state.
 - Instagram uses backend endpoints; no tokens or Graph calls in the browser. Preserve retry, loading, empty and failure states. Do not present local photographs as a successful live Instagram fetch.
 - Dialogs require an accessible name, focus containment, Escape handling and focus restoration. Mobile navigation must name each destination.

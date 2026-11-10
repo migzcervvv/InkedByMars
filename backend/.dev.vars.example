@@ -1,0 +1,17 @@
+# Local-only placeholders. Copy to .dev.vars; never commit the resulting file.
+MONGO_URI=mongodb+srv://TEST_USER:URL_ENCODED_PASSWORD@YOUR_TEST_CLUSTER/inkedbymars_test?retryWrites=true&w=majority
+JWT_SECRET=REPLACE_WITH_RANDOM_SECRET
+# Generate with: node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+TOKEN_ENCRYPTION_KEY=REPLACE_WITH_32_BYTE_BASE64_KEY
+# Optional Instagram configuration; Facebook Login tokens only.
+META_APP_ID=
+META_APP_SECRET=
+META_ACCESS_TOKEN=
+INSTAGRAM_USER_ID=
+INSTAGRAM_TOKEN_EXPIRES_AT=
+# Optional email; enable NOTIFICATION_EMAIL_ENABLED only after configuring these.
+BREVO_API_KEY=
+BREVO_SENDER_EMAIL=
+ADMIN_EMAIL=
+# Set before enabling email links; use your actual Worker origin in production.
+PUBLIC_MEDIA_BASE_URL=http://127.0.0.1:8787

@@ -2,19 +2,20 @@
 
 const Admin = require("../models/Admin");
 const AppError = require("../utils/AppError");
-const asyncHandler = require("../utils/asyncHandler");
+const { fail } = require('../utils/honoResponse');
 const {
   sendOk,
   sendCreated,
   sendCookieWithToken,
-} = require("../utils/response");
+} = require("../utils/honoResponse");
 const logger = require("../utils/logger");
 
 /**
  * POST /api/auth/login
  * Public
  */
-const login = asyncHandler(async (req, res, next) => {
+const login = async (c) => {
+  const req = c.get('input');
   const { name, password } = req.body;
 
   const admin = await Admin.findOne({ name }).select("+password");
@@ -24,17 +25,17 @@ const login = asyncHandler(async (req, res, next) => {
       name,
       ip: req.ip,
     });
-    return next(new AppError("Invalid credentials", 401));
+    return fail(new AppError("Invalid credentials", 401));
   }
 
   if (!admin.isActive) {
-    return next(new AppError("Account is deactivated", 403));
+    return fail(new AppError("Account is deactivated", 403));
   }
 
   admin.lastLogin = new Date();
   await admin.save({ validateBeforeSave: false });
 
-  const token = sendCookieWithToken(res, admin);
+  const token = sendCookieWithToken(c, admin);
 
   logger.info("auth.login_success", {
     requestId: req.requestId,
@@ -43,8 +44,7 @@ const login = asyncHandler(async (req, res, next) => {
     role: admin.role,
   });
 
-  sendOk(
-    res,
+  return sendOk(c,
     {
       token,
       admin: {
@@ -56,23 +56,24 @@ const login = asyncHandler(async (req, res, next) => {
     },
     "Login successful",
   );
-});
+};
 
 /**
  * POST /api/auth/register
  * Protected — super_admin only (or initial seed)
  */
-const register = asyncHandler(async (req, res, next) => {
+const register = async (c) => {
+  const req = c.get('input');
   const { name, email, password, role } = req.body;
 
   const existing = await Admin.findOne({ email });
   if (existing) {
-    return next(new AppError("An admin with this email already exists", 409));
+    return fail(new AppError("An admin with this email already exists", 409));
   }
 
   const admin = await Admin.create({ name, email, password, role });
 
-  const token = sendCookieWithToken(res, admin);
+  const token = sendCookieWithToken(c, admin);
 
   logger.info("auth.admin_registered", {
     requestId: req.requestId,
@@ -81,8 +82,7 @@ const register = asyncHandler(async (req, res, next) => {
     role: admin.role,
   });
 
-  sendCreated(
-    res,
+  return sendCreated(c,
     {
       token,
       admin: {
@@ -94,32 +94,31 @@ const register = asyncHandler(async (req, res, next) => {
     },
     "Admin account created",
   );
-});
+};
 
 /**
  * POST /api/auth/logout
  * Protected
  */
-const logout = asyncHandler(async (req, res, next) => {
-  res.cookie("token", "none", {
-    expires: new Date(Date.now() + 10 * 1000),
-    httpOnly: true,
-  });
+const logout = async (c) => {
+  const req = c.get('input');
+  require('hono/cookie').deleteCookie(c, 'token', { path: '/' });
 
   logger.info("auth.logout", {
     requestId: req.requestId,
     adminId: req.admin?._id?.toString() || null,
   });
 
-  sendOk(res, {}, "Logged out successfully");
-});
+  return sendOk(c, {}, "Logged out successfully");
+};
 
 /**
  * GET /api/auth/me
  * Protected
  */
-const getMe = asyncHandler(async (req, res, next) => {
-  sendOk(res, {
+const getMe = async (c) => {
+  const req = c.get('input');
+  return sendOk(c, {
     admin: {
       id: req.admin._id,
       name: req.admin.name,
@@ -128,6 +127,6 @@ const getMe = asyncHandler(async (req, res, next) => {
       lastLogin: req.admin.lastLogin,
     },
   });
-});
+};
 
 module.exports = { login, register, logout, getMe };

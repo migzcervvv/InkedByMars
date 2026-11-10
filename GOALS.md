@@ -22,6 +22,10 @@ A recognizable red-and-gold tattoo portfolio with three public destinations: Hom
 
 ## Constraints and launch verification
 
+- [x] Backend routing migrated to Hono on Workers; application data remains in MongoDB, media bytes use R2 bindings, and booking JSON contains only media keys.
+- [x] Real local workerd upload test exercises a file above 3 MB and byte-exact R2 retrieval; invalid input and object cleanup have focused regression tests.
+- [ ] Follow `backend/CLOUDFLARE_SETUP.md` against an isolated Atlas database, initialize indexes, rehearse legacy-reference migration and verify admin/booking/email integration before deployment.
+
 - Retain the existing stack and server-owned business rules. No fake booking backend or new Instagram credentials.
 - Verify real Instagram credentials, MongoDB reachability, email delivery and production booking against the owner's deployment separately; local fixtures prove interface behavior only.
 - Existing prices, biography, logo/portfolio ownership and contact details require owner confirmation where the repository has conflicting or unsupported claims. Do not add new promises.

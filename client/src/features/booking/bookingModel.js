@@ -26,6 +26,6 @@ export function buildBookingPayload(draft, preferredDate, preferredTime) {
     instagramHandle: draft.instagramHandle.trim(), tattooPlacement: draft.tattooPlacement.trim(), tattooSize: draft.tattooSize,
     preferredDate, preferredTime,
     notes: [`Starting point: ${draft.category}`, draft.notes.trim()].filter(Boolean).join('\n'),
-    referenceImages: draft.references.map(reference => ({ url: reference.dataUrl, publicId: reference.name.slice(0, 200) })),
+    referenceImages: draft.references.map(reference => reference.key),
   }
 }

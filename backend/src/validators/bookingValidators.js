@@ -68,17 +68,7 @@ const createBookingValidators = [
     .isArray({ max: 4 })
     .withMessage("Reference images must be an array with at most 4 items"),
 
-  body("referenceImages.*.url")
-    .optional()
-    .isString()
-    .isLength({ max: 750000 })
-    .withMessage("Reference image payload is too large"),
-
-  body("referenceImages.*.publicId")
-    .optional()
-    .isString()
-    .isLength({ max: 200 })
-    .withMessage("Reference image public ID is too long"),
+  body("referenceImages.*").custom(value => require('../services/mediaService').isMediaKey(value)).withMessage('References must be uploaded R2 object keys, not inline data or external URLs'),
 ];
 
 const updateBookingStatusValidators = [

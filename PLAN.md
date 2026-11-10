@@ -1,5 +1,9 @@
 # Implementation plan
 
+## Planned next: admin panel rebuild
+
+The new implementation brief is [ADMIN_REDESIGN_PLAN.md](ADMIN_REDESIGN_PLAN.md). Scope: replace the five-destination admin with Bookings and Calendar, rebuild request-review and block/unblock flows, and enforce no new same-day bookings in Asia/Manila across public/admin APIs and the public calendar. Instagram Direct Messages is a separate future phase. This is a plan only; same-day prevention and the admin redesign are not implemented by this documentation update.
+
 ## Approved direction
 
 Mars's signed flash sheet becomes a portfolio poster, backed by the red/gold wax-seal identity. The three public pages are Home, Booking (availability included), and Works (Instagram). Admin remains protected. Implementation is local; no commit or publication.
@@ -185,3 +189,27 @@ Objective: eliminate recurring manual token copying and environment-file edits. 
 - [ ] Add isolated tests for OAuth state rejection/replay, callback authorization, exchange failures, account mismatch, encrypted persistence, restart recovery, concurrent updates, outage backoff, expiration/revocation and reconnect recovery. Verify the real Meta configuration separately without committing credentials or submitting bookings.
 
 Acceptance: after initial authorization, normal server restarts and credential storage require no manual token copying or `.env` edits. Owner involvement is limited to Meta sign-in/consent when required. Do not mark this complete until callback security, persistence, actual API authorization and reconnect recovery are verified.
+
+## Cloudflare Worker and R2 migration
+
+- Replaced the Express runtime, routes, middleware and request/response handlers with a Hono module Worker. Retained field-validation chains through their standalone `.run()` API and preserved existing booking, slot-locking, auth, schedule and Instagram endpoints. Express itself is removed.
+- Upgraded to Workers-compatible Mongoose 9, with connection-owned models resolved in request-local AsyncLocalStorage. A database-owning Durable Object retains MongoDB connections; no socket or model connection is copied between Worker request contexts. Default application indexes are explicitly initialized by a local utility, not auto-created on every request.
+- Streamed single-file multipart uploads use Busboy, Web/Node stream bridges, a bounded signature prefix and R2 `FixedLengthStream`. The actual size must match `X-File-Size`; maximum 20 MiB, JPEG/PNG/WebP. The parser does not call request.formData(), collect full-file buffers, or write temporary files. Rejected uploads drain remaining multipart data without buffering and remove the generated object key.
+- Booking references are now R2 key strings. API serializers provide media URLs to the existing admin/receipt shape. The browser uploads FormData before booking submission and no longer compresses/base64-embeds reference files. Old object/base64 records require the explicit migration utility on a backed-up test copy before production cutover.
+- Cloudflare rate-limit bindings cover uploads, login and general API traffic. Cron replaces the process timer; background notification promises are attached to the Worker lifetime. Brevo HTTPS replaces SMTP. Native fetch replaces Axios in the backend.
+- Instagram token files are removed from runtime behavior. Successful token replacements can be encrypted with AES-GCM in MongoDB and loaded after restarts when TOKEN_ENCRYPTION_KEY is configured. Without that key they remain memory-only. Full admin OAuth Connect/Reconnect and scheduled Instagram renewal remain future work, as above; no guarantee of perpetual renewal is made.
+- Complete bindings/configuration are in `backend/wrangler.toml`; local placeholder secrets are in `backend/.dev.vars.example`; setup, local tests, Atlas/R2/Brevo credentials, legacy migration and deployment are documented in `backend/CLOUDFLARE_SETUP.md`.
+- Verification: Wrangler dry-run bundles the module successfully; the local Worker boots; multipart >3 MB writes to local R2 and reads back identical bytes; invalid signatures/empty uploads/wrong lengths are rejected. Backend tests cover validation, authentication boundaries, string-only references, streaming cleanup and Instagram failures. Frontend lint/build and updated payload tests pass. Backend dependency audit reports zero vulnerabilities after removing obsolete HTTP/Express/SMTP dependencies.
+- Remaining launch verification: actual Atlas connectivity and database workflow integration, email delivery, deployment-specific origins, CPU budget for bcrypt, existing-reference migration and Cloudflare account provisioning. Wrangler emits a MongoDB dependency `whatwg-url` default-export shim warning; local module startup succeeds, but live cluster verification is deliberately not claimed. No real secrets, production data, cloud resources, deployment or commit were created by this migration.
+
+### Worker HTTP transport correction
+
+- Reproduced the reported Instagram `status: null` in an isolated real workerd runtime without credentials. The transport's `redirect: 'error'` option throws a TypeError before sending any request: Workers supports `follow` and `manual`, not `error`.
+- Replaced it with `manual` and explicit rejection of 3xx responses. Credentials are never forwarded to a redirect target. JSON-decoding failures now retain the upstream HTTP status instead of appearing as a network error with no status. Instagram/token logs include error name, error code, cause code and upstream status without logging raw transport messages or credentials.
+- Added three HTTP regression tests. All 20 backend tests pass; Wrangler dry-run build passes. The same isolated workerd request now reaches Meta and receives an HTTP response (403 without credentials), rather than failing locally with TypeError. This verifies transport compatibility, not authenticated feed access. No environment changes or deployment performed.
+
+### Matched route parameter correction
+
+- Reproduced `/api/public/availability/2026-11-10` returning 400 in the native Hono stack. Global input middleware captured an empty parameter object before Hono exposed the matched route's `:date`; date validation therefore received an absent value.
+- Validation now captures `c.req.param()` at the matched route before executing the standalone validation chains. This also corrects MongoDB ID validation on mounted booking routes. Invalid dates/IDs still return 400; availability/business rules are unchanged.
+- Added mounted-route regression tests for the exact reported date and for booking IDs, including malformed inputs. All 22 backend tests pass. No database records, environment values or deployment changed.

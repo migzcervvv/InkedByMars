@@ -16,23 +16,23 @@ test('validates tattoo and client stages without accepting whitespace-only field
 })
 
 test('builds the existing backend contract while preserving style in notes', () => {
-  const draft = { ...createDraft('flash'), clientName: ' Test ', email: ' test@example.com ', phone: ' 123 ', instagramHandle: ' @test ', tattooPlacement: ' Arm ', tattooSize: 'small', notes: ' Blue fish ', references: [{ name: 'drawing.webp', dataUrl: 'data:image/webp;base64,AAAA', size: 3 }] }
+  const draft = { ...createDraft('flash'), clientName: ' Test ', email: ' test@example.com ', phone: ' 123 ', instagramHandle: ' @test ', tattooPlacement: ' Arm ', tattooSize: 'small', notes: ' Blue fish ', references: [{ name: 'drawing.webp', key: 'references/12345678-1234-1234-1234-123456789abc.webp', size: 3 }] }
   const payload = buildBookingPayload(draft, '2026-12-01', '13:00')
   assert.equal(payload.clientName, 'Test')
   assert.equal(payload.tattooPlacement, 'Arm')
   assert.equal(payload.preferredDate, '2026-12-01')
   assert.equal(payload.preferredTime, '13:00')
   assert.equal(payload.notes, 'Starting point: flash\nBlue fish')
-  assert.deepEqual(payload.referenceImages, [{ url: 'data:image/webp;base64,AAAA', publicId: 'drawing.webp' }])
+  assert.deepEqual(payload.referenceImages, ['references/12345678-1234-1234-1234-123456789abc.webp'])
   assert.equal('references' in payload, false)
   assert.equal('category' in payload, false)
   assert.equal(draft.clientName, ' Test ')
 })
 
-test('keeps request notes and file names within backend field budgets', () => {
-  const draft = { ...createDraft('minimalistic'), notes: 'a'.repeat(900), references: [{ name: 'b'.repeat(220), dataUrl: 'data:image/webp;base64,AAAA' }] }
+test('keeps notes within budget and sends object keys without file names or binary data', () => {
+  const draft = { ...createDraft('minimalistic'), notes: 'a'.repeat(900), references: [{ name: 'b'.repeat(220), key: 'references/12345678-1234-1234-1234-123456789abc.webp' }] }
   assert.ok(buildBookingPayload(draft, '2026-12-01', '13:00').notes.length <= 1000)
-  assert.equal(buildBookingPayload(draft, '2026-12-01', '13:00').referenceImages[0].publicId.length, 200)
+  assert.equal(buildBookingPayload(draft, '2026-12-01', '13:00').referenceImages[0], draft.references[0].key)
   draft.notes += 'a'
   assert.ok(validateBookingStep(draft, 'idea').notes)
 })

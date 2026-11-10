@@ -2,8 +2,8 @@
 
 const Booking = require("../models/Booking");
 const AppError = require("../utils/AppError");
-const asyncHandler = require("../utils/asyncHandler");
-const { sendOk, sendCreated } = require("../utils/response");
+const { fail } = require('../utils/honoResponse');
+const { sendOk, sendCreated } = require("../utils/honoResponse");
 const { BOOKING_STATUS, HOLD_EXPIRY_MINUTES } = require("../config/constants");
 const scheduleService = require("../services/scheduleService");
 const holdCleanupService = require("../services/holdCleanupService");
@@ -19,7 +19,7 @@ const getDefaultEndTime = async (date, startTime) => {
 
 
 const serializePublicBooking = (booking) => {
-  const data = booking.toObject ? booking.toObject() : { ...booking };
+  const data = booking.toJSON ? booking.toJSON() : { ...booking };
   delete data.holdExpiresAt;
   return data;
 };
@@ -35,7 +35,8 @@ const isExpiredHold = (booking) => {
  * GET /api/bookings
  * Admin — list all bookings with optional filters
  */
-const getAllBookings = asyncHandler(async (req, res, next) => {
+const getAllBookings = async (c) => {
+  const req = c.get('input');
   const filter = {};
 
   if (req.query.status) filter.status = req.query.status;
@@ -55,8 +56,8 @@ const getAllBookings = asyncHandler(async (req, res, next) => {
     Booking.countDocuments(filter),
   ]);
 
-  sendOk(res, {
-    bookings,
+  return sendOk(c, {
+    bookings: bookings.map(booking => ({ ...booking, referenceImages: (booking.referenceImages || []).map(key => ({ key, url: require("../services/mediaService").mediaUrl(key, c.env.PUBLIC_MEDIA_BASE_URL || new URL(c.req.url).origin) })) })),
     pagination: {
       total,
       page,
@@ -64,32 +65,38 @@ const getAllBookings = asyncHandler(async (req, res, next) => {
       pages: Math.ceil(total / limit),
     },
   });
-});
+};
 
 /**
  * GET /api/bookings/:id
  * Admin — single booking
  */
-const getBookingById = asyncHandler(async (req, res, next) => {
+const getBookingById = async (c) => {
+  const req = c.get('input');
   const booking = await Booking.findById(req.params.id);
-  if (!booking) return next(new AppError("Booking not found", 404));
+  if (!booking) return fail(new AppError("Booking not found", 404));
   if (isExpiredHold(booking))
-    return next(new AppError("This booking hold has expired.", 409));
+    return fail(new AppError("This booking hold has expired.", 409));
 
-  sendOk(res, { booking });
-});
+  return sendOk(c, { booking });
+};
 
 /**
  * POST /api/bookings
  * Public (website) or Admin
  * Validates slot availability and creates a temporary booking hold.
  */
-const createBooking = asyncHandler(async (req, res, next) => {
+const createBooking = async (c) => {
+  const req = c.get('input');
   const { preferredDate, preferredTime } = req.body;
 
   await holdCleanupService.expireStaleBookingHolds();
 
-  const bookingData = { ...req.body };
+  const allowed = ['clientName','email','phone','instagramHandle','tattooPlacement','tattooSize','preferredDate','preferredTime','notes','referenceImages'];
+  const bookingData = Object.fromEntries(allowed.filter(key => req.body[key] !== undefined).map(key => [key,req.body[key]]));
+  for (const key of bookingData.referenceImages || []) {
+    if (!(await c.env.MEDIA.head(key))) throw new AppError('A reference upload is missing. Upload it again.', 400);
+  }
   if (req.admin) {
     bookingData.createdByAdmin = true;
     bookingData.createdByAdminId = req.admin._id;
@@ -111,7 +118,7 @@ const createBooking = asyncHandler(async (req, res, next) => {
     booking = await Booking.create(bookingData);
   } catch (error) {
     if (error.code === 11000) {
-      return next(
+      return fail(
         new AppError(
           `The time slot ${preferredTime} on ${preferredDate} is already held.`,
           409,
@@ -130,7 +137,7 @@ const createBooking = asyncHandler(async (req, res, next) => {
 
   if (!holdExpiresAt) {
     await booking.deleteOne();
-    return next(
+    return fail(
       new AppError(
         `The time slot ${preferredTime} on ${preferredDate} is no longer available.`,
         409,
@@ -153,24 +160,24 @@ const createBooking = asyncHandler(async (req, res, next) => {
   });
 
   // Fire-and-forget - do not block response
-  notificationService.sendBookingPending(booking).catch(console.error);
-  notificationService.notifyAdminNewBooking(booking).catch(console.error);
+  c.executionCtx.waitUntil(notificationService.sendBookingPending(booking));
+  c.executionCtx.waitUntil(notificationService.notifyAdminNewBooking(booking));
 
   const responseBooking = req.admin ? booking : serializePublicBooking(booking);
-  sendCreated(
-    res,
+  return sendCreated(c,
     { booking: responseBooking },
     req.admin ? "Booking hold submitted successfully" : "Your booking is pending."
   );
-});
+};
 
-const confirmBooking = asyncHandler(async (req, res, next) => {
+const confirmBooking = async (c) => {
+  const req = c.get('input');
   const booking = await Booking.findById(req.params.id);
 
-  if (!booking) return next(new AppError("Booking not found", 404));
+  if (!booking) return fail(new AppError("Booking not found", 404));
 
   if (booking.status === BOOKING_STATUS.CONFIRMED && isExpiredHold(booking)) {
-    return next(new AppError("This booking hold has expired.", 409));
+    return fail(new AppError("This booking hold has expired.", 409));
   }
 
   const date = req.body.date || booking.preferredDate;
@@ -189,7 +196,7 @@ const confirmBooking = asyncHandler(async (req, res, next) => {
   });
 
   if (!rangeResult.ok) {
-    return next(new AppError(rangeResult.reason, 409));
+    return fail(new AppError(rangeResult.reason, 409));
   }
 
   if (date !== booking.preferredDate) {
@@ -224,26 +231,24 @@ const confirmBooking = asyncHandler(async (req, res, next) => {
     blockedSlots: rangeResult.slotTimes,
   });
 
-  notificationService
-    .sendBookingConfirmation(booking, { endTime })
-    .catch(console.error);
+  c.executionCtx.waitUntil(notificationService.sendBookingConfirmation(booking, { endTime }));
 
-  sendOk(
-    res,
+  return sendOk(c,
     { booking, blockedSlots: rangeResult.slotTimes },
     "Booking confirmed",
   );
-});
+};
 
 /**
  * PUT /api/bookings/:id/status
  * Admin — update booking status with side effects
  */
-const updateBookingStatus = asyncHandler(async (req, res, next) => {
+const updateBookingStatus = async (c) => {
+  const req = c.get('input');
   const { status, reason, adminNotes } = req.body;
 
   const booking = await Booking.findById(req.params.id);
-  if (!booking) return next(new AppError("Booking not found", 404));
+  if (!booking) return fail(new AppError("Booking not found", 404));
 
   const previousStatus = booking.status;
 
@@ -256,7 +261,7 @@ const updateBookingStatus = asyncHandler(async (req, res, next) => {
       req.body.endTime ||
       (await getDefaultEndTime(booking.preferredDate, startTime));
     if (!endTime) {
-      return next(
+      return fail(
         new AppError("Unable to infer booking end time for confirmation.", 400),
       );
     }
@@ -273,14 +278,12 @@ const updateBookingStatus = asyncHandler(async (req, res, next) => {
     });
 
     if (!rangeResult.ok) {
-      return next(new AppError(rangeResult.reason, 409));
+      return fail(new AppError(rangeResult.reason, 409));
     }
 
     booking.preferredTime = startTime;
     booking.holdExpiresAt = null;
-    notificationService
-      .sendBookingConfirmation(booking, { endTime })
-      .catch(console.error);
+    c.executionCtx.waitUntil(notificationService.sendBookingConfirmation(booking, { endTime }));
   }
 
   if (
@@ -294,7 +297,7 @@ const updateBookingStatus = asyncHandler(async (req, res, next) => {
       expiryMinutes: HOLD_EXPIRY_MINUTES,
     });
     if (!holdExpiresAt) {
-      return next(new AppError("Unable to hold requested slot.", 409));
+      return fail(new AppError("Unable to hold requested slot.", 409));
     }
     booking.holdExpiresAt = holdExpiresAt;
   }
@@ -322,7 +325,7 @@ const updateBookingStatus = asyncHandler(async (req, res, next) => {
   // Slot management based on new status
   if (status === BOOKING_STATUS.CANCELLED) {
     await scheduleService.releaseBookingSlots({ bookingId: booking._id });
-    notificationService.sendBookingCancellation(booking).catch(console.error);
+    c.executionCtx.waitUntil(notificationService.sendBookingCancellation(booking));
   }
 
   if (status === BOOKING_STATUS.COMPLETED) {
@@ -332,35 +335,37 @@ const updateBookingStatus = asyncHandler(async (req, res, next) => {
     });
   }
 
-  sendOk(res, { booking }, "Booking status updated");
-});
+  return sendOk(c, { booking }, "Booking status updated");
+};
 
 /**
  * PUT /api/bookings/:id
  * Admin — update booking fields (not status — use /status endpoint)
  */
-const updateBooking = asyncHandler(async (req, res, next) => {
+const updateBooking = async (c) => {
+  const req = c.get('input');
   // Prevent status change through this endpoint
   delete req.body.status;
   delete req.body.statusHistory;
 
-  const booking = await Booking.findByIdAndUpdate(req.params.id, req.body, {
+  const booking = await Booking.findByIdAndUpdate(req.params.id, Object.fromEntries(['clientName','email','phone','instagramHandle','tattooPlacement','tattooSize','notes','adminNotes'].filter(key => req.body[key] !== undefined).map(key => [key,req.body[key]])), {
     new: true,
     runValidators: true,
   });
 
-  if (!booking) return next(new AppError("Booking not found", 404));
+  if (!booking) return fail(new AppError("Booking not found", 404));
 
-  sendOk(res, { booking }, "Booking updated");
-});
+  return sendOk(c, { booking }, "Booking updated");
+};
 
 /**
  * DELETE /api/bookings/:id
  * Admin — hard delete (prefer cancellation for audit trail)
  */
-const deleteBooking = asyncHandler(async (req, res, next) => {
+const deleteBooking = async (c) => {
+  const req = c.get('input');
   const booking = await Booking.findById(req.params.id);
-  if (!booking) return next(new AppError("Booking not found", 404));
+  if (!booking) return fail(new AppError("Booking not found", 404));
 
   // Release schedule slot before deleting
   if (
@@ -375,14 +380,15 @@ const deleteBooking = asyncHandler(async (req, res, next) => {
 
   await booking.deleteOne();
 
-  sendOk(res, {}, "Booking deleted");
-});
+  return sendOk(c, {}, "Booking deleted");
+};
 
 /**
  * GET /api/bookings/dashboard
  * Admin — aggregated stats for dashboard
  */
-const getDashboardStats = asyncHandler(async (req, res, next) => {
+const getDashboardStats = async (c) => {
+  const req = c.get('input');
   const [statusCounts, recentBookings] = await Promise.all([
     Booking.aggregate([{ $group: { _id: "$status", count: { $sum: 1 } } }]),
     Booking.find()
@@ -399,14 +405,14 @@ const getDashboardStats = asyncHandler(async (req, res, next) => {
 
   const total = await Booking.countDocuments();
 
-  sendOk(res, {
+  return sendOk(c, {
     stats: {
       total,
       ...stats,
     },
     recentBookings,
   });
-});
+};
 
 module.exports = {
   getAllBookings,

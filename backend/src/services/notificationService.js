@@ -1,11 +1,11 @@
 "use strict";
 
-const axios = require("axios");
-const nodemailer = require("nodemailer");
+const axios = require("../bindings/http");
+
 const logger = require("../utils/logger");
 
 const envEnabled = (name, fallback) => {
-  const value = process.env[name];
+  const value = require('../bindings/runtime').env()[name];
   if (value === undefined) return fallback;
   return value === "true";
 };
@@ -21,8 +21,8 @@ const getBookingReference = (booking) => {
 
 const getAdminReviewUrl = (booking) => {
   const base =
-    process.env.ADMIN_URL ||
-    `${process.env.CLIENT_URL || "http://localhost:5173"}/admin/bookings`;
+    require('../bindings/runtime').env().ADMIN_URL ||
+    `${require('../bindings/runtime').env().CLIENT_URL || "http://localhost:5173"}/admin/bookings`;
   return `${base}${base.includes("?") ? "&" : "?"}booking=${booking._id}`;
 };
 
@@ -43,55 +43,12 @@ const buildExpiredBookingMessage = (bookingData) =>
     "Status: Expired",
   ].join("\n");
 
-const extractBase64Parts = (dataUri) => {
-  const str = Buffer.isBuffer(dataUri)
-    ? dataUri.toString("base64")
-    : String(dataUri ?? "");
-
-  if (Buffer.isBuffer(dataUri)) {
-    return { mimeType: "image/webp", data: str };
-  }
-
-  const match = str.match(/^data:([^;]+);base64,(.+)$/);
-  if (!match) return null;
-  return { mimeType: match[1], data: match[2] };
-};
-
-const buildReferenceImageAttachments = (booking) => {
-  if (!booking.referenceImages?.length) return [];
-  return booking.referenceImages
-    .map((image, i) => {
-      try {
-        const parts = extractBase64Parts(image);
-        if (!parts) return null;
-        const ext = parts.mimeType.split("/")[1] || "jpg";
-        return {
-          filename: `ref-${i}.${ext}`,
-          content: Buffer.from(parts.data, "base64"),
-          contentType: parts.mimeType,
-          cid: `refimage_${i}`,
-        };
-      } catch (err) {
-        logger.warn("notification.image_attachment_failed", {
-          index: i,
-          error: err.message,
-        });
-        return null;
-      }
-    })
-    .filter(Boolean);
-};
-
-const buildReferenceImageHtml = (booking) => {
-  if (!booking.referenceImages?.length) return "";
-  return booking.referenceImages
-    .map(
-      (_, i) =>
-        `<img src="cid:refimage_${i}" style="max-width:300px;display:block;margin:8px 0;" alt="Reference ${i + 1}">`,
-    )
-    .join("");
-};
-
+const buildReferenceImageAttachments = () => [];
+const buildReferenceImageHtml = booking => (booking.referenceImages || []).map(image => {
+ const origin = require('../bindings/runtime').env().PUBLIC_MEDIA_BASE_URL;
+ const url = typeof image === 'string' && origin ? require('./mediaService').mediaUrl(image,origin) : '';
+ return url ? '<p><a href="'+escapeHtml(url)+'">View reference image</a></p>' : '';
+}).join('');
 const buildAdminBookingHoldNotification = (booking) => {
   const reference = getBookingReference(booking);
   const reviewUrl = getAdminReviewUrl(booking);
@@ -142,43 +99,15 @@ const buildAdminBookingHoldNotification = (booking) => {
   return { subject, text, html, attachments };
 };
 
-const createTransporter = () => {
-  if (!process.env.BREVO_SMTP_USER || !process.env.BREVO_SMTP_KEY) {
-    return null;
-  }
-
-  return nodemailer.createTransport({
-    host: "smtp-relay.brevo.com",
-    port: 2525,
-    secure: false,
-    requireTLS: true,
-    auth: {
-      user: process.env.BREVO_SMTP_USER,
-      pass: process.env.BREVO_SMTP_KEY,
-    },
-  });
+const sendEmail = async ({ to, subject, text, html }) => {
+ const env = require('../bindings/runtime').env();
+ if (!to || env.NOTIFICATION_EMAIL_ENABLED !== 'true') return;
+ if (!env.BREVO_API_KEY || !env.BREVO_SENDER_EMAIL) throw new Error('Brevo HTTP credentials are missing.');
+ const response = await fetch('https://api.brevo.com/v3/smtp/email', { method:'POST', headers:{'api-key':env.BREVO_API_KEY,'Content-Type':'application/json'}, body:JSON.stringify({sender:{name:'Inked By Mars',email:env.BREVO_SENDER_EMAIL},to:[{email:to}],subject,textContent:text,htmlContent:html}) });
+ if(!response.ok) throw new Error('Brevo email delivery failed: '+response.status);
 };
-
-const sendEmail = async ({ to, subject, text, html, attachments }) => {
-  if (!to) return;
-  const transporter = createTransporter();
-  if (!transporter) {
-    logger.warn("notification.email_transport_missing", { to, subject });
-    return;
-  }
-
-  await transporter.sendMail({
-    from: `"InkedByMars" <${process.env.BREVO_SENDER_EMAIL}>`,
-    to,
-    subject,
-    text,
-    html,
-    attachments,
-  });
-};
-
 const sendSms = async ({ to, text }) => {
-  const SMS_API_KEY = process.env.SMS_API_KEY;
+  const SMS_API_KEY = require('../bindings/runtime').env().SMS_API_KEY;
   if (!to || !SMS_API_KEY) return;
 
   await axios.post("https://smsapiph.onrender.com/api/v1/send/sms", null, {
@@ -192,8 +121,8 @@ const sendSms = async ({ to, text }) => {
 
 const notificationService = {
   channels: {
-    email: { enabled: true, to: process.env.ADMIN_EMAIL },
-    sms: { enabled: false, to: process.env.ADMIN_PHONE },
+    email: { enabled: true },
+    sms: { enabled: false, to: require('../bindings/runtime').env().ADMIN_PHONE },
   },
 
   async notifyAdminNewBooking(bookingData) {
@@ -229,7 +158,7 @@ const notificationService = {
     if (emailEnabled) {
       jobs.push(
         sendEmail({
-          to: process.env.ADMIN_EMAIL || this.channels.email.to,
+          to: require('../bindings/runtime').env().ADMIN_EMAIL || this.channels.email.to,
           subject,
           text: message,
           html,
@@ -241,7 +170,7 @@ const notificationService = {
     if (smsEnabled) {
       jobs.push(
         sendSms({
-          to: process.env.ADMIN_PHONE || this.channels.sms.to,
+          to: require('../bindings/runtime').env().ADMIN_PHONE || this.channels.sms.to,
           text: message,
         }),
       );

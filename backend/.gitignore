@@ -15,3 +15,9 @@ logs/
 *.log
 *.err
 *.local
+
+# Cloudflare local secrets and runtime state
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+.wrangler/

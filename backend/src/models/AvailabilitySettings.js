@@ -25,4 +25,4 @@ const availabilitySettingsSchema = new mongoose.Schema(
   }
 );
 
-module.exports = mongoose.model('AvailabilitySettings', availabilitySettingsSchema);
+module.exports = require('../bindings/model').boundModel('AvailabilitySettings', availabilitySettingsSchema);
