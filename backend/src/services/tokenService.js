@@ -16,6 +16,11 @@ const GRAPH_BASE = `${GRAPH_HOST}/${IG_API_VERSION}`;
 
 // Days before expiry to trigger a refresh (7-day buffer is safe)
 const REFRESH_THRESHOLD_DAYS = 7;
+// Introspection is advisory during an upstream outage. Media endpoints still
+// authorize every actual request; never invent an expiry or mark a token valid.
+const INSPECTION_RETRY_MS = 60 * 1000;
+let inspectionRetryAfter = 0;
+let refreshRetryAfter = 0;
 let memoryTokenCache = {
   access_token: null,
   expires_at: null,
@@ -145,10 +150,21 @@ async function getValidToken() {
     }
 
     if (daysUntilExpiry < REFRESH_THRESHOLD_DAYS) {
+      if (Date.now() < refreshRetryAfter) return access_token;
       logger.info("Token expiry approaching, refreshing...");
-      return await refreshToken(access_token);
+      try {
+        const refreshedToken = await refreshToken(access_token);
+        refreshRetryAfter = 0;
+        return refreshedToken;
+      } catch (error) {
+        if (error.code !== 'IG_UPSTREAM_UNAVAILABLE' || expires_at <= Date.now()) throw error;
+        refreshRetryAfter = Date.now() + INSPECTION_RETRY_MS;
+        logger.warn('Meta token exchange is temporarily unavailable; using the current token until its actual expiry.');
+        return access_token;
+      }
     }
   } else {
+    if (Date.now() < inspectionRetryAfter) return access_token;
     // First run: validate token to populate expiry info
     try {
       const info = await debugToken(access_token);
@@ -159,13 +175,19 @@ async function getValidToken() {
           "IG_TOKEN_EXPIRED",
         );
       }
-      const expiresAt = info.expires_at * 1000; // Convert Unix seconds to ms
+      const expiresAt = normalizeTokenExpiry(info.expires_at);
+      inspectionRetryAfter = 0;
       saveTokenData({ access_token, expires_at: expiresAt });
       logger.info("Token validated on first run", {
-        expiresAt: new Date(expiresAt).toISOString(),
+        expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
         scopes: info.scopes,
       });
     } catch (err) {
+      if (err.code === 'IG_UPSTREAM_UNAVAILABLE') {
+        inspectionRetryAfter = Date.now() + INSPECTION_RETRY_MS;
+        logger.warn('Meta token inspection is temporarily unavailable; data requests will authorize the token directly.');
+        return access_token;
+      }
       logger.error("Token validation failed", { error: err.message });
       throw err;
     }
@@ -191,10 +213,11 @@ async function graphTokenGet(url, params) {
   } catch (error) {
     const status = error.response?.status || 502;
     const metaError = error.response?.data?.error || {};
+    const unavailable = status >= 500 || metaError.is_transient === true || metaError.code === 2;
     const code =
-      metaError.code === 190 || status === 400 || status === 401
+      metaError.code === 190 || status === 401
         ? "IG_TOKEN_EXPIRED"
-        : "IG_FETCH_FAILED";
+        : unavailable ? 'IG_UPSTREAM_UNAVAILABLE' : "IG_FETCH_FAILED";
 
     logger.error("Meta Graph token request failed", {
       url,
@@ -205,7 +228,7 @@ async function graphTokenGet(url, params) {
 
     throw new AppError(
       metaError.message || "Instagram token validation failed.",
-      code === "IG_TOKEN_EXPIRED" ? 401 : status,
+      code === "IG_TOKEN_EXPIRED" ? 401 : unavailable ? 502 : status,
       code,
     );
   }

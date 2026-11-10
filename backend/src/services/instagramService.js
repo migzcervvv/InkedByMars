@@ -145,7 +145,6 @@ async function getInstagramPosts(limit = 12, cursor = null) {
     if (cached) return cached;
   }
 
-  const token = await getValidToken();
   const params = {
     fields: MEDIA_FIELDS,
     limit,
@@ -207,7 +206,6 @@ async function getInstagramPosts(limit = 12, cursor = null) {
 }
 
 async function getCarouselChildren(mediaId) {
-  const token = await getValidToken();
   const url = `${GRAPH_BASE}/${mediaId}/children`;
   const response = await graphGet(url, {
     fields: "id,media_type,media_url,thumbnail_url",
@@ -217,7 +215,6 @@ async function getCarouselChildren(mediaId) {
 }
 
 async function getInstagramProfile() {
-  const token = await getValidToken();
   const url = `${GRAPH_BASE}/${IG_USER_ID}`;
   const response = await graphGet(url, {
     fields: PROFILE_FIELDS,

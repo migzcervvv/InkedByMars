@@ -117,3 +117,71 @@ Local evidence: `.taste-skill/after/report.json`, `after-inspect.txt`, `after-so
 - Below 768 px, choosing a date scrolls to its time panel, including its loading/error state; choosing a time scrolls to “Tell me your idea.”
 - Scrolling runs after React renders the next state and uses the existing header-clearance spacing. Reduced-motion preferences use immediate scrolling. Desktop layout and scroll behavior are unchanged; draft fields and form stage are preserved.
 - Verified in an isolated browser at 390 px with normal and reduced motion: both destinations settle approximately 96 px below the viewport top and draft input survives. At 1440 px no automatic scrolling occurs. Frontend lint, build and diff checks pass.
+
+## Homepage artwork interaction (superseded by the refinement below)
+
+- Kept the approved palette, fonts, navigation and section composition. Retained “The pinned poster” direction (seed 2004175288), with no new draw or asset replacement for this focused enhancement.
+- Idea: Mars’s signed flash sheet becomes an artwork visitors can handle and inspect. Three drawing targets open close-ups of the original photograph; previous/next controls and a whole-sheet view make exploration deliberate. The booking link carries `style=flash` into the existing request flow.
+- The sheet responds to fine-pointer movement within a three-degree limit, settles on pointer exit, and turns gently with native scrolling. The seal presses into place. Reduced motion removes those transforms. All animation stays scoped to Home with GSAP cleanup; touch and keyboard controls use native buttons and the existing accessible dialog.
+- No new dependencies, fabricated work, availability promises, environment changes or backend changes. The existing signed sheet is the sole source for every new close-up. Existing portfolio provenance requirements remain in effect.
+- Frontend lint/build and eight existing unit tests pass. The browser interaction audit checks 1440, 768 and 390 px plus reduced motion, drawing navigation, whole-sheet recovery, keyboard activation, native dialog focus containment, Escape/focus restoration, booking destination, pointer reset and horizontal overflow. Artifacts and the executable regression script are ignored under `.taste-skill/alive-interactions/` and `.taste-skill/home-interactions.mjs`.
+- Final inspector: zero failures, one inherited no-footage warning at all three widths. Compared with the previous completed audit, hero image coverage grows from 41% to 46%; the title remains two lines, with the same two fonts and five text sizes. The fresh before-audit attempt timed out before capture; the preceding completed `.taste-skill/after/` audit is the baseline. Browser audits succeeded with a disposable headless browser using the local audit launcher; this does not alter application security or dependencies.
+- Opened all seven final fold/page screenshots and desktop/tablet/phone close-up captures. No real studio footage exists locally; unrelated video would not represent Mars’s work. No found or generated media, stand-ins or sample business content were added.
+
+```text
+ROUND 2
+Seen in one second: Mars’s gold name and an original signed sheet with drawing targets.
+Idea (one sentence): Mars’s flash sheet becomes a drawing collection visitors can inspect before requesting a session.
+Live thing: select a drawing, inspect its crop, cycle through details, and continue to Flash booking.
+Layout words by section: hero=interactive sheet / work=offset pair / about=artist collection / styles=selection / process=sequence / questions=reading columns / contact=inverse field / footer=typographic close.
+Scores: design 8.0 · usability 8.0 · creativity 7.0 · content 7.5 -> overall 7.8.
+Caps applied: creativity stays at 7; interactive artwork inspection is a familiar approach, made specific by Mars’s actual drawings.
+Top three problems (most visible first), each with the screenshot it shows in and the fix:
+1. Enlarged detail exposes the 1080px source’s limited resolution (alive-interactions/detail-1440-false.jpg). A higher-resolution owner-approved original would improve sharpness.
+2. The original image includes a broad leather surround (alive-after/desktop-fold.jpg). It is retained to keep the signed sheet intact and hotspot coordinates faithful; a clean original scan would allow a tighter presentation.
+3. The new signature interaction is concentrated in the hero (alive-after/mobile-page-01.jpg). The existing style selector provides a second useful interaction; the reading sections remain quiet rather than introducing unrelated effects.
+```
+
+## Homepage refinement and Instagram 500 diagnosis
+
+- Removed the hero drawing targets, full-sheet link, detail dialog and extra wax-seal placement. Replaced the unused explorer component with `HeroArtwork`; kept its reduced-motion-aware pointer response and scroll motion. The header's original logo remains.
+- Removed the artist collage caption and every category-name/by-Mars caption below the style preview. Category descriptions and booking links remain functional.
+- Added one shared `--home-art-height` token: the smaller of 600px and 64svh. Hero artwork, the portfolio pair, artist collage and category previews scale through their containing figures. Images retain their proportions, and portrait work no longer grows beyond the viewport on wide or short screens. Removed obsolete explorer/dialog/seal styles.
+- Frontend lint/build and eight unit tests pass. Browser regression passes at 1440x900, 1440x600, 768x1024, 390x844, reduced-motion 390x600 and landscape 844x390. It verifies all requested removals, the retained header logo, every image-height limit, all four style selections and booking destinations, no overflow, and no runtime exceptions. Lazy images were explicitly decoded in the test browser before measurement.
+- Final visual inspector: zero failures and the inherited no-footage warning. All seven final screenshots were reviewed in `.taste-skill/home-refinement/`. The current user brief explicitly takes precedence over the skill's preference for large hero imagery: desktop coverage is now 26%, down from 46%, and the page is 6.2 screens rather than 7.3. No media assets or business content were invented or replaced.
+- Instagram reproduction initially returned HTTP 500 from Meta's token introspection endpoint with OAuth code 2 and `is_transient: true`. Direct authenticated profile/media reads using the same configured token returned HTTP 200. A subsequent check also reproduced transient failure from the exchange endpoint while the token still authorized media reads.
+- Token inspection outages now defer inspection for 60 seconds and let the actual Graph data endpoint authorize each read. Transient exchange outages may reuse an existing token only until its true expiry, with the same bounded retry delay. No successful validation, new expiry or replacement token is fabricated or persisted on outage. Invalid-token responses still stop immediately. Unknown expiry metadata no longer produces an invalid-date exception. Removed duplicate token lookups from the three Instagram service operations.
+- Added seven isolated Instagram regression tests alongside the two expiry tests: transient inspection recovery and retry, explicit invalid tokens, authentication rejection by the data endpoint, refresh outage with strict real-expiry enforcement, permanent configuration errors, missing expiry metadata and refresh authentication rejection. All nine pass without network requests or token-store writes.
+- Live service profile and post reads succeeded after the patch. During final route verification, the configured token reached its real expiration: Meta reported code 190/subcode 463, expired 10 November 2026 at 00:00 PST (16:00 UTC+8). Both local HTTP routes then correctly returned 401 `IG_TOKEN_EXPIRED`. Restoring the feed now requires fresh long-lived Facebook authorization in `META_ACCESS_TOKEN` and a backend restart; the current blank expiry field can remain blank. No environment values were modified or exposed.
+
+```text
+ROUND 1 — requested refinement
+Seen in one second: Mars’s gold name and a complete, smaller signed flash sheet.
+Idea (one sentence): The original sheet provides the moving artwork while the existing style selector carries exploration into booking.
+Live thing: select Custom, Freehand, Minimalistic or Flash and carry that category into Booking.
+Layout words by section: hero=quiet artwork / work=bounded offset pair / about=artist collection / styles=selection / process=sequence / questions=reading columns / contact=inverse field / footer=typographic close.
+Scores: design 7.5 · usability 8.0 · creativity 7.0 · content 7.5 -> overall 7.6.
+Caps applied: creativity remains 7; this refinement intentionally prioritizes the owner's cleaner composition.
+Top three observations (most visible first), each with its screenshot and disposition:
+1. Smaller desktop artwork leaves more wine-colored space (home-refinement/desktop-fold.jpg). This is deliberate to satisfy the image-size request; copy and image remain balanced within the outer frame.
+2. The signed sheet still includes its original leather surround (home-refinement/mobile-fold.jpg). Retained the real asset rather than manufacturing a new crop or image.
+3. The biography still uses the inherited collage (home-refinement/desktop-page-01.jpg). Its caption is removed as requested; the alt text continues to describe the collection accurately.
+```
+
+## Future plan: Instagram connection and credential lifecycle
+
+Status: planned; not implemented in the current changes.
+
+Objective: eliminate recurring manual token copying and environment-file edits. The owner authorizes through Meta when required; the backend exchanges, stores and retrieves credentials automatically.
+
+- [ ] Add authenticated admin controls for Connect Instagram, Reconnect Instagram and connection status. Keep credentials and token exchange exclusively server-side.
+- [ ] Implement the Facebook Login authorization and callback flow for the existing integration. Configure the actual deployment's redirect URI, validate a short-lived, single-use OAuth state bound to the authenticated administrator, and request only the permissions needed for the linked Page and Instagram professional account.
+- [ ] Exchange fresh authorization for the appropriate credential and verify the linked account before replacing the active connection. Failed or cancelled authorization must preserve a still-valid connection.
+- [ ] Store credentials encrypted in MongoDB, with the account/app association, token type, actual token expiry, data-access expiry and validation timestamps. Keep the encryption key in server environment configuration; never expose credentials in admin API responses, logs or browser storage.
+- [ ] Load the stored connection after restarts and across server instances. Use the existing environment token only as an explicit initial bootstrap or migration source; do not rewrite `.env` at runtime or silently replace a newer stored credential with an older environment value.
+- [ ] Add a scheduled connection check independent of Works page visits, with bounded retries and coordination across server instances. Attempt only the exchanges or renewals supported by the selected token type. Do not assume repeated Facebook user-token exchange guarantees indefinite renewal.
+- [ ] Display the authoritative connection state and expiry in administration. Show a reconnect requirement when Meta requires fresh consent or reports an expired/revoked credential; never manufacture a later expiry or promise permanent unattended access.
+- [ ] Preserve public feed loading, retry, empty and failure states. Keep a still-valid credential usable during transient Meta outages; stop using it at its real expiry. Keep public Instagram failures separate from admin-session authentication.
+- [ ] Add isolated tests for OAuth state rejection/replay, callback authorization, exchange failures, account mismatch, encrypted persistence, restart recovery, concurrent updates, outage backoff, expiration/revocation and reconnect recovery. Verify the real Meta configuration separately without committing credentials or submitting bookings.
+
+Acceptance: after initial authorization, normal server restarts and credential storage require no manual token copying or `.env` edits. Owner involvement is limited to Meta sign-in/consent when required. Do not mark this complete until callback security, persistence, actual API authorization and reconnect recovery are verified.

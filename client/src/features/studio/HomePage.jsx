@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button'
 import { usePageMeta } from '../../hooks/usePageMeta'
 import { bookingQuestions, studio, workCategories } from '../../config/studio'
 import { useStudioMotion } from './useStudioMotion'
+import { HeroArtwork } from './HeroArtwork'
 
 export default function HomePage() {
   const scope = useRef(null)
@@ -21,11 +22,7 @@ export default function HomePage() {
           <p data-hero-line>Custom tattoos in Las Piñas.<br />A little of you, drawn by me.</p>
           <div data-hero-line><Button to="/booking">Request a session <ArrowUpRight size={18} /></Button></div>
         </div>
-        <figure className="hero-art" data-stencil>
-          <div className="hero-image-window"><img data-parallax src="/sample.jpg" alt="Mars’s signed flash sheet of illustrated faces, flowers, ribbons and a dagger" width="1080" height="1080" fetchpriority="high" /></div>
-          <figcaption>From the sketchbook to your skin.</figcaption>
-        </figure>
-        <Link to="/works" className="hero-seal" aria-label="Explore Mars’s work" data-seal><img src={studio.logo} alt="Mars red wax seal with gold lettering" width="1440" height="810" /></Link>
+        <HeroArtwork />
       </div>
     </section>
 
@@ -39,12 +36,12 @@ export default function HomePage() {
 
     <section className="artist-section" id="about"><div className="frame artist-grid">
       <div className="artist-copy"><h2 data-reveal>Hi, I’m Mars.</h2><p className="statement" data-reveal>I draw tattoos for the person who wears them.</p><p data-reveal>I’m a tattoo artist working in BF Resort, Las Piñas. My work moves between custom pieces, freehand drawings, minimalistic marks, and illustrated flash.</p><p data-reveal>Bring a reference, a story, or an idea you haven’t quite put into words. We’ll start there and find a design and placement that feel like you.</p><a href={studio.instagram} target="_blank" rel="noreferrer" className="text-link" data-reveal>Find me on Instagram</a></div>
-      <figure className="artist-collection" data-reveal><img src="/artist.jpg" alt="Collection of tattoos and a photograph of Mars in the center" width="1080" height="1080" loading="lazy" data-stencil /><figcaption>A few pieces from my world.</figcaption></figure>
+      <figure className="artist-collection" data-reveal><img src="/artist.jpg" alt="Collection of tattoos and a photograph of Mars in the center" width="1080" height="1080" loading="lazy" data-stencil /></figure>
     </div></section>
 
     <section className="section-space frame style-section" aria-labelledby="style-title">
       <div className="section-heading"><h2 id="style-title" data-reveal>Where do we start?</h2><p data-reveal>A drawing of your own.<br />Or something from mine.</p></div>
-      <div className="style-layout"><div className="style-picker" data-reveal><div className="style-choices" role="group" aria-label="Explore tattoo styles">{workCategories.map(item => <button key={item.id} type="button" aria-pressed={category.id === item.id} onClick={() => setCategoryId(item.id)}>{item.name}</button>)}</div><div className="style-detail" aria-live="polite"><p>{category.description}</p><Button to={`/booking?style=${category.id}`}>Request a session</Button></div></div><figure data-reveal><img key={category.id} className="style-preview" src={category.image} alt={category.alt} width="1080" height="1350" loading="lazy" /><figcaption>{category.name} by Mars</figcaption></figure></div>
+      <div className="style-layout"><div className="style-picker" data-reveal><div className="style-choices" role="group" aria-label="Explore tattoo styles">{workCategories.map(item => <button key={item.id} type="button" aria-pressed={category.id === item.id} onClick={() => setCategoryId(item.id)}>{item.name}</button>)}</div><div className="style-detail" aria-live="polite"><p>{category.description}</p><Button to={`/booking?style=${category.id}`}>Request a session</Button></div></div><figure data-reveal><img key={category.id} className="style-preview" src={category.image} alt={category.alt} width="1080" height="1350" loading="lazy" /></figure></div>
     </section>
 
     <section className="process-section"><div className="frame"><h2 data-reveal>Your idea, in ink.</h2><div className="process-list">
