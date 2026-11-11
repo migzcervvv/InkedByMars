@@ -21,7 +21,7 @@ Inked by Mars is the portfolio and booking site for Mars, a tattoo artist in BF 
 
 Calendar → Default time slots sets the start times and final end time for dates without a saved schedule. Dates with an existing schedule keep their recorded times. Booking references open in a full-size preview inside Bookings.
 
-Super administrators can create and edit team accounts from **Studio account → Manage users**. New team accounts are regular administrators. Each administrator can edit their own username, email and password from the account menu.
+Super administrators can list, create and edit team accounts from **Studio account → Manage users**. They can also delete other accounts and reset their passwords. A password reset ends the user's active sessions. New team accounts are regular administrators. Each administrator can edit their own username, email and password from **Studio account → Edit account**.
 
 ## Reference images
 

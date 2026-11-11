@@ -19,4 +19,5 @@ module.exports = {
   registerValidators: [...identity(), password(), body('role').optional().isIn(['admin', 'super_admin'])],
   createUserValidators: [...identity(), password()],
   editUserValidators: [param('id').isMongoId(), ...identity(), password().optional(), body('currentPassword').optional().isString()],
+  resetUserPasswordValidators: [param('id').isMongoId(), password()],
 };

@@ -19,6 +19,7 @@ const AdminBookingsPage = lazy(
 const AdminCalendarPage = lazy(
   () => import("../features/admin/calendar/CalendarPage"),
 );
+const AdminUsersPage = lazy(() => import("../features/admin/TeamAccountsPage"));
 const NotFoundPage = lazy(() => import("../pages/NotFoundPage"));
 
 function LegacyReceipt() {
@@ -65,6 +66,9 @@ export function AppRoutes() {
             <Route index element={<LegacyAdmin path="/admin/bookings" />} />
             <Route path="bookings" element={<AdminBookingsPage />} />
             <Route path="calendar" element={<AdminCalendarPage />} />
+            <Route element={<ProtectedRoute roles={['super_admin']} />}>
+              <Route path="users" element={<AdminUsersPage />} />
+            </Route>
             <Route path="schedule" element={<LegacyAdmin path="/admin/calendar" />} />
             <Route path="availability" element={<LegacyAdmin path="/admin/calendar" />} />
             <Route path="settings" element={<LegacyAdmin path="/admin/calendar" />} />

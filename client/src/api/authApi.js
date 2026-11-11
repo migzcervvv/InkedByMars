@@ -21,6 +21,12 @@ export const authApi = {
   editUser(id, payload) {
     return http.put(`/auth/users/${id}`, payload)
   },
+  deleteUser(id) {
+    return http.delete(`/auth/users/${id}`)
+  },
+  resetPassword(id, password) {
+    return http.post(`/auth/users/${id}/reset-password`, { password })
+  },
 
   register(payload) {
     return http.post("/auth/register", payload);

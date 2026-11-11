@@ -326,8 +326,18 @@
 .studio-sidebar nav a[aria-current=page] { background: var(--studio-tint); color: var(--brand-wax-dark); font-weight: 600; }
 .studio-sidebar nav a:hover, .studio-account:hover { background: var(--studio-tint); }
 .studio-admin-brand { display: flex; gap: 10px; align-items: center; font-size: 16px; font-weight: 600; line-height: 1.2; }
+.studio-admin-brand img { width: 52px; height: 52px; flex: none; object-fit: cover; }
 .studio-admin-brand small { display: block; color: var(--site-muted); margin-top: 4px; font-size: 12px; font-weight: 400; }
 .studio-account span { display: none; }
+.studio-account-area { position: relative; justify-self: end; }
+.studio-account[aria-expanded=true] { background: var(--studio-tint); color: var(--brand-wax-dark); }
+.studio-account-panel { position: absolute; z-index: 20; inset-inline-end: 0; inset-block-start: calc(100% + 8px); width: min(250px, calc(100vw - 32px)); border: 1px solid var(--studio-line); background: var(--studio-surface); box-shadow: 0 8px 26px rgb(53 18 29 / .12); }
+.studio-account-identity { display: grid; padding: 12px 14px; border-bottom: 1px solid var(--studio-line); overflow-wrap: anywhere; }
+.studio-account-identity span { font-size: 12px; color: var(--site-muted); }
+.studio-account-actions { padding: 4px; }
+.studio-account-actions :is(a, button) { display: flex; width: 100%; align-items: center; gap: 10px; min-height: 44px; padding: 6px 10px; text-decoration: none; text-align: start; }
+.studio-account-actions :is(a, button):hover { background: var(--studio-tint); }
+.studio-account-actions :focus-visible { outline-offset: -2px; }
 .studio-admin-main { min-width: 0; }
 .studio-screen { max-width: 1440px; margin-inline: auto; padding: var(--studio-gap); }
 .studio-screen-heading { display: flex; justify-content: space-between; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; margin-bottom: 20px; }
@@ -386,11 +396,33 @@
 .studio-fields label { display: grid; gap: 4px; min-width: 0; font-weight: 500; }
 .studio-fields input, .studio-fields select, .studio-fields textarea { min-height: 44px; padding: 8px; min-width: 0; width: 100%; border: 1px solid var(--field-border); background: var(--paper); font-weight: 400; }
 .studio-fields textarea { min-height: 70px; resize: vertical; }
+.studio-fields .studio-inline-check { display: flex; align-items: center; min-height: 44px; gap: 8px; }
+.studio-inline-check input[type=checkbox] { width: 18px; min-height: 18px; accent-color: var(--brand-wax); }
+.studio-form-footer { display: flex; justify-content: flex-end; gap: 8px; padding-top: 12px; border-top: 1px solid var(--studio-line); }
+.studio-icon-action { display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
+.studio-team-list, .studio-time-list { list-style: none; margin: 0; padding: 0; }
+.studio-team-list > li { display: grid; grid-template-columns: minmax(0, 1fr) 100px 318px; align-items: center; gap: 12px; padding: 12px 18px; }
+.studio-team-list > li + li { border-top: 1px solid var(--studio-line); }
+.studio-team-identity { display: grid; overflow-wrap: anywhere; }
+.studio-team-identity > span, .studio-team-role { font-size: 13px; color: var(--site-muted); }
+.studio-team-actions { display: flex; flex-wrap: wrap; gap: 2px 6px; }
+.studio-team-actions button { min-height: 44px; padding-inline: 8px; }
+.studio-team-actions button:hover { background: var(--studio-tint); }
+.studio-danger-text { color: var(--brand-wax-dark); }
+.studio-time-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px; align-items: center; gap: 8px; }
+.studio-time-labels { font-size: 12px; color: var(--site-muted); }
+.studio-time-list { display: grid; gap: 6px; max-height: min(400px, 36svh); overflow: auto; scrollbar-width: thin; padding: 3px; margin: -3px; }
+.studio-time-list input[type=time] { background: var(--studio-surface); padding-inline: 5px; font-variant-numeric: tabular-nums; }
+.studio-time-end { padding-inline: 6px; color: var(--site-muted); font-variant-numeric: tabular-nums; }
+.studio-time-list :focus-visible { outline-offset: 1px; }
+.studio-remove-time:hover { color: var(--brand-wax-dark); }
+.studio-time-tools { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: end; justify-content: space-between; }
+.studio-time-tools label { min-width: min(128px, 100%); font-size: 13px; }
 .studio-field-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .studio-range-review, .studio-feedback, .studio-result { padding: 10px 12px; background: var(--paper); }
 .studio-feedback { color: var(--brand-wax-dark); }
 .studio-result { margin-bottom: 12px; }
-.studio-admin-dialog { width: min(510px, calc(100% - 32px)); font-size: 14px; --studio-surface: var(--paper); }
+.studio-admin-dialog { width: min(510px, calc(100% - 32px)); padding: clamp(16px, 4vw, 26px); font-size: 14px; --studio-surface: #fcfbfb; --studio-line: #e5dfe1; }
 .studio-admin-dialog h2 { font: 600 20px/1.3 var(--font-reading); }
 .studio-admin-dialog .button { transition: none; font-size: 14px; }
 .studio-admin-dialog .button:hover { transform: none; }
@@ -417,8 +449,12 @@
   .admin-shell { display: grid; grid-template-columns: 230px minmax(0, 1fr); }
   .studio-sidebar { display: flex; flex-direction: column; align-items: stretch; position: sticky; top: 0; height: 100svh; padding: 24px 16px; border-bottom: 0; border-right: 1px solid var(--studio-line); }
   .studio-sidebar nav { display: grid; margin-top: 24px; }
-  .studio-account { margin-top: auto; }
+  .studio-account-area { margin-top: auto; }
+  .studio-account { width: 100%; }
+  .studio-account svg:last-child { margin-inline-start: auto; }
   .studio-account span { display: inline; }
+  .studio-admin-brand img { width: 60px; height: 60px; }
+  .studio-account-panel { inset-inline-start: 0; inset-inline-end: auto; inset-block-start: auto; inset-block-end: calc(100% + 8px); }
 }
 @media (max-width: 767px) {
   .admin-shell h1 { font-size: 24px; }
@@ -426,6 +462,8 @@
   .studio-booking-workspace:not(.studio-detail-active) .studio-detail,
   .studio-calendar-workspace:not(.studio-detail-active) .studio-day,
   .studio-detail-active .studio-queue, .studio-detail-active .studio-month { display: none; }
+  .studio-team-list > li { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; padding-inline: 12px; }
+  .studio-team-actions { grid-column: 1 / -1; margin-inline-start: -8px; }
 }
 @media (max-width: 390px) {
   .studio-queue-list button { padding-inline: 10px; gap: 6px; }

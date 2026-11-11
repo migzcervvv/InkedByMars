@@ -166,4 +166,26 @@ const editUser = async c => {
   return sendOk(c, { admin: account(admin), signInAgain: Boolean(self && password) }, 'Admin account updated.');
 };
 
-module.exports = { login, register, logout, getMe, listUsers, createUser, editUser };
+function requireOtherUser(operator, id, message) {
+  if (String(operator._id) === id.toLowerCase()) throw new AppError(message, 400);
+}
+
+const removeUser = async c => {
+  const { admin, params: { id } } = c.get('input');
+  requireOtherUser(admin, id, 'You cannot delete your own account.');
+  const result = await Admin.deleteOne({ _id: id });
+  if (!result.deletedCount) throw new AppError('Admin account not found.', 404);
+  return sendOk(c, {}, 'Admin account deleted.');
+};
+
+const resetUserPassword = async c => {
+  const { admin, params: { id }, body: { password } } = c.get('input');
+  requireOtherUser(admin, id, 'Use Edit account to change your own password.');
+  const user = await Admin.findById(id).select('+password');
+  if (!user) throw new AppError('Admin account not found.', 404);
+  user.password = password;
+  await user.save();
+  return sendOk(c, {}, 'Password reset. Existing sessions were signed out.');
+};
+
+module.exports = { login, register, logout, getMe, listUsers, createUser, editUser, removeUser, resetUserPassword };

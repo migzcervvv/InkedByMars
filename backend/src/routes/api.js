@@ -22,6 +22,8 @@ api.get('/auth/me', ...requireAdmin, auth.getMe);
 api.get('/auth/users', ...requireSuperAdmin, auth.listUsers);
 api.post('/auth/users', ...requireSuperAdmin, validate(av.createUserValidators), auth.createUser);
 api.put('/auth/users/:id', ...requireAdmin, validate(av.editUserValidators), auth.editUser);
+api.delete('/auth/users/:id', ...requireSuperAdmin, validate(bv.mongoIdParam), auth.removeUser);
+api.post('/auth/users/:id/reset-password', ...requireSuperAdmin, validate(av.resetUserPasswordValidators), auth.resetUserPassword);
 api.get('/public/availability', validate(sv.rangeQueryValidators), publicController.getAvailability);
 api.get('/public/availability/:date', validate(sv.dateParamValidator), publicController.getAvailabilityByDate);
 api.post('/public/bookings', validate(bv.createBookingValidators), booking.createBooking);

@@ -2,8 +2,9 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { Hono } = require('hono');
 const { input, validate } = require('./input');
-const { createUserValidators, editUserValidators } = require('../validators/authValidators');
-const { createUser, editUser } = require('../controllers/authController');
+const { createUserValidators, editUserValidators, resetUserPasswordValidators } = require('../validators/authValidators');
+const { createUser, editUser, removeUser, resetUserPassword } = require('../controllers/authController');
+const { mongoIdParam } = require('../validators/bookingValidators');
 const { run } = require('../bindings/runtime');
 const Admin = require('../models/Admin');
 
@@ -54,4 +55,35 @@ test('a password change invalidates old tokens but allows a new session in the s
   assert.equal(admin.changedPasswordAfter(12), true);
   assert.equal(admin.changedPasswordAfter(12, 0), true);
   assert.equal(admin.changedPasswordAfter(12, 12001), false);
+});
+
+test('team deletion and password reset reject self and mutate only the selected teammate', async () => {
+  const operator = '507f1f77bcf86cd799439011';
+  const teammate = '507f1f77bcf86cd799439012';
+  const deleted = [];
+  const saved = [];
+  const user = { async save() { saved.push(this.password); } };
+  const db = { models: { Admin: {
+    async deleteOne({ _id }) { deleted.push(_id); return { deletedCount: 1 }; },
+    findById(id) { assert.equal(id, teammate); return { select: async () => user }; },
+  } } };
+  const app = new Hono();
+  app.onError((error, c) => c.json({ message: error.message }, error.statusCode || 500));
+  app.use('*', input, async (c, next) => {
+    c.get('input').admin = { _id: operator, role: 'super_admin' };
+    await next();
+  });
+  app.delete('/:id', validate(mongoIdParam), removeUser);
+  app.post('/:id/reset-password', validate(resetUserPasswordValidators), resetUserPassword);
+  const remove = id => run({ db }, () => app.request('/' + id, { method: 'DELETE' }));
+  const reset = id => run({ db }, () => app.request('/' + id + '/reset-password', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password: 'Fixture123' }),
+  }));
+  assert.equal((await remove(operator)).status, 400);
+  assert.equal((await reset(operator)).status, 400);
+  assert.equal((await reset(teammate)).status, 200);
+  assert.equal((await remove(teammate)).status, 200);
+  assert.deepEqual(saved, ['Fixture123']);
+  assert.deepEqual(deleted, [teammate]);
 });

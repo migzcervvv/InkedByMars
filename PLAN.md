@@ -4,6 +4,8 @@
 
 The studio account menu now provides account editing for signed-in admins and team management for existing super administrators. The team form creates regular admin accounts using the existing schema and leaves existing roles intact. Tests cover role enforcement, account-edit permissions and password-change session invalidation.
 
+The account button opens an anchored menu and links super administrators to the dedicated Manage users page. Team actions include creating, editing, deleting and resetting another user's password. Calendar defaults now use individual time fields with the final end time visible beside the add-slot control. Browser checks use isolated fixtures at 1440, 768 and 390 px.
+
 Calendar now stores editable default start times and a final end time in MongoDB. The defaults apply to dates without a saved schedule across public availability, booking holds and the admin agenda. Booking references open in an in-panel viewer, and the Worker permits the Netlify site to embed media responses.
 
 Bookings and Calendar replace the previous five primary destinations. The review queue uses backend counts, hold expiry and pagination. Confirmation and rescheduling require an explicit range, and closures reject occupied slots. New public and admin reservations start tomorrow in Asia/Manila. Existing same-day appointments remain visible, and Instagram Direct Messages remains a separate future phase. See the [admin implementation brief](ADMIN_REDESIGN_PLAN.md) for the transition rules.
