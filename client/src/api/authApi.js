@@ -12,6 +12,15 @@ export const authApi = {
   me() {
     return http.get("/auth/me");
   },
+  listUsers() {
+    return http.get('/auth/users')
+  },
+  createUser(payload) {
+    return http.post('/auth/users', payload)
+  },
+  editUser(id, payload) {
+    return http.put(`/auth/users/${id}`, payload)
+  },
 
   register(payload) {
     return http.post("/auth/register", payload);

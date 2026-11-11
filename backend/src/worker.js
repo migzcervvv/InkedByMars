@@ -16,7 +16,9 @@ import './models/AvailabilitySettings';
 
 mongoose.set('transactionAsyncLocalStorage', true);
 const app = new Hono();
-app.use('*', secureHeaders());
+const standardHeaders = secureHeaders();
+const mediaHeaders = secureHeaders({ crossOriginResourcePolicy: 'cross-origin' });
+app.use('*', (c, next) => (c.req.path.startsWith('/media/') ? mediaHeaders : standardHeaders)(c, next));
 app.use('*', async (c, next) => { c.set('requestId', crypto.randomUUID()); c.header('X-Request-Id', c.get('requestId')); await next(); });
 app.use('*', async (c, next) => {
   const origins = String(c.env.CLIENT_URL || 'http://localhost:5173').split(',').map(x => x.trim());
@@ -26,7 +28,7 @@ app.use('*', async (c, next) => {
 });
 export const handleError = (error, c) => {
   const status = error.statusCode || (error.code === 11000 ? 409 : ['ValidationError','CastError'].includes(error.name) ? 400 : 500);
-  console.error(JSON.stringify({ requestId: c.get('requestId'), code: error.code || error.name, status, providerStatus: error.providerStatus }));
+  console.error(JSON.stringify({ requestId: c.get('requestId'), code: error.code || error.name, status, providerStatus: error.providerStatus, invalidBindings: error.invalidBindings }));
   const errors=Array.isArray(error.details) ? error.details : Object.values(error.errors || {}).map(item=>({field:item.path,message:item.message}));
   return c.json({ success: false, requestId: c.get('requestId'), code: typeof error.code === 'string' ? error.code : 'API_ERROR', message: status < 500 || error.isOperational ? error.message : 'The server could not complete the request.', errors, details: error.details }, status);
 };
@@ -63,6 +65,8 @@ export class DatabaseAPI extends DurableObject {
       : this.withBookingWrites(next);
     this.api.use('/api/bookings/*', serializeBookingWrites);
     this.api.use('/api/schedule/*', serializeBookingWrites);
+    this.api.use('/api/auth/users/*', serializeBookingWrites);
+    this.api.post('/api/auth/register', serializeBookingWrites);
     this.api.post('/api/public/bookings', serializeBookingWrites);
     this.api.route('/api', api);
     this.api.post('/internal/cleanup', async c => {
@@ -82,7 +86,18 @@ export class DatabaseAPI extends DurableObject {
           await this.connecting;
         }
         return await this.api.fetch(request, this.env, { waitUntil: promise => this.ctx.waitUntil(promise), passThroughOnException() {} });
-      } catch { return Response.json({ success: false, code: 'DATABASE_UNAVAILABLE', message: 'Database unavailable.' }, { status: 503 }); }
+      } catch (error) {
+        const mongoErrors = [error, ...Array.from(error?.reason?.servers?.values() || [], server => server.error)]
+          .flatMap(item => [item, item?.cause]).filter(Boolean);
+        console.error(JSON.stringify({
+          event: 'database.connection_failed',
+          mongoUriConfigured: Boolean(this.env.MONGO_URI),
+          errorTypes: [...new Set(mongoErrors.map(item => item.name).filter(name => /^[A-Za-z]+Error$/.test(name)))],
+          errorCodes: [...new Set(mongoErrors.map(item => item.code).filter(code =>
+            Number.isSafeInteger(code) || (typeof code === 'string' && /^[A-Z][A-Z_0-9]{1,39}$/.test(code))))],
+        }));
+        return Response.json({ success: false, code: 'DATABASE_UNAVAILABLE', message: 'Database unavailable.' }, { status: 503 });
+      }
     });
   }
 }

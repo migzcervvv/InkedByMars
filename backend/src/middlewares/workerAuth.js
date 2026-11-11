@@ -10,7 +10,7 @@ const protect = async (c, next) => {
   try { decoded = jwt.verify(token, env().JWT_SECRET, { algorithms: ['HS256'] }); }
   catch { throw new AppError('Invalid or expired token.', 401, 'AUTH_INVALID_TOKEN'); }
   const admin = await Admin.findById(decoded.id).select('+passwordChangedAt');
-  if (!admin || !admin.isActive || admin.changedPasswordAfter(decoded.iat)) throw new AppError('Invalid administrator session.', 401, 'AUTH_INVALID_TOKEN');
+  if (!admin || !admin.isActive || admin.changedPasswordAfter(decoded.iat, decoded.passwordVersion)) throw new AppError('Invalid administrator session.', 401, 'AUTH_INVALID_TOKEN');
   c.get('input').admin = admin;
   await next();
 };

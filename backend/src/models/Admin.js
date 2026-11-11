@@ -54,7 +54,7 @@ adminSchema.pre('save', async function () {
   const salt = await bcrypt.genSalt(12);
   this.password = await bcrypt.hash(this.password, salt);
   if (!this.isNew) {
-    this.passwordChangedAt = Date.now() - 1000;
+    this.passwordChangedAt = new Date();
   }
 });
 
@@ -66,17 +66,17 @@ adminSchema.methods.comparePassword = async function (enteredPassword) {
 // Generate signed JWT
 adminSchema.methods.getSignedJwt = function () {
   return jwt.sign(
-    { id: this._id, role: this.role },
+    { id: this._id, role: this.role, passwordVersion: this.passwordChangedAt?.getTime() || 0 },
     require('../bindings/runtime').env().JWT_SECRET,
     { expiresIn: require('../bindings/runtime').env().JWT_EXPIRE }
   );
 };
 
 // Check if password changed after JWT was issued
-adminSchema.methods.changedPasswordAfter = function (jwtIssuedAt) {
+adminSchema.methods.changedPasswordAfter = function (jwtIssuedAt, passwordVersion) {
+  if (passwordVersion !== undefined) return passwordVersion !== (this.passwordChangedAt?.getTime() || 0);
   if (this.passwordChangedAt) {
-    const changedTimestamp = parseInt(this.passwordChangedAt.getTime() / 1000, 10);
-    return jwtIssuedAt < changedTimestamp;
+    return jwtIssuedAt <= Math.floor(this.passwordChangedAt.getTime() / 1000);
   }
   return false;
 };

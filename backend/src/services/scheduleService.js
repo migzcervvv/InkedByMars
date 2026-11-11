@@ -2,7 +2,7 @@
 
 const dayjs = require('dayjs');
 const Schedule = require('../models/Schedule');
-const { DEFAULT_TIME_SLOTS, SLOT_STATUS, DAY_STATUS } = require('../config/constants');
+const { SLOT_STATUS, DAY_STATUS } = require('../config/constants');
 const availabilitySettingsService = require('./availabilitySettingsService');
 const { requireBookableDate } = require('./bookingPolicy');
 
@@ -11,7 +11,8 @@ const { requireBookableDate } = require('./bookingPolicy');
  * Newly created schedules are populated with default available time slots.
  */
 const getOrCreateSchedule = async (dateStr) => {
-  const slots = DEFAULT_TIME_SLOTS.map((time) => ({
+  const { times, endTime } = await availabilitySettingsService.getDefaultSchedule();
+  const slots = times.map((time) => ({
     time,
     status: SLOT_STATUS.AVAILABLE,
     bookingId: null,
@@ -26,6 +27,7 @@ const getOrCreateSchedule = async (dateStr) => {
         date: dateStr,
         dayStatus: DAY_STATUS.OPEN,
         timeSlots: slots,
+        endTime,
       },
     },
     {
@@ -60,6 +62,7 @@ const isActiveHold = (slot, now = new Date()) => {
 const getSlotBoundaryTimes = (schedule) => {
   const times = schedule.timeSlots.map((slot) => slot.time).sort();
   if (!times.length) return [];
+  if (schedule.endTime) return [...times, schedule.endTime];
 
   let increment = 60;
   if (times.length > 1) {

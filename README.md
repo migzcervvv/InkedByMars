@@ -10,7 +10,7 @@ Inked by Mars is the portfolio and booking site for Mars, a tattoo artist in BF 
 | `/booking` | Availability calendar, appointment request and receipt |
 | `/works` | Portfolio pulled from the studio’s Instagram account through the backend |
 | `/admin/bookings` | Review holds and pending requests, confirm or decline them, and manage existing appointments |
-| `/admin/calendar` | View the daily agenda, block whole days or time ranges, and remove studio closures |
+| `/admin/calendar` | View the daily agenda, edit default time slots, block whole days or time ranges, and remove studio closures |
 
 ## How bookings work
 
@@ -18,6 +18,10 @@ Inked by Mars is the portfolio and booking site for Mars, a tattoo artist in BF 
 2. They describe the tattoo, enter contact details and optionally attach up to four reference images.
 3. After reviewing and sending the request, they receive a receipt. The API checks availability again and places a temporary hold if the slot is still open.
 4. An administrator reviews the request, then confirms an explicit date and time range or declines it with a reason. Unconfirmed holds expire automatically.
+
+Calendar → Default time slots sets the start times and final end time for dates without a saved schedule. Dates with an existing schedule keep their recorded times. Booking references open in a full-size preview inside Bookings.
+
+Super administrators can create and edit team accounts from **Studio account → Manage users**. New team accounts are regular administrators. Each administrator can edit their own username, email and password from the account menu.
 
 ## Reference images
 

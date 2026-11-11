@@ -11,6 +11,7 @@ import av from '../validators/authValidators';
 import instagram from '../services/instagramService';
 import { body } from 'express-validator';
 import calendar from '../services/calendarClosures';
+import settings from '../services/availabilitySettingsService';
 import AppError from '../utils/AppError';
 
 export const api = new Hono();
@@ -18,6 +19,9 @@ api.post('/auth/login', validate(av.loginValidators), auth.login);
 api.post('/auth/register', ...requireSuperAdmin, validate(av.registerValidators), auth.register);
 api.post('/auth/logout', ...requireAdmin, auth.logout);
 api.get('/auth/me', ...requireAdmin, auth.getMe);
+api.get('/auth/users', ...requireSuperAdmin, auth.listUsers);
+api.post('/auth/users', ...requireSuperAdmin, validate(av.createUserValidators), auth.createUser);
+api.put('/auth/users/:id', ...requireAdmin, validate(av.editUserValidators), auth.editUser);
 api.get('/public/availability', validate(sv.rangeQueryValidators), publicController.getAvailability);
 api.get('/public/availability/:date', validate(sv.dateParamValidator), publicController.getAvailabilityByDate);
 api.post('/public/bookings', validate(bv.createBookingValidators), booking.createBooking);
@@ -33,6 +37,8 @@ api.put('/bookings/:id/confirm', validate(bv.confirmBookingValidators), booking.
 api.put('/bookings/:id/status', validate(bv.updateBookingStatusValidators), booking.updateBookingStatus);
 api.get('/schedule', validate(sv.rangeQueryValidators), schedule.getAllSchedules);
 api.get('/schedule/blocked-dates', validate(sv.monthQueryValidators), schedule.getBlockedDates);
+api.get('/schedule/default-times', async c => c.json({ success: true, ...await settings.getDefaultSchedule() }));
+api.put('/schedule/default-times', async c => c.json({ success: true, ...await settings.saveDefaultSchedule(c.get('input').body) }));
 api.get('/schedule/:date', validate(sv.dateParamValidator), schedule.getScheduleByDate);
 api.put('/schedule/:date/closure', validate([
   ...sv.dateParamValidator,

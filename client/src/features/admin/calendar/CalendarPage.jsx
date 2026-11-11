@@ -6,6 +6,7 @@ import { formatDisplayDate, formatDisplayTime, endOfMonth, fromDateKey, startOfM
 import { AdminFeedback } from '../AdminFeedback'
 import { useAdminResource } from '../useAdminResource'
 import { ClosureDialog } from './ClosureDialog'
+import { DefaultTimesDialog } from './DefaultTimesDialog'
 
 const loadDay = date => scheduleApi.getByDate(date)
 const loadMonth = month => scheduleApi.list({
@@ -27,6 +28,8 @@ export default function CalendarPage() {
   const schedule = agenda.data?.schedule
   const [operation, setOperation] = useState(null)
   const [message, setMessage] = useState('')
+  const [editingDefaults, setEditingDefaults] = useState(false)
+  const [defaultsMessage, setDefaultsMessage] = useState('')
   const agendaTitle = useRef(null)
   const backTo = useRef(null)
   const previous = useRef(false)
@@ -62,7 +65,13 @@ export default function CalendarPage() {
   const editable = schedule && !agenda.loading && !agenda.error
 
   return <div className="studio-screen">
-    <header className="studio-screen-heading"><h1>Calendar</h1><p>All times in Philippine time</p></header>
+    <header className="studio-screen-heading"><h1>Calendar</h1><button type="button" className="studio-secondary" onClick={() => setEditingDefaults(true)}>Default time slots</button></header>
+    {defaultsMessage && <p className="studio-result" role="status">{defaultsMessage}</p>}
+    {editingDefaults && <DefaultTimesDialog onClose={() => setEditingDefaults(false)} onSaved={() => {
+      setEditingDefaults(false)
+      setDefaultsMessage('Default time slots saved.')
+      refresh()
+    }} />}
     <div className={`studio-calendar-workspace ${mobileAgenda ? 'studio-detail-active' : ''}`}>
       <section className="studio-panel studio-month" aria-label="Calendar month">
         <AdminFeedback error={days.error} onRetry={days.reload} />

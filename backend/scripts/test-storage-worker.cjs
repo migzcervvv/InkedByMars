@@ -50,6 +50,7 @@ async function run() {
   assert.equal(downloaded.status,200);
   assert.equal(downloaded.headers.get('content-type'),'image/webp');
   assert.equal(downloaded.headers.get('cache-control'),'no-store');
+  assert.equal(downloaded.headers.get('cross-origin-resource-policy'),'cross-origin');
   assert.equal(downloaded.headers.has('apikey'),false);
   assert.deepEqual(Buffer.from(await downloaded.arrayBuffer()), bytes);
   const invalid=await send(bytes.length-1);

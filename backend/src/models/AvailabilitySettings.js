@@ -19,6 +19,8 @@ const availabilitySettingsSchema = new mongoose.Schema(
       ],
       default: [],
     },
+    defaultTimes: { type: [String], default: undefined },
+    defaultEndTime: String,
   },
   {
     timestamps: true,

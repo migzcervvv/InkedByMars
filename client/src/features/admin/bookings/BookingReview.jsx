@@ -20,6 +20,8 @@ export function BookingReview({ booking, refreshing, onRefresh, onSaved }) {
   const [version, setVersion] = useState(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
+  const [preview, setPreview] = useState(null)
+  const [failedPreview, setFailedPreview] = useState(null)
   const saving = useRef(false)
   const needsReview = !booking.isExpired && ['on-hold', 'pending'].includes(booking.status)
   const isConfirmed = booking.status === 'confirmed'
@@ -81,7 +83,14 @@ export function BookingReview({ booking, refreshing, onRefresh, onSaved }) {
       {isConfirmed && <><button type="button" className="studio-primary" disabled={refreshing} onClick={() => open('move')}>Reschedule</button><button type="button" className="studio-secondary" disabled={refreshing} onClick={() => open('complete')}>Mark completed</button><button type="button" className="studio-plain" disabled={refreshing} onClick={() => open('cancel')}>Cancel appointment</button></>}
     </div>
     <section><h3>Tattoo idea</h3><p>{booking.notes || 'No notes supplied.'}</p><p className="studio-meta">{[booking.tattooPlacement, booking.tattooSize?.replaceAll('_', ' ')].filter(Boolean).join(' · ')}</p>
-      {booking.referenceImages?.length > 0 && <ul className="studio-references">{booking.referenceImages.map((reference, index) => <li key={reference.key}><a href={reference.url} target="_blank" rel="noreferrer"><img src={reference.url} alt={`Open reference ${index + 1}`} loading="lazy" /></a></li>)}</ul>}
+      {booking.referenceImages?.length > 0 && <ul className="studio-references">{booking.referenceImages.map((reference, index) => (
+        <li key={reference.key}><button type="button" className="studio-reference-button" onClick={() => {
+          setFailedPreview(null)
+          setPreview({ ...reference, label: `Reference image ${index + 1}` })
+        }}>
+          <img src={reference.url} alt="" loading="lazy" /><span>Reference {index + 1}</span>
+        </button></li>
+      ))}</ul>}
     </section>
     <section><h3>Contact</h3><dl className="studio-review-facts"><div><dt>Email</dt><dd><a href={`mailto:${booking.email}`}>{booking.email}</a></dd></div><div><dt>Phone</dt><dd><a href={`tel:${booking.phone}`}>{booking.phone}</a></dd></div><div><dt>Instagram</dt><dd>{booking.instagramHandle}</dd></div></dl></section>
     {booking.adminNotes && <section><h3>Studio notes</h3><p>{booking.adminNotes}</p></section>}
@@ -89,6 +98,11 @@ export function BookingReview({ booking, refreshing, onRefresh, onSaved }) {
       {[...booking.statusHistory].reverse().map((entry, index) => <li key={entry._id || index}><span>{entry.reason || entry.status}</span><time dateTime={entry.changedAt}>{formatStudioTimestamp(entry.changedAt)}</time></li>)}
     </ol> : <p>No history recorded.</p>}</section>
 
+    <Dialog open={Boolean(preview)} onClose={() => setPreview(null)} title={preview?.label || 'Reference image'} className="studio-reference-dialog">
+      {preview && (failedPreview === preview.key
+        ? <p role="alert">This image could not be loaded. It may have expired or storage may be unavailable.</p>
+        : <img className="studio-reference-preview" src={preview.url} alt={preview.label} onError={() => setFailedPreview(preview.key)} />)}
+    </Dialog>
     <Dialog open={Boolean(action)} onClose={() => { if (!busy) setAction(null) }} title={actionTitles[action] || 'Booking action'} className="studio-admin-dialog">
       <form className="studio-fields" onSubmit={save}>
         {changingSchedule && <>

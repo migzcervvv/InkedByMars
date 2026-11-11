@@ -71,6 +71,11 @@ export function AuthProvider({ children }) {
     }
   }, [clearSession]);
 
+  const updateProfile = useCallback(profile => {
+    setAdmin(profile);
+    setStoredAdmin(profile);
+  }, []);
+
   const value = useMemo(
     () => ({
       admin,
@@ -81,8 +86,9 @@ export function AuthProvider({ children }) {
       login,
       logout,
       clearSession,
+      updateProfile,
     }),
-    [admin, booting, clearSession, login, logout, token],
+    [admin, booting, clearSession, login, logout, token, updateProfile],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

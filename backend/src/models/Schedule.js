@@ -52,6 +52,7 @@ const scheduleSchema = new mongoose.Schema(
       maxlength: [500, 'Closure reason cannot exceed 500 characters'],
     },
     timeSlots: [timeSlotSchema],
+    endTime: String,
   },
   {
     timestamps: true,

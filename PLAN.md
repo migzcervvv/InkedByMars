@@ -2,6 +2,10 @@
 
 ## Admin panel rebuild
 
+The studio account menu now provides account editing for signed-in admins and team management for existing super administrators. The team form creates regular admin accounts using the existing schema and leaves existing roles intact. Tests cover role enforcement, account-edit permissions and password-change session invalidation.
+
+Calendar now stores editable default start times and a final end time in MongoDB. The defaults apply to dates without a saved schedule across public availability, booking holds and the admin agenda. Booking references open in an in-panel viewer, and the Worker permits the Netlify site to embed media responses.
+
 Bookings and Calendar replace the previous five primary destinations. The review queue uses backend counts, hold expiry and pagination. Confirmation and rescheduling require an explicit range, and closures reject occupied slots. New public and admin reservations start tomorrow in Asia/Manila. Existing same-day appointments remain visible, and Instagram Direct Messages remains a separate future phase. See the [admin implementation brief](ADMIN_REDESIGN_PLAN.md) for the transition rules.
 
 The backend tests cover Manila midnight and leap dates, direct same-day requests, expired and stale booking decisions, closure boundaries, reserved slots and public data stripping. Frontend lint, tests and build, Wrangler dry run and the isolated workerd storage test pass. Chromium fixtures verified 1440, 768 and 390 px layouts, a short phone viewport, reduced motion, keyboard focus restoration, conflict recovery, legacy redirects, range blocking and reopening, and the public policy with a Los Angeles browser timezone. The app inspector reported zero failures, with whitespace warnings for short queues and unselected panes. Artifacts are in ignored `.taste-skill/admin/`. Live MongoDB transaction races, notification delivery and Supabase-backed previews still need staging validation. Run `npm run db:indexes` on the intended database before deploying the matching frontend and Worker.

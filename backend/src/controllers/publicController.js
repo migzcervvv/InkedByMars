@@ -14,7 +14,7 @@ const {
   SLOT_STATUS,
 } = require('../config/constants');
 
-const openDayAvailability = (date) => ({
+const openDayAvailability = (date, times = DEFAULT_TIME_SLOTS) => ({
   date,
   dayStatus: DAY_STATUS.OPEN,
   isFullyClosed: false,
@@ -23,11 +23,11 @@ const openDayAvailability = (date) => ({
   isPartiallyBooked: false,
   availabilityStatus: 'open',
   closureReason: null,
-  availableCount: DEFAULT_TIME_SLOTS.length,
-  totalCount: DEFAULT_TIME_SLOTS.length,
+  availableCount: times.length,
+  totalCount: times.length,
 });
 
-const blockedDayAvailability = (date, closureReason = 'Blocked by admin') => ({
+const blockedDayAvailability = (date, closureReason = 'Blocked by admin', times = DEFAULT_TIME_SLOTS) => ({
   date,
   dayStatus: DAY_STATUS.FULLY_CLOSED,
   isFullyClosed: true,
@@ -37,12 +37,12 @@ const blockedDayAvailability = (date, closureReason = 'Blocked by admin') => ({
   availabilityStatus: 'blocked',
   closureReason,
   availableCount: 0,
-  totalCount: DEFAULT_TIME_SLOTS.length,
+  totalCount: times.length,
 });
 
-const blockedDayDetails = (date, closureReason = 'Blocked by admin') => ({
-  ...blockedDayAvailability(date, closureReason),
-  slots: DEFAULT_TIME_SLOTS.map((time) => ({
+const blockedDayDetails = (date, closureReason, times = DEFAULT_TIME_SLOTS) => ({
+  ...blockedDayAvailability(date, closureReason, times),
+  slots: times.map((time) => ({
     time,
     status: SLOT_STATUS.CLOSED,
     available: false,
@@ -72,13 +72,14 @@ const getAvailability = async (c) => {
   }
 
   const eligibleStart = startDate < policy.earliestBookableDate ? policy.earliestBookableDate : startDate;
-  const [schedules, blockedDateSet] = endDate < eligibleStart ? [[], new Set()] : await Promise.all([
+  const [schedules, blockedDateSet, defaults] = endDate < eligibleStart ? [[], new Set(), { times: DEFAULT_TIME_SLOTS }] : await Promise.all([
     Schedule.find({
       date: { $gte: eligibleStart, $lte: endDate },
     })
       .select('date dayStatus closureReason timeSlots')
       .lean(),
     availabilitySettingsService.getBlockedDateSet({ startDate: eligibleStart, endDate }),
+    availabilitySettingsService.getDefaultSchedule(),
   ]);
 
   // Index existing schedules by date
@@ -100,9 +101,9 @@ const getAvailability = async (c) => {
       const { slots, ...summary } = policyDay(dateStr, policy);
       availability.push(summary);
     } else if (blockedDateSet.has(dateStr)) {
-      availability.push(blockedDayAvailability(dateStr));
+      availability.push(blockedDayAvailability(dateStr, 'Unavailable', defaults.times));
     } else if (!schedule) {
-      availability.push(openDayAvailability(dateStr));
+      availability.push(openDayAvailability(dateStr, defaults.times));
     } else {
       availability.push(scheduleService.toPublicAvailability(schedule));
     }
@@ -127,7 +128,8 @@ const getAvailabilityByDate = async (c) => {
   }
 
   if (await availabilitySettingsService.isDateBlocked(date)) {
-    return sendOk(c, { ...blockedDayDetails(date, 'Unavailable'), policy });
+    const { times } = await availabilitySettingsService.getDefaultSchedule();
+    return sendOk(c, { ...blockedDayDetails(date, 'Unavailable', times), policy });
   }
 
   const schedule = await Schedule.findOne({ date })
@@ -135,11 +137,11 @@ const getAvailabilityByDate = async (c) => {
     .lean();
 
   if (!schedule) {
-    // No document yet - return default open state
+    const { times } = await availabilitySettingsService.getDefaultSchedule();
     return sendOk(c, {
-      ...openDayAvailability(date),
+      ...openDayAvailability(date, times),
       policy,
-      slots: DEFAULT_TIME_SLOTS.map((time) => ({
+      slots: times.map((time) => ({
         time,
         status: SLOT_STATUS.AVAILABLE,
         available: true,

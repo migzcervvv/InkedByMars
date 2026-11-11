@@ -9,7 +9,19 @@ const { getAvailability, getAvailabilityByDate } = require('../controllers/publi
 const { bookingPolicy, validDate, requireBookableDate } = require('./bookingPolicy');
 const { expiryReason, isExpired, requireCurrentVersion, viewFilter } = require('./bookingReview');
 const { planClosure } = require('./calendarClosures');
-const { toPublicAvailability } = require('./scheduleService');
+const { toPublicAvailability, getSlotBoundaryTimes } = require('./scheduleService');
+const { validateDefaultSchedule } = require('./availabilitySettingsService');
+
+test('custom starts are sorted and the explicit end works for uneven slots and midnight', () => {
+  const { times, endTime } = validateDefaultSchedule({ times: ['20:30', '15:00', '19:15'], endTime: '24:00' });
+  assert.deepEqual(getSlotBoundaryTimes({ timeSlots: times.map(time => ({ time })), endTime }), ['15:00', '19:15', '20:30', '24:00']);
+  assert.deepEqual(getSlotBoundaryTimes({ timeSlots: [{ time: '15:00' }, { time: '16:00' }] }), ['15:00', '16:00', '17:00']);
+  for (const bad of [
+    { times: ['16:00', '16:00'], endTime: '19:00' },
+    { times: ['16:00'], endTime: '16:00' },
+    { times: ['09:60'], endTime: '19:00' },
+  ]) assert.throws(() => validateDefaultSchedule(bad), { code: 'INVALID_DEFAULT_TIMES' });
+});
 
 test('Manila midnight advances the first bookable date without a 24-hour lead time', () => {
   const before = new Date('2028-02-28T15:59:59.999Z');

@@ -56,7 +56,7 @@ Edit `.dev.vars` locally:
 | `MONGO_URI` | Atlas driver connection string for the test database. |
 | `SUPABASE_URL` | Project URL from Connect. |
 | `SUPABASE_SECRET_KEY` | `sb_secret_…` from Settings → API Keys. |
-| `SUPABASE_STORAGE_BUCKET` | Defaults to `booking-references` in `wrangler.toml`; override only if the bucket name differs. |
+| `SUPABASE_STORAGE_BUCKET` | Defaults to `booking-references` in the storage adapter. Set it in `wrangler.toml` if the actual bucket name differs. |
 | `JWT_SECRET` | First generated random value; signs administrator sessions. |
 | `TOKEN_ENCRYPTION_KEY` | Second generated value: exactly 32 random bytes encoded as base64. Retain it across deployments; changing it without re-encrypting stored credentials prevents decryption. |
 | `PUBLIC_MEDIA_BASE_URL` | `http://127.0.0.1:8787` locally. In production, the actual Worker/custom API origin. |

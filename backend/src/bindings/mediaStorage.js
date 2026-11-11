@@ -4,10 +4,16 @@ const AppError = require('../utils/AppError');
 function createMediaStorage(env, fetcher = fetch) {
   const project = env.SUPABASE_URL?.trim().replace(/\/$/, '');
   const secret = env.SUPABASE_SECRET_KEY?.trim();
-  const bucket = env.SUPABASE_STORAGE_BUCKET?.trim();
-  if (!/^https:\/\/[a-z0-9]+\.supabase\.co$/.test(project || '') ||
-      !/^sb_secret_[\w-]+$/.test(secret || '') || !/^[a-z0-9][a-z0-9_-]{0,62}$/.test(bucket || '')) {
-    throw new AppError('Media storage is not configured. Check the Worker storage settings.', 503, 'MEDIA_CONFIG');
+  const bucket = env.SUPABASE_STORAGE_BUCKET?.trim() || 'booking-references';
+  const invalidBindings = [
+    !/^https:\/\/[a-z0-9]+\.supabase\.co$/.test(project || '') && 'SUPABASE_URL',
+    !/^sb_secret_[\w-]+$/.test(secret || '') && 'SUPABASE_SECRET_KEY',
+    !/^[a-z0-9][a-z0-9_-]{0,62}$/.test(bucket) && 'SUPABASE_STORAGE_BUCKET',
+  ].filter(Boolean);
+  if (invalidBindings.length) {
+    const error = new AppError('Media storage is not configured. Check the Worker storage settings.', 503, 'MEDIA_CONFIG');
+    error.invalidBindings = invalidBindings;
+    throw error;
   }
 
   async function request(operation, method, route, key, options = {}) {

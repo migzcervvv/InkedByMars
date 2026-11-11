@@ -9,6 +9,17 @@ const {
   sendCookieWithToken,
 } = require("../utils/honoResponse");
 const logger = require("../utils/logger");
+const { ADMIN_ROLES } = require('../config/constants');
+
+const account = admin => ({ id: admin._id, name: admin.name, email: admin.email, role: admin.role });
+
+async function requireAvailableIdentity({ name, email }, id) {
+  const match = await Admin.exists({
+    $or: [{ name }, { email }],
+    ...(id && { _id: { $ne: id } }),
+  });
+  if (match) throw new AppError('That username or email is already in use.', 409, 'ACCOUNT_EXISTS');
+}
 
 /**
  * POST /api/auth/login
@@ -66,10 +77,7 @@ const register = async (c) => {
   const req = c.get('input');
   const { name, email, password, role } = req.body;
 
-  const existing = await Admin.findOne({ email });
-  if (existing) {
-    return fail(new AppError("An admin with this email already exists", 409));
-  }
+  await requireAvailableIdentity({ name, email });
 
   const admin = await Admin.create({ name, email, password, role });
 
@@ -129,4 +137,33 @@ const getMe = async (c) => {
   });
 };
 
-module.exports = { login, register, logout, getMe };
+const listUsers = async c => {
+  const users = await Admin.find().select('name email role').sort({ name: 1, _id: 1 }).lean();
+  return sendOk(c, { users: users.map(account) });
+};
+
+const createUser = async c => {
+  const { name, email, password } = c.get('input').body;
+  await requireAvailableIdentity({ name, email });
+  const admin = await Admin.create({ name, email, password, role: ADMIN_ROLES.ADMIN });
+  return sendCreated(c, { admin: account(admin) }, 'Admin account created.');
+};
+
+const editUser = async c => {
+  const { admin: operator, params: { id }, body: { name, email, password, currentPassword } } = c.get('input');
+  const self = String(operator._id) === id.toLowerCase();
+  if (!self && operator.role !== ADMIN_ROLES.SUPER_ADMIN) throw new AppError('Super administrator required.', 403);
+  const admin = await Admin.findById(id).select('+password');
+  if (!admin) throw new AppError('Admin account not found.', 404);
+  if (self && password && (!currentPassword || !await admin.comparePassword(currentPassword))) {
+    throw new AppError('Current password is incorrect.', 400, 'CURRENT_PASSWORD_INVALID');
+  }
+  await requireAvailableIdentity({ name, email }, admin._id);
+  admin.name = name;
+  admin.email = email;
+  if (password) admin.password = password;
+  await admin.save();
+  return sendOk(c, { admin: account(admin), signInAgain: Boolean(self && password) }, 'Admin account updated.');
+};
+
+module.exports = { login, register, logout, getMe, listUsers, createUser, editUser };

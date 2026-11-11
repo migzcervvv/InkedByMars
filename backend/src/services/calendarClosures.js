@@ -1,7 +1,7 @@
 const Schedule = require('../models/Schedule');
 const Booking = require('../models/Booking');
 const AppError = require('../utils/AppError');
-const { DAY_STATUS, SLOT_STATUS, DEFAULT_TIME_SLOTS } = require('../config/constants');
+const { DAY_STATUS, SLOT_STATUS } = require('../config/constants');
 const settings = require('./availabilitySettingsService');
 const { getSlotBoundaryTimes, getSlotTimesInRange } = require('./scheduleService');
 const { transaction } = require('../bindings/runtime');
@@ -11,8 +11,9 @@ const isOccupied = (slot, now) => slot.status === SLOT_STATUS.BOOKED ||
   (slot.status === SLOT_STATUS.ON_HOLD && (!slot.holdExpiresAt || new Date(slot.holdExpiresAt) > now));
 const isAdminClosure = slot => slot.status === SLOT_STATUS.CLOSED && !slot.bookingId;
 
-function scheduleForNewDate(date) {
-  return new Schedule({ date, timeSlots: DEFAULT_TIME_SLOTS.map(time => ({ time })) });
+async function scheduleForNewDate(date) {
+  const { times, endTime } = await settings.getDefaultSchedule();
+  return new Schedule({ date, endTime, timeSlots: times.map(time => ({ time })) });
 }
 
 function planClosure(schedule, { action, startTime, endTime, reason }, now = new Date()) {
@@ -39,7 +40,7 @@ function planClosure(schedule, { action, startTime, endTime, reason }, now = new
 }
 
 async function dayAgenda(date) {
-  const schedule = await Schedule.findOne({ date }).lean() || scheduleForNewDate(date).toObject();
+  const schedule = await Schedule.findOne({ date }).lean() || (await scheduleForNewDate(date)).toObject();
   const legacyBlocked = await settings.isDateBlocked(date);
   const blocked = wholeDayClosed(schedule) || legacyBlocked;
   const ids = schedule.timeSlots.map(slot => slot.bookingId).filter(Boolean);
@@ -64,7 +65,7 @@ async function dayAgenda(date) {
 
 async function changeClosure(date, operation) {
   await transaction(async () => {
-    const schedule = await Schedule.findOne({ date }) || scheduleForNewDate(date);
+    const schedule = await Schedule.findOne({ date }) || await scheduleForNewDate(date);
     if ((schedule.__v ?? null) !== operation.version) {
       throw new AppError('The calendar changed. Review the updated day and try again.', 409, 'SCHEDULE_CHANGED');
     }
