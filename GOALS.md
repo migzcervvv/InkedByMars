@@ -22,7 +22,10 @@ A recognizable red-and-gold tattoo portfolio with three public destinations: Hom
 
 ## Constraints and launch verification
 
-- [x] Backend routing migrated to Hono on Workers; application data remains in MongoDB, media bytes use R2 bindings, and booking JSON contains only media keys.
+- [x] Backend routing migrated to Hono on Workers. Application data remains in MongoDB, media bytes use Supabase Storage, and booking JSON contains only media keys.
+- [x] New booking references are resized and converted in the browser. The upload endpoint accepts WebP up to 192 KiB per file, and existing JPEG, PNG and WebP reference URLs remain readable.
+- [x] Attached booking references become eligible for scheduled deletion 14 days after the latest appointment start in Asia/Manila. The job removes image objects and clears their references while retaining the booking record.
+- [x] Admin work is organized into Bookings and Calendar. New booking dates start tomorrow in Asia/Manila, and calendar closures preserve reservations.
 - [x] Real local workerd upload test exercises a file above 3 MB and byte-exact R2 retrieval; invalid input and object cleanup have focused regression tests.
 - [ ] Follow `backend/CLOUDFLARE_SETUP.md` against an isolated Atlas database, initialize indexes, rehearse legacy-reference migration and verify admin/booking/email integration before deployment.
 

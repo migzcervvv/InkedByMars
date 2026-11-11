@@ -5,6 +5,7 @@ import { addMonths, toDateKey } from '../utils/date'
 export function useAvailability(initialStartDate = new Date(), initialEndDate = addMonths(new Date(), 2)) {
   const [range, setRangeState] = useState(() => ({ startDate: toDateKey(initialStartDate), endDate: toDateKey(initialEndDate) }))
   const [availability, setAvailability] = useState([])
+  const [policy, setPolicy] = useState(null)
   const [selectedDateAvailability, setSelectedDateAvailability] = useState(null)
   const [loading, setLoading] = useState(true)
   const [dateLoading, setDateLoading] = useState(false)
@@ -35,6 +36,7 @@ export function useAvailability(initialStartDate = new Date(), initialEndDate = 
       const data = await publicApi.getAvailability(rangeRef.current)
       if (!mounted.current || requestId !== rangeRequest.current) return []
       setAvailability(data.availability || [])
+      setPolicy(data.policy || null)
       return data.availability || []
     } catch (error) {
       if (mounted.current && requestId === rangeRequest.current) { setAvailability([]); setRangeError(error) }
@@ -53,6 +55,7 @@ export function useAvailability(initialStartDate = new Date(), initialEndDate = 
       const data = await publicApi.getAvailabilityByDate(date, { signal: controller.signal })
       if (!mounted.current || requestId !== dateRequest.current) return null
       setSelectedDateAvailability(data)
+      if (data.policy) setPolicy(data.policy)
       return data
     } catch (error) {
       if (mounted.current && !controller.signal.aborted && requestId === dateRequest.current) setDateError(error)
@@ -69,12 +72,16 @@ export function useAvailability(initialStartDate = new Date(), initialEndDate = 
     const controller = new AbortController()
     const requestId = ++rangeRequest.current
     publicApi.getAvailability({ startDate, endDate }, { signal: controller.signal })
-      .then(data => { if (!controller.signal.aborted && requestId === rangeRequest.current) setAvailability(data.availability || []) })
+      .then(data => {
+        if (controller.signal.aborted || requestId !== rangeRequest.current) return
+        setAvailability(data.availability || [])
+        setPolicy(data.policy || null)
+      })
       .catch(error => { if (!controller.signal.aborted && requestId === rangeRequest.current) setRangeError(error) })
       .finally(() => { if (!controller.signal.aborted && requestId === rangeRequest.current) setLoading(false) })
     return () => controller.abort()
   }, [startDate, endDate])
 
   const availabilityByDate = useMemo(() => Object.fromEntries(availability.map(day => [day.date, day])), [availability])
-  return { range, setRange, availability, availabilityByDate, selectedDateAvailability, loading, dateLoading, rangeError, dateError, error: rangeError || dateError, refreshRange, fetchDate }
+  return { range, setRange, availability, availabilityByDate, policy, selectedDateAvailability, loading, dateLoading, rangeError, dateError, error: rangeError || dateError, refreshRange, fetchDate }
 }

@@ -1,68 +1,21 @@
-'use strict';
-
-const dayjs = require('dayjs');
 const AvailabilitySettings = require('../models/AvailabilitySettings');
+const key = 'default';
 
-const SETTINGS_KEY = 'default';
+async function getBlockedDateSet({ startDate, endDate } = {}) {
+  const settings = await AvailabilitySettings.findOne({ key }).select('blockedDates').lean();
+  return new Set((settings?.blockedDates || []).filter(date =>
+    (!startDate || date >= startDate) && (!endDate || date <= endDate)));
+}
 
-const getSettings = async () => {
-  return AvailabilitySettings.findOneAndUpdate(
-    { key: SETTINGS_KEY },
-    { $setOnInsert: { key: SETTINGS_KEY, blockedDates: [] } },
-    { new: true, upsert: true, setDefaultsOnInsert: true }
-  );
-};
+async function getBlockedDatesForMonth(month) {
+  const dates = await getBlockedDateSet();
+  return [...dates].filter(date => date.startsWith(`${month}-`)).sort();
+}
 
-const normalizeDates = (dates = []) => {
-  return [...new Set(dates)]
-    .filter((date) => dayjs(date, 'YYYY-MM-DD', true).isValid())
-    .sort();
-};
+async function isDateBlocked(date) {
+  return Boolean(await AvailabilitySettings.exists({ key, blockedDates: date }));
+}
 
-const getBlockedDateSet = async ({ startDate, endDate } = {}) => {
-  const settings = await getSettings();
-  const blockedDates = settings.blockedDates || [];
+const removeBlockedDate = date => AvailabilitySettings.updateOne({ key }, { $pull: { blockedDates: date } });
 
-  if (!startDate || !endDate) return new Set(blockedDates);
-
-  return new Set(
-    blockedDates.filter((date) => date >= startDate && date <= endDate)
-  );
-};
-
-const getBlockedDatesForMonth = async (month) => {
-  const settings = await getSettings();
-  const prefix = `${month}-`;
-  return (settings.blockedDates || [])
-    .filter((date) => date.startsWith(prefix))
-    .sort();
-};
-
-const replaceBlockedDatesForMonth = async (month, blockedDates) => {
-  const prefix = `${month}-`;
-  const settings = await getSettings();
-  const nextMonthDates = normalizeDates(blockedDates).filter((date) =>
-    date.startsWith(prefix)
-  );
-
-  const otherDates = (settings.blockedDates || []).filter(
-    (date) => !date.startsWith(prefix)
-  );
-
-  settings.blockedDates = normalizeDates([...otherDates, ...nextMonthDates]);
-  await settings.save();
-
-  return nextMonthDates;
-};
-
-const isDateBlocked = async (date) => {
-  const settings = await getSettings();
-  return (settings.blockedDates || []).includes(date);
-};
-
-module.exports = {
-  getBlockedDateSet,
-  getBlockedDatesForMonth,
-  replaceBlockedDatesForMonth,
-  isDateBlocked,
-};
+module.exports = { getBlockedDateSet, getBlockedDatesForMonth, isDateBlocked, removeBlockedDate };

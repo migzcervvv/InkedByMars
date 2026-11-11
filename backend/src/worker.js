@@ -8,11 +8,13 @@ import { input } from './middlewares/input';
 import { api } from './routes/api';
 import { upload, readMedia } from './routes/media';
 import cleanup from './services/holdCleanupService';
+import retention from './services/referenceRetentionService';
 import './models/Admin';
 import './models/Booking';
 import './models/Schedule';
 import './models/AvailabilitySettings';
 
+mongoose.set('transactionAsyncLocalStorage', true);
 const app = new Hono();
 app.use('*', secureHeaders());
 app.use('*', async (c, next) => { c.set('requestId', crypto.randomUUID()); c.header('X-Request-Id', c.get('requestId')); await next(); });
@@ -24,7 +26,7 @@ app.use('*', async (c, next) => {
 });
 export const handleError = (error, c) => {
   const status = error.statusCode || (error.code === 11000 ? 409 : ['ValidationError','CastError'].includes(error.name) ? 400 : 500);
-  console.error(JSON.stringify({ requestId: c.get('requestId'), code: error.code || error.name, status }));
+  console.error(JSON.stringify({ requestId: c.get('requestId'), code: error.code || error.name, status, providerStatus: error.providerStatus }));
   const errors=Array.isArray(error.details) ? error.details : Object.values(error.errors || {}).map(item=>({field:item.path,message:item.message}));
   return c.json({ success: false, requestId: c.get('requestId'), code: typeof error.code === 'string' ? error.code : 'API_ERROR', message: status < 500 || error.isOperational ? error.message : 'The server could not complete the request.', errors, details: error.details }, status);
 };
@@ -46,12 +48,31 @@ export class DatabaseAPI extends DurableObject {
     super(ctx, env);
     this.connection = mongoose.createConnection();
     for (const name of mongoose.modelNames()) this.connection.model(name, mongoose.model(name).schema);
+    this.bookingWrites = Promise.resolve();
+    this.withBookingWrites = operation => {
+      const result = this.bookingWrites.then(operation);
+      this.bookingWrites = result.catch(() => {});
+      return result;
+    };
     this.api = new Hono();
     this.api.onError(handleError);
     this.api.use('*', async (c, next) => { c.set('requestId', crypto.randomUUID()); await next(); });
     this.api.use('*', input);
+    const serializeBookingWrites = (c, next) => c.req.method === 'GET' || c.req.method === 'HEAD'
+      ? next()
+      : this.withBookingWrites(next);
+    this.api.use('/api/bookings/*', serializeBookingWrites);
+    this.api.use('/api/schedule/*', serializeBookingWrites);
+    this.api.post('/api/public/bookings', serializeBookingWrites);
     this.api.route('/api', api);
-    this.api.post('/internal/cleanup', async c => { await cleanup.expireStaleBookingHolds(); return c.json({ success: true }); });
+    this.api.post('/internal/cleanup', async c => {
+      const results = await Promise.allSettled([
+        this.withBookingWrites(() => cleanup.expireStaleBookingHolds()),
+        retention.purgeExpiredReferences({ env: this.env, exclusive: this.withBookingWrites }),
+      ]);
+      for (const result of results) if (result.status === 'rejected') throw result.reason;
+      return c.json({ success: true });
+    });
   }
   async fetch(request) {
     return runtime.run({ env: this.env, db: this.connection, origin: new URL(request.url).origin, waitUntil: promise => this.ctx.waitUntil(promise) }, async () => {
@@ -65,4 +86,11 @@ export class DatabaseAPI extends DurableObject {
     });
   }
 }
-export default { fetch: app.fetch, scheduled(event, env, ctx) { ctx.waitUntil((async()=>{ const response=await env.DATABASE.get(env.DATABASE.idFromName('primary')).fetch(new Request('https://internal/internal/cleanup', { method: 'POST' }));if(!response.ok)throw new Error('Scheduled hold cleanup failed.'); })()); } };
+export default {
+  fetch: app.fetch,
+  async scheduled(_event, env) {
+    const database = env.DATABASE.get(env.DATABASE.idFromName('primary'));
+    const response = await database.fetch(new Request('https://internal/internal/cleanup', { method: 'POST' }));
+    if (!response.ok) throw new Error('Scheduled booking cleanup failed.');
+  },
+};

@@ -1,6 +1,10 @@
 # Local-only placeholders. Copy to .dev.vars; never commit the resulting file.
 MONGO_URI=mongodb+srv://TEST_USER:URL_ENCODED_PASSWORD@YOUR_TEST_CLUSTER/inkedbymars_test?retryWrites=true&w=majority
 JWT_SECRET=REPLACE_WITH_RANDOM_SECRET
+# Supabase Storage project URL and server-only Settings > API Keys > Secret key.
+SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+SUPABASE_SECRET_KEY=sb_secret_REPLACE_ME
+# SUPABASE_STORAGE_BUCKET defaults to booking-references in wrangler.toml.
 # Generate with: node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 TOKEN_ENCRYPTION_KEY=REPLACE_WITH_32_BYTE_BASE64_KEY
 # Optional Instagram configuration; Facebook Login tokens only.

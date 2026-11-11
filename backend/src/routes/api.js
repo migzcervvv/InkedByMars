@@ -10,6 +10,7 @@ import sv from '../validators/scheduleValidators';
 import av from '../validators/authValidators';
 import instagram from '../services/instagramService';
 import { body } from 'express-validator';
+import calendar from '../services/calendarClosures';
 import AppError from '../utils/AppError';
 
 export const api = new Hono();
@@ -23,23 +24,28 @@ api.post('/public/bookings', validate(bv.createBookingValidators), booking.creat
 api.use('/bookings/*', ...requireAdmin);
 api.use('/schedule/*', ...requireAdmin);
 api.get('/bookings/dashboard', booking.getDashboardStats);
-api.get('/bookings', ...requireAdmin, booking.getAllBookings);
-api.post('/bookings', ...requireAdmin, validate(bv.createBookingValidators), booking.createBooking);
+api.get('/bookings', booking.getAllBookings);
+api.post('/bookings', validate(bv.createBookingValidators), booking.createBooking);
 api.get('/bookings/:id', validate(bv.mongoIdParam), booking.getBookingById);
-api.put('/bookings/:id', validate(bv.mongoIdParam), booking.updateBooking);
+api.put('/bookings/:id', validate([...bv.mongoIdParam, body('expectedUpdatedAt').isISO8601()]), booking.updateBooking);
 api.delete('/bookings/:id', validate(bv.mongoIdParam), booking.deleteBooking);
 api.put('/bookings/:id/confirm', validate(bv.confirmBookingValidators), booking.confirmBooking);
 api.put('/bookings/:id/status', validate(bv.updateBookingStatusValidators), booking.updateBookingStatus);
-api.get('/schedule', ...requireAdmin, validate(sv.rangeQueryValidators), schedule.getAllSchedules);
+api.get('/schedule', validate(sv.rangeQueryValidators), schedule.getAllSchedules);
 api.get('/schedule/blocked-dates', validate(sv.monthQueryValidators), schedule.getBlockedDates);
-api.put('/schedule/blocked-dates', validate(sv.blockedDatesValidators), schedule.updateBlockedDates);
 api.get('/schedule/:date', validate(sv.dateParamValidator), schedule.getScheduleByDate);
-for (const [path, validators, handler] of [
-  ['block-day',sv.blockDayValidators,schedule.blockDay],['block-slot',sv.blockSlotValidators,schedule.blockSlot],
-  ['release-slot',sv.releaseSlotValidators,schedule.releaseSlot],['opening-window',sv.applyOpeningWindowValidators,schedule.applyOpeningWindow],
-  ['override-slot',[...sv.blockSlotValidators,body('status').isIn(['available','booked','on-hold','closed'])],schedule.overrideSlot],
-  ['expire-holds',[],schedule.expireHolds],
-]) api.post(`/schedule/${path}`,validate(validators),handler);
+api.put('/schedule/:date/closure', validate([
+  ...sv.dateParamValidator,
+  body('action').isIn(['block-day', 'unblock-day', 'block-range', 'unblock-range']),
+  body('version').custom(value => value === null || (Number.isSafeInteger(value) && value >= 0)),
+  body('reason').optional().isString().trim().isLength({ max: 500 }),
+  body(['startTime', 'endTime']).if((_, { req }) => ['block-range', 'unblock-range'].includes(req.body.action)).matches(/^\d{2}:\d{2}$/),
+]), async c => {
+  const { params, body: operation } = c.get('input');
+  const agenda = await calendar.changeClosure(params.date, operation);
+  return c.json({ success: true, schedule: agenda });
+});
+api.post('/schedule/expire-holds', schedule.expireHolds);
 api.get('/instagram/posts', async c => {
   const limit = Math.max(1, Math.min(Number.parseInt(c.req.query('limit'),10) || 18,50));
   const result = await instagram.getInstagramPosts(limit,c.req.query('cursor') || null);

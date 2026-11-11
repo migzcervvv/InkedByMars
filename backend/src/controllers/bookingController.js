@@ -7,63 +7,64 @@ const { sendOk, sendCreated } = require("../utils/honoResponse");
 const { BOOKING_STATUS, HOLD_EXPIRY_MINUTES } = require("../config/constants");
 const scheduleService = require("../services/scheduleService");
 const holdCleanupService = require("../services/holdCleanupService");
+const { purgeBookingReferences } = require('../services/referenceRetentionService');
 const notificationService = require("../services/notificationService");
-const logger = require("../utils/logger");
 
-const getDefaultEndTime = async (date, startTime) => {
-  const schedule = await scheduleService.getOrCreateSchedule(date);
-  const boundaries = scheduleService.getSlotBoundaryTimes(schedule);
-  const startIndex = boundaries.indexOf(startTime);
-  return boundaries[startIndex + 1] || null;
-};
-
+const { transaction } = require('../bindings/runtime');
+const { requireBookableDate } = require('../services/bookingPolicy');
+const { isExpired, views, viewFilter, requireCurrentVersion } = require('../services/bookingReview');
+const { mediaUrl, isMediaKey } = require('../services/mediaService');
 
 const serializePublicBooking = (booking) => {
   const data = booking.toJSON ? booking.toJSON() : { ...booking };
   delete data.holdExpiresAt;
   return data;
 };
-const isExpiredHold = (booking) => {
-  return (
-    booking.status === BOOKING_STATUS.ON_HOLD &&
-    booking.holdExpiresAt &&
-    new Date(booking.holdExpiresAt) <= new Date()
-  );
-};
+
 
 /**
  * GET /api/bookings
  * Admin — list all bookings with optional filters
  */
 const getAllBookings = async (c) => {
-  const req = c.get('input');
+  const { query } = c.get('input');
+  const now = new Date();
+  const view = views.includes(query.view) ? query.view : 'all';
   const filter = {};
+  if (query.status && !query.view) filter.status = query.status;
+  if (query.date) filter.preferredDate = query.date;
+  if (query.email) filter.email = query.email.toLowerCase();
+  if (typeof query.search === 'string' && query.search.trim()) {
+    const escaped = query.search.trim().slice(0, 100).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    filter.$or = [{ clientName: { $regex: escaped, $options: 'i' } }, { email: { $regex: escaped, $options: 'i' } }];
+  }
 
-  if (req.query.status) filter.status = req.query.status;
-  if (req.query.date) filter.preferredDate = req.query.date;
-  if (req.query.email) filter.email = req.query.email.toLowerCase();
-
-  const page = parseInt(req.query.page) || 1;
-  const limit = Math.min(parseInt(req.query.limit) || 20, 100);
-  const skip = (page - 1) * limit;
-
-  const [bookings, total] = await Promise.all([
-    Booking.find(filter)
-      .sort({ preferredDate: 1, preferredTime: 1 })
-      .skip(skip)
-      .limit(limit)
-      .lean(),
-    Booking.countDocuments(filter),
+  const page = Math.max(1, Math.min(10000, Number.parseInt(query.page, 10) || 1));
+  const limit = Math.max(1, Math.min(Number.parseInt(query.limit, 10) || 20, 100));
+  const sort = view === 'review' ? { reviewPriority: 1, holdExpiresAt: 1, createdAt: 1, _id: 1 }
+    : { preferredDate: -1, preferredTime: 1, _id: 1 };
+  const [result] = await Booking.aggregate([
+    { $match: filter },
+    { $facet: {
+      ...Object.fromEntries(views.map(key => [key, [{ $match: viewFilter(key, now) }, { $count: 'total' }]])),
+      bookings: [
+        { $match: viewFilter(view, now) },
+        { $set: { reviewPriority: { $cond: [{ $eq: ['$status', BOOKING_STATUS.ON_HOLD] }, 0, 1] } } },
+        { $sort: sort }, { $skip: (page - 1) * limit }, { $limit: limit },
+        { $project: { reviewPriority: 0, submissionKey: 0, stripePaymentIntentId: 0 } },
+      ],
+    } },
   ]);
-
+  const counts = Object.fromEntries(views.map(key => [key, result[key][0]?.total || 0]));
+  const total = counts[view];
+  const origin = c.env.PUBLIC_MEDIA_BASE_URL || new URL(c.req.url).origin;
   return sendOk(c, {
-    bookings: bookings.map(booking => ({ ...booking, referenceImages: (booking.referenceImages || []).map(key => ({ key, url: require("../services/mediaService").mediaUrl(key, c.env.PUBLIC_MEDIA_BASE_URL || new URL(c.req.url).origin) })) })),
-    pagination: {
-      total,
-      page,
-      limit,
-      pages: Math.ceil(total / limit),
-    },
+    bookings: result.bookings.map(booking => ({
+      ...booking, isExpired: isExpired(booking, now),
+      referenceImages: (booking.referenceImages || []).filter(isMediaKey).map(key => ({ key, url: mediaUrl(key, origin) })),
+    })),
+    counts,
+    pagination: { total, page, limit, pages: Math.ceil(total / limit) },
   });
 };
 
@@ -75,8 +76,6 @@ const getBookingById = async (c) => {
   const req = c.get('input');
   const booking = await Booking.findById(req.params.id);
   if (!booking) return fail(new AppError("Booking not found", 404));
-  if (isExpiredHold(booking))
-    return fail(new AppError("This booking hold has expired.", 409));
 
   return sendOk(c, { booking });
 };
@@ -88,254 +87,116 @@ const getBookingById = async (c) => {
  */
 const createBooking = async (c) => {
   const req = c.get('input');
-  const { preferredDate, preferredTime } = req.body;
-
+  const { preferredDate, preferredTime, submissionKey } = req.body;
+  const existing = submissionKey ? await Booking.findOne({ submissionKey }) : null;
+  if (existing) {
+    if (existing.email !== req.body.email || existing.clientName !== req.body.clientName ||
+        (existing.requestedDate || existing.preferredDate) !== preferredDate ||
+        (existing.requestedTime || existing.preferredTime) !== preferredTime) {
+      throw new AppError('This submission was already used for another request.', 409);
+    }
+    return sendCreated(c, { booking: req.admin ? existing : serializePublicBooking(existing) }, 'Request already received.');
+  }
+  requireBookableDate(preferredDate);
   await holdCleanupService.expireStaleBookingHolds();
 
-  const allowed = ['clientName','email','phone','instagramHandle','tattooPlacement','tattooSize','preferredDate','preferredTime','notes','referenceImages'];
-  const bookingData = Object.fromEntries(allowed.filter(key => req.body[key] !== undefined).map(key => [key,req.body[key]]));
-  for (const key of bookingData.referenceImages || []) {
-    if (!(await c.env.MEDIA.head(key))) throw new AppError('A reference upload is missing. Upload it again.', 400);
-  }
-  if (req.admin) {
-    bookingData.createdByAdmin = true;
-    bookingData.createdByAdminId = req.admin._id;
-  }
-  bookingData.status = BOOKING_STATUS.ON_HOLD;
-
-  bookingData.statusHistory = [
-    {
-      status: bookingData.status || BOOKING_STATUS.PENDING,
-      changedBy: req.admin?._id,
-      reason: req.admin
-        ? "Created by admin"
-        : "Client requested a temporary hold",
-    },
-  ];
-
-  let booking;
-  try {
-    booking = await Booking.create(bookingData);
-  } catch (error) {
-    if (error.code === 11000) {
-      return fail(
-        new AppError(
-          `The time slot ${preferredTime} on ${preferredDate} is already held.`,
-          409,
-        ),
-      );
-    }
-    throw error;
+  const allowed = ['clientName','email','phone','instagramHandle','tattooPlacement','tattooSize','preferredDate','preferredTime','notes','referenceImages','submissionKey'];
+  const bookingData = Object.fromEntries(allowed.filter(key => req.body[key] !== undefined).map(key => [key, req.body[key]]));
+  if (bookingData.referenceImages?.length) {
+    const storage = require('../bindings/mediaStorage').createMediaStorage(c.env);
+    const references = await Promise.all(bookingData.referenceImages.map(key => storage.head(key)));
+    if (references.includes(false)) throw new AppError('A reference upload is missing. Upload it again.', 400);
   }
 
-  const holdExpiresAt = await scheduleService.holdSlotAtomically({
-    date: preferredDate,
-    time: preferredTime,
-    bookingId: booking._id,
-    expiryMinutes: HOLD_EXPIRY_MINUTES,
+  const booking = await transaction(async () => {
+    requireBookableDate(preferredDate);
+    const record = new Booking({
+      ...bookingData,
+      requestedDate: preferredDate,
+      requestedTime: preferredTime,
+      createdByAdmin: Boolean(req.admin),
+      createdByAdminId: req.admin?._id,
+      status: BOOKING_STATUS.ON_HOLD,
+      statusHistory: [{
+        status: BOOKING_STATUS.ON_HOLD,
+        changedBy: req.admin?._id,
+        reason: req.admin ? 'Created by admin' : 'Client requested a temporary hold',
+      }],
+    });
+    record.holdExpiresAt = await scheduleService.holdSlotAtomically({
+      date: preferredDate, time: preferredTime, bookingId: record._id, expiryMinutes: HOLD_EXPIRY_MINUTES,
+    });
+    if (!record.holdExpiresAt) throw new AppError('This time is no longer available. Choose another slot.', 409);
+    await record.save();
+    return record;
   });
 
-  if (!holdExpiresAt) {
-    await booking.deleteOne();
-    return fail(
-      new AppError(
-        `The time slot ${preferredTime} on ${preferredDate} is no longer available.`,
-        409,
-      ),
-    );
-  }
-
-  booking.status = BOOKING_STATUS.ON_HOLD;
-  booking.holdExpiresAt = holdExpiresAt;
-  await booking.save();
-
-  logger.info("booking.created", {
-    requestId: req.requestId,
-    bookingId: booking._id.toString(),
-    adminId: req.admin?._id?.toString() || null,
-    preferredDate,
-    preferredTime,
-    createdByAdmin: Boolean(req.admin),
-    holdExpiresAt,
-  });
-
-  // Fire-and-forget - do not block response
   c.executionCtx.waitUntil(notificationService.sendBookingPending(booking));
   c.executionCtx.waitUntil(notificationService.notifyAdminNewBooking(booking));
-
-  const responseBooking = req.admin ? booking : serializePublicBooking(booking);
-  return sendCreated(c,
-    { booking: responseBooking },
-    req.admin ? "Booking hold submitted successfully" : "Your booking is pending."
-  );
+  return sendCreated(c, { booking: req.admin ? booking : serializePublicBooking(booking) }, 'Booking request received.');
 };
 
 const confirmBooking = async (c) => {
   const req = c.get('input');
-  const booking = await Booking.findById(req.params.id);
+  const { date, startTime, endTime, adminNotes, expectedUpdatedAt } = req.body;
+  requireBookableDate(date);
+  const { booking, blockedSlots } = await transaction(async () => {
+    const record = await Booking.findById(req.params.id);
+    if (!record) throw new AppError('Booking not found', 404);
+    requireCurrentVersion(record, expectedUpdatedAt);
+    if (isExpired(record)) throw new AppError('This hold has expired. A new booking request is required.', 409);
+    if (![BOOKING_STATUS.ON_HOLD, BOOKING_STATUS.PENDING, BOOKING_STATUS.CONFIRMED].includes(record.status)) {
+      throw new AppError('This booking cannot be confirmed or rescheduled.', 409);
+    }
+    requireBookableDate(date);
+    await scheduleService.releaseBookingSlots({ bookingId: record._id });
+    const range = await scheduleService.blockConfirmedRange({ bookingId: record._id, date, startTime, endTime });
+    if (!range.ok) throw new AppError(range.reason, 409, 'SCHEDULE_CONFLICT');
+    if (isExpired(record)) throw new AppError('This hold expired while saving. A new booking request is required.', 409);
 
-  if (!booking) return fail(new AppError("Booking not found", 404));
-
-  if (booking.status === BOOKING_STATUS.CONFIRMED && isExpiredHold(booking)) {
-    return fail(new AppError("This booking hold has expired.", 409));
-  }
-
-  const date = req.body.date || booking.preferredDate;
-  const { startTime, endTime, adminNotes, reason } = req.body;
-  const previousHold = {
-    date: booking.preferredDate,
-    time: booking.preferredTime,
-  };
-
-  const rangeResult = await scheduleService.blockConfirmedRange({
-    bookingId: booking._id,
-    date,
-    startTime,
-    endTime,
-    previousHold,
-  });
-
-  if (!rangeResult.ok) {
-    return fail(new AppError(rangeResult.reason, 409));
-  }
-
-  if (date !== booking.preferredDate) {
-    await scheduleService.releaseBookingHolds({
-      bookingId: booking._id,
-      exceptDate: date,
+    record.requestedDate ||= record.preferredDate;
+    record.requestedTime ||= record.preferredTime;
+    record.preferredDate = date;
+    record.preferredTime = startTime;
+    record.appointmentEnd = endTime;
+    record.status = BOOKING_STATUS.CONFIRMED;
+    record.holdExpiresAt = null;
+    if (adminNotes !== undefined) record.adminNotes = adminNotes;
+    record.statusHistory.push({
+      status: BOOKING_STATUS.CONFIRMED, changedBy: req.admin._id,
+      reason: `Appointment set for ${date} ${startTime}–${endTime}`,
     });
-  }
-
-  const previousStatus = booking.status;
-  booking.preferredDate = date;
-  booking.preferredTime = startTime;
-  booking.status = BOOKING_STATUS.CONFIRMED;
-  booking.holdExpiresAt = null;
-  if (adminNotes !== undefined) booking.adminNotes = adminNotes;
-  booking.statusHistory.push({
-    status: BOOKING_STATUS.CONFIRMED,
-    changedBy: req.admin._id,
-    reason: reason || `Confirmed for ${date} ${startTime}-${endTime}`,
+    await record.save();
+    return { booking: record, blockedSlots: range.slotTimes };
   });
-
-  await booking.save();
-
-  logger.info("booking.confirmed", {
-    requestId: req.requestId,
-    bookingId: booking._id.toString(),
-    adminId: req.admin?._id?.toString() || null,
-    previousStatus,
-    date,
-    startTime,
-    endTime,
-    blockedSlots: rangeResult.slotTimes,
-  });
-
   c.executionCtx.waitUntil(notificationService.sendBookingConfirmation(booking, { endTime }));
-
-  return sendOk(c,
-    { booking, blockedSlots: rangeResult.slotTimes },
-    "Booking confirmed",
-  );
+  return sendOk(c, { booking, blockedSlots }, 'Appointment saved.');
 };
 
-/**
- * PUT /api/bookings/:id/status
- * Admin — update booking status with side effects
- */
 const updateBookingStatus = async (c) => {
   const req = c.get('input');
-  const { status, reason, adminNotes } = req.body;
-
-  const booking = await Booking.findById(req.params.id);
-  if (!booking) return fail(new AppError("Booking not found", 404));
-
-  const previousStatus = booking.status;
-
-  if (
-    status === BOOKING_STATUS.CONFIRMED &&
-    previousStatus !== BOOKING_STATUS.CONFIRMED
-  ) {
-    const startTime = req.body.startTime || booking.preferredTime;
-    const endTime =
-      req.body.endTime ||
-      (await getDefaultEndTime(booking.preferredDate, startTime));
-    if (!endTime) {
-      return fail(
-        new AppError("Unable to infer booking end time for confirmation.", 400),
-      );
-    }
-
-    const rangeResult = await scheduleService.blockConfirmedRange({
-      bookingId: booking._id,
-      date: booking.preferredDate,
-      startTime,
-      endTime,
-      previousHold: {
-        date: booking.preferredDate,
-        time: booking.preferredTime,
-      },
-    });
-
-    if (!rangeResult.ok) {
-      return fail(new AppError(rangeResult.reason, 409));
-    }
-
-    booking.preferredTime = startTime;
-    booking.holdExpiresAt = null;
-    c.executionCtx.waitUntil(notificationService.sendBookingConfirmation(booking, { endTime }));
-  }
-
-  if (
-    status === BOOKING_STATUS.ON_HOLD &&
-    previousStatus !== BOOKING_STATUS.ON_HOLD
-  ) {
-    const holdExpiresAt = await scheduleService.holdSlotAtomically({
-      date: booking.preferredDate,
-      time: booking.preferredTime,
-      bookingId: booking._id,
-      expiryMinutes: HOLD_EXPIRY_MINUTES,
-    });
-    if (!holdExpiresAt) {
-      return fail(new AppError("Unable to hold requested slot.", 409));
-    }
-    booking.holdExpiresAt = holdExpiresAt;
-  }
-
-  booking.status = status;
-  if (adminNotes !== undefined) booking.adminNotes = adminNotes;
-
-  // Track status change history
-  booking.statusHistory.push({
-    status,
-    changedBy: req.admin._id,
-    reason: reason || "",
+  const { status, reason, adminNotes, expectedUpdatedAt } = req.body;
+  const booking = await transaction(async () => {
+    const record = await Booking.findById(req.params.id);
+    if (!record) throw new AppError('Booking not found', 404);
+    requireCurrentVersion(record, expectedUpdatedAt);
+    const canCancel = status === BOOKING_STATUS.CANCELLED &&
+      [BOOKING_STATUS.ON_HOLD, BOOKING_STATUS.PENDING, BOOKING_STATUS.CONFIRMED].includes(record.status) &&
+      !isExpired(record);
+    const canComplete = status === BOOKING_STATUS.COMPLETED && record.status === BOOKING_STATUS.CONFIRMED;
+    if (!canCancel && !canComplete) throw new AppError('This booking no longer supports that action.', 409);
+    if (canCancel && !reason) throw new AppError('Enter a reason for declining or cancelling the booking.', 400);
+    if (canCancel) await scheduleService.releaseBookingSlots({ bookingId: record._id });
+    if (canComplete) await scheduleService.closeBookingSlots({ bookingId: record._id, reason: 'Completed booking' });
+    record.status = status;
+    record.holdExpiresAt = null;
+    if (adminNotes !== undefined) record.adminNotes = adminNotes;
+    record.statusHistory.push({ status, changedBy: req.admin._id, reason: reason || 'Appointment completed' });
+    await record.save();
+    return record;
   });
-
-  await booking.save();
-
-  logger.info("booking.status_updated", {
-    requestId: req.requestId,
-    bookingId: booking._id.toString(),
-    adminId: req.admin?._id?.toString() || null,
-    previousStatus,
-    status,
-  });
-
-  // Slot management based on new status
-  if (status === BOOKING_STATUS.CANCELLED) {
-    await scheduleService.releaseBookingSlots({ bookingId: booking._id });
-    c.executionCtx.waitUntil(notificationService.sendBookingCancellation(booking));
-  }
-
-  if (status === BOOKING_STATUS.COMPLETED) {
-    await scheduleService.closeBookingSlots({
-      bookingId: booking._id,
-      reason: "Completed booking",
-    });
-  }
-
-  return sendOk(c, { booking }, "Booking status updated");
+  if (status === BOOKING_STATUS.CANCELLED) c.executionCtx.waitUntil(notificationService.sendBookingCancellation(booking));
+  return sendOk(c, { booking }, 'Booking updated.');
 };
 
 /**
@@ -344,16 +205,17 @@ const updateBookingStatus = async (c) => {
  */
 const updateBooking = async (c) => {
   const req = c.get('input');
-  // Prevent status change through this endpoint
-  delete req.body.status;
-  delete req.body.statusHistory;
-
-  const booking = await Booking.findByIdAndUpdate(req.params.id, Object.fromEntries(['clientName','email','phone','instagramHandle','tattooPlacement','tattooSize','notes','adminNotes'].filter(key => req.body[key] !== undefined).map(key => [key,req.body[key]])), {
-    new: true,
-    runValidators: true,
-  });
-
-  if (!booking) return fail(new AppError("Booking not found", 404));
+  const current = await Booking.findById(req.params.id);
+  if (!current) return fail(new AppError('Booking not found', 404));
+  requireCurrentVersion(current, req.body.expectedUpdatedAt);
+  const fields = ['clientName','email','phone','instagramHandle','tattooPlacement','tattooSize','notes','adminNotes'];
+  const updates = Object.fromEntries(fields.filter(key => req.body[key] !== undefined).map(key => [key, req.body[key]]));
+  const booking = await Booking.findOneAndUpdate(
+    { _id: current._id, updatedAt: current.updatedAt },
+    { $set: updates },
+    { new: true, runValidators: true },
+  );
+  if (!booking) throw new AppError('This booking changed. Reload it before saving.', 409, 'BOOKING_CHANGED');
 
   return sendOk(c, { booking }, "Booking updated");
 };
@@ -367,18 +229,17 @@ const deleteBooking = async (c) => {
   const booking = await Booking.findById(req.params.id);
   if (!booking) return fail(new AppError("Booking not found", 404));
 
-  // Release schedule slot before deleting
-  if (
-    [
-      BOOKING_STATUS.PENDING,
-      BOOKING_STATUS.CONFIRMED,
-      BOOKING_STATUS.ON_HOLD,
-    ].includes(booking.status)
-  ) {
-    await scheduleService.releaseBookingSlots({ bookingId: booking._id });
+  if (booking.referenceImages?.length) {
+    const storage = require('../bindings/mediaStorage').createMediaStorage(c.env);
+    await purgeBookingReferences(booking, storage);
   }
 
-  await booking.deleteOne();
+  await transaction(async () => {
+    if ([BOOKING_STATUS.PENDING, BOOKING_STATUS.CONFIRMED, BOOKING_STATUS.ON_HOLD].includes(booking.status)) {
+      await scheduleService.releaseBookingSlots({ bookingId: booking._id });
+    }
+    await Booking.deleteOne({ _id: booking._id });
+  });
 
   return sendOk(c, {}, "Booking deleted");
 };

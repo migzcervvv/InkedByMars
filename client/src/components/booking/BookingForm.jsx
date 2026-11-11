@@ -42,12 +42,20 @@ export function BookingForm({ initialCategory, selectedDate, selectedSlot, timeA
     const remaining = 4 - draft.references.length
     if (remaining <= 0) { setUploadError('Use up to four reference images. Remove one before adding another.'); return }
     setProcessing(true); setUploadError('')
-    const results = await Promise.allSettled(files.slice(0, remaining).map(processImage))
-    const accepted = results.filter(result => result.status === 'fulfilled').map(result => result.value)
-    const failed = results.filter(result => result.status === 'rejected')
-    setDraft(current => ({ ...current, references: [...current.references, ...accepted].slice(0, 4) }))
-    setUploadError([files.length > remaining ? `Only the first ${remaining} selected image(s) were added.` : '', ...failed.map(result => result.reason.message)].filter(Boolean).join(' '))
-    setProcessing(false)
+    const failures = files.length > remaining ? [`Only the first ${remaining} selected images were processed.`] : []
+    try {
+      for (const file of files.slice(0, remaining)) {
+        try {
+          const reference = await processImage(file)
+          setDraft(current => ({ ...current, references: [...current.references, reference].slice(0, 4) }))
+        } catch (error) {
+          failures.push(`${file.name}: ${error.message}`)
+        }
+      }
+      setUploadError(failures.join(' '))
+    } finally {
+      setProcessing(false)
+    }
   }
 
   const submit = async event => {
@@ -75,7 +83,22 @@ export function BookingForm({ initialCategory, selectedDate, selectedSlot, timeA
           <fieldset className="category-field"><legend>A starting point</legend><div className="category-controls">{workCategories.map(category => <button type="button" key={category.id} aria-pressed={draft.category === category.id} onClick={() => setField('category', category.id)}>{category.name}</button>)}</div></fieldset>
           <div className="form-columns"><Field label="Placement" name="tattooPlacement" value={draft.tattooPlacement} onChange={event => setField('tattooPlacement', event.target.value)} placeholder="Arm, shoulder, ankle…" required error={errors.tattooPlacement} /><Field as="select" label="Approximate size" name="tattooSize" value={draft.tattooSize} onChange={event => setField('tattooSize', event.target.value)} required error={errors.tattooSize}><option value="">Choose a size</option>{sizeOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</Field></div>
           <Field as="textarea" label="Your idea" name="notes" rows={4} maxLength={900} value={draft.notes} onChange={event => setField('notes', event.target.value)} placeholder="What would you like to carry with you?" error={errors.notes} help="Describe the subject, placement, or details that matter to you." />
-          <div className="reference-field"><label className="upload-control"><Upload size={20} /><span>{processing ? 'Uploading your images…' : 'Add reference images'}<small>Up to four images. JPEG, PNG or WebP, up to 20 MB each.</small></span><input type="file" name="references" accept="image/jpeg,image/png,image/webp" multiple onChange={upload} disabled={processing || draft.references.length === 4} aria-label="Choose up to four reference images" /></label><p className="field-help" role="status">{processing ? 'Uploading your images to the studio.' : `${draft.references.length} of 4 images attached`}</p>{uploadError && <p className="field-error" role="alert">{uploadError}</p>}{draft.references.length > 0 && <div className="reference-previews">{draft.references.map((reference, index) => <figure key={`${reference.name}-${index}`}><img src={reference.dataUrl} alt={`Reference: ${reference.name}`} /><button type="button" className="icon-button" aria-label={`Remove ${reference.name}`} onClick={() => setDraft(current => ({ ...current, references: current.references.filter((_, position) => position !== index) }))}><X size={16} /></button><figcaption>{reference.name}</figcaption></figure>)}</div>}</div>
+          <div className="reference-field">
+            <label className="upload-control">
+              <Upload size={20} />
+              <span>{processing ? 'Preparing your images…' : 'Add reference images'}<small id="reference-file-help">Up to four JPEG, PNG or WebP images, 20 MiB each.</small></span>
+              <input type="file" name="references" accept="image/jpeg,image/png,image/webp" multiple onChange={upload} disabled={processing || draft.references.length === 4} aria-label="Add reference images" aria-describedby="reference-file-help" />
+            </label>
+            <p className="field-help" role="status">{processing ? 'Compressing and uploading images.' : `${draft.references.length} of 4 images attached`}</p>
+            {uploadError && <p className="field-error" role="alert">{uploadError}</p>}
+            {draft.references.length > 0 && <div className="reference-previews">{draft.references.map((reference, index) => (
+              <figure key={`${reference.name}-${index}`}>
+                <img src={reference.dataUrl} alt={`Reference: ${reference.name}`} />
+                <button type="button" className="icon-button" aria-label={`Remove ${reference.name}`} onClick={() => setDraft(current => ({ ...current, references: current.references.filter((_, position) => position !== index) }))}><X size={16} /></button>
+                <figcaption>{reference.name}</figcaption>
+              </figure>
+            ))}</div>}
+          </div>
         </>}
         {stage === 'details' && <>
           <Field label="Your name" name="clientName" autoComplete="name" maxLength={100} required value={draft.clientName} onChange={event => setField('clientName', event.target.value)} error={errors.clientName} />

@@ -4,6 +4,7 @@ const dayjs = require('dayjs');
 const Schedule = require('../models/Schedule');
 const { DEFAULT_TIME_SLOTS, SLOT_STATUS, DAY_STATUS } = require('../config/constants');
 const availabilitySettingsService = require('./availabilitySettingsService');
+const { requireBookableDate } = require('./bookingPolicy');
 
 /**
  * Fetch or create a schedule document for a given date string (YYYY-MM-DD).
@@ -84,44 +85,18 @@ const getSlotTimesInRange = (schedule, startTime, endTime) => {
     .map((slot) => slot.time);
 };
 
-/**
- * Return the slot object within a schedule by time string.
- */
-const findSlot = (schedule, time) => {
-  return schedule.timeSlots.find((s) => s.time === time);
-};
-
-/**
- * Check if a slot is bookable (available status, day open, hold not expired).
- */
-const isSlotBookable = (schedule, time) => {
-  if (schedule.dayStatus !== DAY_STATUS.OPEN) return false;
-
-  const slot = findSlot(schedule, time);
-  if (!slot) return false;
-
-  // If on-hold, check if hold has expired
-  if (slot.status === SLOT_STATUS.ON_HOLD) {
-    if (slot.holdExpiresAt && new Date() > new Date(slot.holdExpiresAt)) {
-      return true; // Hold expired, treat as available
-    }
-    return false;
-  }
-
-  return slot.status === SLOT_STATUS.AVAILABLE;
-};
-
 const holdSlotAtomically = async ({ date, time, bookingId, expiryMinutes = 30 }) => {
   if (await availabilitySettingsService.isDateBlocked(date)) return null;
 
   const schedule = await getOrCreateSchedule(date);
+  requireBookableDate(date);
   const now = new Date();
   const holdExpiresAt = dayjs().add(expiryMinutes, 'minute').toDate();
 
   const result = await Schedule.updateOne(
     {
       _id: schedule._id,
-      dayStatus: DAY_STATUS.OPEN,
+      dayStatus: { $in: [DAY_STATUS.OPEN, DAY_STATUS.PARTIALLY_CLOSED] },
       timeSlots: {
         $elemMatch: {
           time,
@@ -139,159 +114,42 @@ const holdSlotAtomically = async ({ date, time, bookingId, expiryMinutes = 30 })
         'timeSlots.$.holdExpiresAt': holdExpiresAt,
         'timeSlots.$.reason': null,
       },
+      $inc: { __v: 1 },
     }
   );
 
   return result.modifiedCount === 1 ? holdExpiresAt : null;
 };
 
-/**
- * Mark a slot as booked and associate it with a booking ID.
- * Persists the schedule document.
- */
-const markSlotBooked = async (schedule, time, bookingId) => {
-  const slot = findSlot(schedule, time);
-  if (!slot) throw new Error(`Slot ${time} not found on schedule for ${schedule.date}`);
-
-  slot.status = SLOT_STATUS.BOOKED;
-  slot.bookingId = bookingId;
-  slot.holdExpiresAt = null;
-  await schedule.save();
-};
-
-const blockConfirmedRange = async ({ bookingId, date, startTime, endTime, previousHold }) => {
+const blockConfirmedRange = async ({ bookingId, date, startTime, endTime }) => {
   const schedule = await getOrCreateSchedule(date);
+  if ([DAY_STATUS.FULLY_CLOSED, DAY_STATUS.HOLIDAY].includes(schedule.dayStatus) || await availabilitySettingsService.isDateBlocked(date)) {
+    return { ok: false, reason: 'The selected day is blocked.' };
+  }
+  const boundaries = getSlotBoundaryTimes(schedule);
   const slotTimes = getSlotTimesInRange(schedule, startTime, endTime);
-  if (!slotTimes.length) {
-    return {
-      ok: false,
-      reason: 'No matching slots exist in the selected time range.',
-      conflictSlots: [],
-    };
+  if (!boundaries.includes(startTime) || !boundaries.includes(endTime) || !slotTimes.length) {
+    return { ok: false, reason: 'Choose an appointment range using the supported start and end times.' };
   }
 
   const now = new Date();
-  const conflictSlots = [];
-  const bookingIdString = bookingId.toString();
-  const nextSlots = schedule.timeSlots.map((slot) => {
-    const plain = slot.toObject ? slot.toObject() : { ...slot };
-    const isTarget = slotTimes.includes(slot.time);
-    const isOwnSlot =
-      slot.bookingId && slot.bookingId.toString() === bookingIdString;
-    const isExpiredOwnHold =
-      isOwnSlot &&
-      slot.status === SLOT_STATUS.ON_HOLD &&
-      slot.holdExpiresAt &&
-      new Date(slot.holdExpiresAt) <= now;
-
-    if (isTarget) {
-      if (
-        slot.status === SLOT_STATUS.BOOKED &&
-        !isOwnSlot
-      ) {
-        conflictSlots.push(slot.time);
-      }
-
-      if (
-        slot.status === SLOT_STATUS.ON_HOLD &&
-        !isOwnSlot &&
-        isActiveHold(slot, now)
-      ) {
-        conflictSlots.push(slot.time);
-      }
-
-      if (slot.status === SLOT_STATUS.CLOSED) {
-        conflictSlots.push(slot.time);
-      }
-
-      return {
-        ...plain,
-        status: SLOT_STATUS.BOOKED,
-        bookingId,
-        holdExpiresAt: null,
-        reason: null,
-      };
-    }
-
-    if (previousHold && previousHold.date === date && previousHold.time === slot.time && isOwnSlot) {
-      return {
-        ...plain,
-        status: SLOT_STATUS.AVAILABLE,
-        bookingId: null,
-        holdExpiresAt: null,
-        reason: null,
-      };
-    }
-
-    if (isExpiredOwnHold) {
-      return {
-        ...plain,
-        status: SLOT_STATUS.AVAILABLE,
-        bookingId: null,
-        holdExpiresAt: null,
-        reason: null,
-      };
-    }
-
-    return plain;
-  });
-
-  if (conflictSlots.length) {
-    return {
-      ok: false,
-      reason: `Selected range overlaps unavailable slots: ${[...new Set(conflictSlots)].join(', ')}`,
-      conflictSlots: [...new Set(conflictSlots)],
-    };
+  const slots = schedule.timeSlots.filter(slot => slotTimes.includes(slot.time));
+  const conflicts = slots.filter(slot => slot.status === SLOT_STATUS.BOOKED || slot.status === SLOT_STATUS.CLOSED ||
+    (slot.status === SLOT_STATUS.ON_HOLD && (!slot.holdExpiresAt || isActiveHold(slot, now))));
+  if (conflicts.length) {
+    return { ok: false, reason: 'Selected range overlaps unavailable times: ' + conflicts.map(slot => slot.time).join(', ') };
   }
 
-  const result = await Schedule.updateOne(
-    { _id: schedule._id, __v: schedule.__v },
-    {
-      $set: { timeSlots: nextSlots },
-      $inc: { __v: 1 },
-    }
-  );
-
-  if (result.modifiedCount !== 1) {
-    return {
-      ok: false,
-      reason: 'Schedule changed while confirming. Reload and try again.',
-      conflictSlots: [],
-    };
+  for (const slot of slots) {
+    slot.status = SLOT_STATUS.BOOKED;
+    slot.bookingId = bookingId;
+    slot.holdExpiresAt = null;
+    slot.reason = null;
   }
-
-  return {
-    ok: true,
-    schedule,
-    slotTimes,
-  };
-};
-
-const releaseBookingHolds = async ({ bookingId, exceptDate }) => {
-  const schedules = await Schedule.find({
-    'timeSlots.bookingId': bookingId,
-  });
-
-  for (const schedule of schedules) {
-    if (exceptDate && schedule.date === exceptDate) continue;
-
-    let modified = false;
-    for (const slot of schedule.timeSlots) {
-      if (
-        slot.bookingId &&
-        slot.bookingId.toString() === bookingId.toString() &&
-        slot.status === SLOT_STATUS.ON_HOLD
-      ) {
-        slot.status = SLOT_STATUS.AVAILABLE;
-        slot.bookingId = null;
-        slot.holdExpiresAt = null;
-        slot.reason = null;
-        modified = true;
-      }
-    }
-
-    if (modified) await schedule.save();
-  }
+  requireBookableDate(date);
+  schedule.increment();
+  await schedule.save();
+  return { ok: true, slotTimes };
 };
 
 const releaseBookingSlots = async ({ bookingId }) => {
@@ -311,7 +169,7 @@ const releaseBookingSlots = async ({ bookingId }) => {
       }
     }
 
-    if (modified) await schedule.save();
+    if (modified) { schedule.increment(); await schedule.save(); }
   }
 };
 
@@ -331,49 +189,8 @@ const closeBookingSlots = async ({ bookingId, reason = 'Completed' }) => {
       }
     }
 
-    if (modified) await schedule.save();
+    if (modified) { schedule.increment(); await schedule.save(); }
   }
-};
-
-/**
- * Release a slot back to available.
- * Used when a booking is cancelled or a hold is released.
- */
-const releaseSlot = async (schedule, time) => {
-  const slot = findSlot(schedule, time);
-  if (!slot) throw new Error(`Slot ${time} not found on schedule for ${schedule.date}`);
-
-  slot.status = SLOT_STATUS.AVAILABLE;
-  slot.bookingId = null;
-  slot.reason = null;
-  slot.holdExpiresAt = null;
-  await schedule.save();
-};
-
-/**
- * Close an individual slot (admin action).
- */
-const closeSlot = async (schedule, time, reason = '') => {
-  const slot = findSlot(schedule, time);
-  if (!slot) throw new Error(`Slot ${time} not found on schedule for ${schedule.date}`);
-
-  slot.status = SLOT_STATUS.CLOSED;
-  slot.reason = reason;
-  slot.holdExpiresAt = null;
-  await schedule.save();
-};
-
-/**
- * Put a slot on hold with an expiry time.
- */
-const holdSlot = async (schedule, time, bookingId, expiryMinutes = 30) => {
-  const slot = findSlot(schedule, time);
-  if (!slot) throw new Error(`Slot ${time} not found on schedule for ${schedule.date}`);
-
-  slot.status = SLOT_STATUS.ON_HOLD;
-  slot.bookingId = bookingId;
-  slot.holdExpiresAt = dayjs().add(expiryMinutes, 'minute').toDate();
-  await schedule.save();
 };
 
 /**
@@ -393,7 +210,7 @@ const expireStaleHolds = async () => {
       if (
         slot.status === SLOT_STATUS.ON_HOLD &&
         slot.holdExpiresAt &&
-        slot.holdExpiresAt < now
+        slot.holdExpiresAt <= now
       ) {
         slot.status = SLOT_STATUS.AVAILABLE;
         slot.bookingId = null;
@@ -402,7 +219,7 @@ const expireStaleHolds = async () => {
         modified = true;
       }
     }
-    if (modified) await schedule.save();
+    if (modified) { schedule.increment(); await schedule.save(); }
   }
 };
 
@@ -411,26 +228,24 @@ const expireStaleHolds = async () => {
  * Strips booking IDs and internal data.
  */
 const toPublicAvailability = (schedule) => {
+  const isBlocked = [DAY_STATUS.FULLY_CLOSED, DAY_STATUS.HOLIDAY].includes(schedule.dayStatus);
   const slots = schedule.timeSlots.map((slot) => {
     // Expired holds appear as available to the public
     const isExpiredHold =
       slot.status === SLOT_STATUS.ON_HOLD &&
       slot.holdExpiresAt &&
-      new Date() > slot.holdExpiresAt;
+      new Date() >= slot.holdExpiresAt;
 
     return {
       time: slot.time,
-      status: isExpiredHold ? SLOT_STATUS.AVAILABLE : slot.status,
-      available: isExpiredHold
+      status: isBlocked ? SLOT_STATUS.CLOSED : isExpiredHold ? SLOT_STATUS.AVAILABLE : slot.status,
+      available: !isBlocked && (isExpiredHold
         ? true
-        : slot.status === SLOT_STATUS.AVAILABLE,
+        : slot.status === SLOT_STATUS.AVAILABLE),
     };
   });
   const availableCount = slots.filter((slot) => slot.available).length;
   const totalCount = slots.length;
-  const isBlocked =
-    schedule.dayStatus === DAY_STATUS.FULLY_CLOSED ||
-    schedule.dayStatus === DAY_STATUS.HOLIDAY;
   const isFullyBooked = !isBlocked && totalCount > 0 && availableCount === 0;
   const isPartiallyBooked =
     !isBlocked && availableCount > 0 && availableCount < totalCount;
@@ -438,7 +253,7 @@ const toPublicAvailability = (schedule) => {
   return {
     date: schedule.date,
     dayStatus: schedule.dayStatus,
-    closureReason: schedule.closureReason || null,
+    closureReason: isBlocked ? 'Unavailable' : null,
     isFullyClosed: isBlocked,
     isBlocked,
     isFullyBooked,
@@ -458,19 +273,12 @@ const toPublicAvailability = (schedule) => {
 
 module.exports = {
   getOrCreateSchedule,
-  findSlot,
   getSlotBoundaryTimes,
   getSlotTimesInRange,
-  isSlotBookable,
   holdSlotAtomically,
-  markSlotBooked,
   blockConfirmedRange,
-  releaseBookingHolds,
   releaseBookingSlots,
   closeBookingSlots,
-  releaseSlot,
-  closeSlot,
-  holdSlot,
   expireStaleHolds,
   toPublicAvailability,
 };

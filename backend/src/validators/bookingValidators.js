@@ -2,9 +2,10 @@
 
 const { body, param } = require("express-validator");
 const { BOOKING_STATUS } = require("../config/constants");
-const dayjs = require("dayjs");
+const { validDate } = require('../services/bookingPolicy');
 
 const createBookingValidators = [
+  body('submissionKey').optional().isUUID(4).withMessage('Invalid submission key'),
   body("clientName")
     .trim()
     .notEmpty()
@@ -41,15 +42,7 @@ const createBookingValidators = [
     .withMessage("Preferred date is required")
     .matches(/^\d{4}-\d{2}-\d{2}$/)
     .withMessage("Date must be in YYYY-MM-DD format")
-    .custom((value) => {
-      if (!dayjs(value, "YYYY-MM-DD", true).isValid()) {
-        throw new Error("Invalid date");
-      }
-      if (dayjs(value).isBefore(dayjs().startOf("day"))) {
-        throw new Error("Preferred date cannot be in the past");
-      }
-      return true;
-    }),
+    .custom(validDate).withMessage('Invalid date'),
 
   body("preferredTime")
     .notEmpty()
@@ -68,11 +61,12 @@ const createBookingValidators = [
     .isArray({ max: 4 })
     .withMessage("Reference images must be an array with at most 4 items"),
 
-  body("referenceImages.*").custom(value => require('../services/mediaService').isMediaKey(value)).withMessage('References must be uploaded R2 object keys, not inline data or external URLs'),
+  body("referenceImages.*").custom(value => require('../services/mediaService').isMediaKey(value)).withMessage('References must be uploaded media keys, not inline data or external URLs'),
 ];
 
 const updateBookingStatusValidators = [
   param("id").isMongoId().withMessage("Invalid booking ID"),
+  body('expectedUpdatedAt').isISO8601().withMessage('Reload the booking before saving.'),
 
   body("status")
     .notEmpty()
@@ -97,17 +91,12 @@ const updateBookingStatusValidators = [
 
 const confirmBookingValidators = [
   param("id").isMongoId().withMessage("Invalid booking ID"),
+  body('expectedUpdatedAt').isISO8601().withMessage('Reload the booking before saving.'),
 
   body("date")
-    .optional()
     .matches(/^\d{4}-\d{2}-\d{2}$/)
     .withMessage("Date must be in YYYY-MM-DD format")
-    .custom((value) => {
-      if (!dayjs(value, "YYYY-MM-DD", true).isValid()) {
-        throw new Error("Invalid date");
-      }
-      return true;
-    }),
+    .custom(validDate).withMessage('Invalid date'),
 
   body("startTime")
     .notEmpty()

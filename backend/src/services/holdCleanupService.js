@@ -5,35 +5,33 @@ const { BOOKING_STATUS } = require('../config/constants');
 const scheduleService = require('./scheduleService');
 const logger = require('../utils/logger');
 const notificationService = require('./notificationService');
+const { expiryReason } = require('./bookingReview');
+const { current, transaction } = require('../bindings/runtime');
 
 const expireStaleBookingHolds = async () => {
   const now = new Date();
-  const bookings = await Booking.find({
+  const due = {
     status: BOOKING_STATUS.ON_HOLD,
-    holdExpiresAt: { $lt: now },
-  });
+    holdExpiresAt: { $not: { $gt: now } },
+  };
+  const bookings = await Booking.find(due);
 
   for (const booking of bookings) {
-    const result = await Booking.updateOne(
-      {
-        _id: booking._id,
-        status: BOOKING_STATUS.ON_HOLD,
-        holdExpiresAt: { $lt: now },
-      },
-      {
+    const expired = await transaction(async () => {
+      const result = await Booking.updateOne({ _id: booking._id, ...due }, {
         $set: { status: BOOKING_STATUS.CANCELLED },
         $push: {
           statusHistory: {
             status: BOOKING_STATUS.CANCELLED,
-            reason: 'Temporary hold expired before admin confirmation',
+            reason: expiryReason,
           },
         },
-      }
-    );
-
-    if (result.modifiedCount !== 1) continue;
-
-    await scheduleService.releaseBookingSlots({ bookingId: booking._id });
+      });
+      if (result.modifiedCount !== 1) return false;
+      await scheduleService.releaseBookingSlots({ bookingId: booking._id });
+      return true;
+    });
+    if (!expired) continue;
 
     logger.info('booking.hold_expired', {
       bookingId: booking._id.toString(),
@@ -41,7 +39,7 @@ const expireStaleBookingHolds = async () => {
       preferredTime: booking.preferredTime,
     });
 
-    await notificationService.notifyAdminBookingExpired(booking);
+    current().waitUntil(notificationService.notifyAdminBookingExpired(booking));
   }
 
   await scheduleService.expireStaleHolds();

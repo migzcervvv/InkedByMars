@@ -56,6 +56,10 @@ const bookingSchema = new mongoose.Schema(
       required: [true, "Preferred time is required"],
       match: [/^\d{2}:\d{2}$/, "Time must be in HH:MM format"],
     },
+    requestedDate: String,
+    requestedTime: String,
+    appointmentEnd: String,
+    submissionKey: { type: String, select: false },
 
     // Booking State
     status: {
@@ -135,11 +139,16 @@ bookingSchema.index(
 bookingSchema.index({ email: 1 });
 bookingSchema.index({ status: 1 });
 bookingSchema.index({ preferredDate: 1 });
+bookingSchema.index({ submissionKey: 1 }, { unique: true, sparse: true });
+bookingSchema.index({ referenceImages: 1 }, { sparse: true });
 
 bookingSchema.set('toJSON', { transform(document, value) {
   const runtime = require('../bindings/runtime');
   const origin = runtime.env().PUBLIC_MEDIA_BASE_URL || runtime.current()?.origin;
-  if (origin) value.referenceImages = (value.referenceImages || []).map(key => ({ key, url: require('../services/mediaService').mediaUrl(key, origin) }));
+  const { isMediaKey, mediaUrl } = require('../services/mediaService');
+  if (origin) value.referenceImages = (value.referenceImages || []).filter(isMediaKey).map(key => ({ key, url: mediaUrl(key, origin) }));
+  value.isExpired = require('../services/bookingReview').isExpired(value);
+  delete value.submissionKey;
   return value;
 } });
 module.exports = require('../bindings/model').boundModel("Booking", bookingSchema);

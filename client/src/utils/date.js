@@ -96,3 +96,11 @@ export function formatDisplayTime(time) {
   }).format(new Date(`2026-01-01T${time}:00`))
 }
 
+const studioTimestamp = new Intl.DateTimeFormat('en-PH', {
+  timeZone: 'Asia/Manila', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+})
+
+export function formatStudioTimestamp(value) {
+  return value ? studioTimestamp.format(new Date(value)) : '—'
+}
+

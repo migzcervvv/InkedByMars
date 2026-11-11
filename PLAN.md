@@ -1,8 +1,47 @@
 # Implementation plan
 
-## Planned next: admin panel rebuild
+## Admin panel rebuild
 
-The new implementation brief is [ADMIN_REDESIGN_PLAN.md](ADMIN_REDESIGN_PLAN.md). Scope: replace the five-destination admin with Bookings and Calendar, rebuild request-review and block/unblock flows, and enforce no new same-day bookings in Asia/Manila across public/admin APIs and the public calendar. Instagram Direct Messages is a separate future phase. This is a plan only; same-day prevention and the admin redesign are not implemented by this documentation update.
+Bookings and Calendar replace the previous five primary destinations. The review queue uses backend counts, hold expiry and pagination. Confirmation and rescheduling require an explicit range, and closures reject occupied slots. New public and admin reservations start tomorrow in Asia/Manila. Existing same-day appointments remain visible, and Instagram Direct Messages remains a separate future phase. See the [admin implementation brief](ADMIN_REDESIGN_PLAN.md) for the transition rules.
+
+The backend tests cover Manila midnight and leap dates, direct same-day requests, expired and stale booking decisions, closure boundaries, reserved slots and public data stripping. Frontend lint, tests and build, Wrangler dry run and the isolated workerd storage test pass. Chromium fixtures verified 1440, 768 and 390 px layouts, a short phone viewport, reduced motion, keyboard focus restoration, conflict recovery, legacy redirects, range blocking and reopening, and the public policy with a Los Angeles browser timezone. The app inspector reported zero failures, with whitespace warnings for short queues and unselected panes. Artifacts are in ignored `.taste-skill/admin/`. Live MongoDB transaction races, notification delivery and Supabase-backed previews still need staging validation. Run `npm run db:indexes` on the intended database before deploying the matching frontend and Worker.
+
+## Supabase Storage replacement for R2
+
+Status: adapter and configuration implemented locally; hosted validation and existing-object cutover are pending. The selected provider is Supabase Storage on a Free project. The key setup is documented in [backend/CLOUDFLARE_SETUP.md](backend/CLOUDFLARE_SETUP.md).
+
+Reason: the owner cannot proceed with R2's credit-card enrollment requirement. Replace R2 as the media backend while retaining MongoDB for application records and the Hono Worker API. Do not solve this by putting image bytes or base64 in MongoDB.
+
+### Provider selection requirements
+
+- [ ] Verify current official terms and an actual setup flow before selecting a provider. The usable test tier must require no credit card for account creation, bucket/media storage, API credentials, upload and download. A signup-only exception or temporary trial credit is insufficient.
+- [ ] Record free storage/bandwidth/request limits, maximum image size, API availability, suspension behavior, retention, deletion/export support and any restrictions affecting this application. Do not promise unlimited or permanently free storage.
+- [x] Verify the multipart transport can stream larger inputs in isolation. The public booking endpoint now follows the owner's storage-saving requirement and accepts only optimized WebP up to 192 KiB.
+- [ ] Verify Worker-compatible authentication and HTTP operations without filesystem access, native Node binaries or whole-file buffering. Check whether public or signed reads can meet reference-image access requirements.
+
+### Implementation and migration sequence
+
+1. Extract a provider-independent media service with upload, metadata/existence lookup, read and delete operations. Keep provider credentials in Worker secrets, never browser code or MongoDB booking documents.
+2. Implement the selected provider behind that interface. Replace direct `env.MEDIA` coupling in upload, media-read and booking-reference validation paths. Preserve multipart input, streamed type/size verification, backpressure, error cleanup and rate limits. Do not assume an S3-compatible SDK streams safely without testing it.
+3. Keep booking references as stable object-key strings. Prefer retaining the Worker's media URLs so switching storage does not break admin previews or existing links. If the provider requires opaque IDs, keep their mapping in server-owned media metadata rather than embedding vendor logic throughout booking components.
+4. Update local examples, bindings, dependencies, setup instructions, upload smoke tests and legacy-reference migration tools for the new provider. Define a real local/test strategy; do not ship a fake storage service as the production integration.
+5. If R2 contains existing objects, inventory and copy them to the new storage, verify byte integrity and metadata, then cut over with a documented rollback and temporary dual-read path where necessary. Keep original objects until verification completes. If R2 was never provisioned, skip object copying but still verify existing database references.
+6. Remove R2 bindings and obsolete setup instructions only after replacement reads, writes and reference validation pass. Do not create a new paid/billing-enabled account, move production objects, delete R2 data or deploy during planning.
+
+### Acceptance criteria
+
+- [ ] The owner can follow the complete test setup, upload and retrieve real media without supplying a credit card.
+- [ ] A JPEG, PNG or WebP larger than 2 MiB can be selected in the browser and retrieved from the live bucket as the optimized WebP. Verify byte-exact retrieval at the 192 KiB limit and cleanup after rejected or interrupted uploads.
+- [ ] MongoDB still stores reference keys/URLs only; booking creation and admin previews work with the new storage.
+- [ ] Secrets stay server-side; access rules, throttling and failure states remain explicit. A provider outage must not be shown as a successful upload.
+- [ ] Existing references survive cutover, or a verified migration and rollback is documented. Test uploads do not alter production bookings.
+- [ ] Frontend/backend tests, Worker dry-run and actual provider integration checks pass. Record evidence and remaining limits before declaring the migration complete.
+
+The Supabase adapter handles streamed uploads, private reads, existence checks and cleanup. The Worker retains the `/media/:id` URLs and MongoDB reference keys. Booking reference optimization runs one file at a time in the browser. It accepts source files up to 20 MiB, strips source metadata through canvas rendering, limits the longest edge to 1280 px and reduces quality or dimensions to fit 192 KiB. The browser sends only the optimized WebP and the Worker enforces its type and byte limit. The isolated workerd test verifies byte-exact retrieval at the new limit, rejects unsupported types and oversized inputs, and checks cleanup. The legacy migration utility uses the server-side storage adapter directly so existing images retain their types and bytes. Hosted Free-account enrollment, a live bucket round-trip and any existing object migration still need verification before deployment. The plaintext Mongo URI was removed from local Wrangler configuration. Rotate that credential and keep the replacement in secrets.
+
+Chromium verified that synthetic JPEG, PNG and WebP inputs between 2.2 and 4.1 MiB reached the upload transport as readable WebP files between 97 and 177 KiB. It also verified transparency, no upscaling for small images, and rejection of corrupt, oversized and unsupported selections before upload.
+
+The existing five-minute Worker trigger now removes references due 14 days after the recorded appointment start in Asia/Manila. It rechecks the booking under the same Durable Object write queue used for rescheduling, keeps objects still referenced by another booking and retries failed deletions. Admin hard deletion removes unshared references before deleting the record. Unit tests cover the cutoff, rescheduling, shared keys and retries. Live cleanup remains pending in a test bucket and database. Unattached uploads have no appointment-based deadline.
 
 ## Approved direction
 

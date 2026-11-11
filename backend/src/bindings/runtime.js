@@ -3,3 +3,4 @@ const scope = new AsyncLocalStorage();
 exports.run = (runtime, operation) => scope.run(runtime, operation);
 exports.current = () => scope.getStore();
 exports.env = () => scope.getStore()?.env || process.env;
+exports.transaction = operation => scope.getStore().db.transaction(operation);

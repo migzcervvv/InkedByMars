@@ -1,12 +1,14 @@
 # Admin panel rebuild
 
-Status: future implementation. Planning only; no running behavior changes in this task.
+Status: Bookings, Calendar and the same-day policy are implemented locally. Cutover and transaction verification against a staging MongoDB replica set are pending.
 
 ## Objective
 
 Rebuild administration around two jobs: reviewing bookings and making dates or times non-bookable. Prevent new same-day bookings by default, enforced by the server in `Asia/Manila`. Instagram Direct Messages belongs to a later phase.
 
-Keep React/Vite/Tailwind, centralized CSS, Hono Workers, MongoDB and R2. Preserve the three public pages and existing records.
+Keep React/Vite/Tailwind, centralized CSS, Hono Workers, MongoDB and the Worker media API. Preserve the three public pages and existing records.
+
+Storage: `PLAN.md` tracks the Supabase Storage replacement. Admin media components must use the shared media-service contract and stable Worker URLs. Hosted validation and any existing R2 object migration are separate from the admin redesign.
 
 ## Audit findings
 
@@ -42,7 +44,7 @@ Use the design-taste frontend skill's app-screen workflow at implementation time
 ## Booking review flow
 
 1. Open Needs review. Show client, requested Philippine date/time, status, submitted time and actual hold expiry. Sort active holds by nearest expiry with stable ordering; keep legacy pending requests accessible.
-2. Select a request. Read contact details, idea, placement, size, R2 references and history. Separate the client's requested start from the studio's final appointment range.
+2. Select a request. Read contact details, idea, placement, size, Supabase references and history. Separate the client's requested start from the studio's final appointment range.
 3. Choose Confirm appointment or Decline request. Confirmation requires an explicit actual date/start/end using supported schedule boundaries; do not silently treat an inferred duration as agreed.
 4. Review the selected range and conflicts, then save. Disable duplicate submission. Show the authoritative server result and refresh both queue and calendar.
 5. Decline records a reason/history entry and releases the correct hold. Normal review must not hard-delete requests.
@@ -84,7 +86,7 @@ Today remains visible for reviewing existing appointments and blocking time. Rem
 - `client/src/features/admin/calendar`: month/day composition and block/unblock mutations.
 - Shared components: request rows, status labels, detail sections, date/time controls and conflict notices. Reuse the existing calendar model and UI primitives.
 - Keep API adapters transport-only. Centralize shared admin tokens/styles in `client/src/index.css`, with Tailwind for responsive composition.
-- Backend routes validate/authenticate; controllers orchestrate; services own policy, state transitions and atomic schedule updates. MongoDB is persistent truth and R2 holds media.
+- Backend routes authenticate and validate. Controllers orchestrate operations, services own policy and schedule changes, MongoDB stores application records and Supabase holds reference files.
 - Availability responses include effective timezone, studio date, earliest bookable date and same-day policy. Cache behavior must not retain yesterday's eligibility after midnight.
 - Preserve unique indexes and server-side pagination/totals. Use version/conditional checks and MongoDB transactions, or another explicitly verified atomic design, when booking and closure operations change multiple records. A Durable Object does not automatically make interleaved asynchronous writes transactional.
 - Mutations must be safe to retry without duplicate bookings, status history or notifications. Retain attribution and real expiry checks.
@@ -99,7 +101,20 @@ Today remains visible for reviewing existing appointments and blocking time. Rem
 | 3. Design | Desktop/tablet/phone designs, shared shell, controls and full state specifications | Reviewed screenshots and keyboard flow; no fabricated business data |
 | 4. Bookings | Queue/detail, explicit decisions, server totals and conflict recovery | Review and appointment transitions pass isolated integration tests |
 | 5. Calendar | Unified month/day view, whole-day/range closures and guarded reopening | Closures cannot overwrite bookings; public availability reflects committed edits |
-| 6. Cutover | Compatibility redirects, retire replaced pages, staged integration/visual QA | Acceptance checks pass on test Atlas and local/staging R2 |
+| 6. Cutover | Compatibility redirects, retire replaced pages, staged integration and visual QA | Acceptance checks pass on test Atlas and a staging Supabase bucket |
+
+## Implemented transitions
+
+| State | Allowed actions |
+| --- | --- |
+| Active hold or legacy pending | Confirm a future appointment with an explicit range, or decline with a reason |
+| Expired hold | Review as expired. A new booking request is required to reserve time. |
+| Confirmed | Reschedule to a date from tomorrow onward, cancel with a reason, or mark completed. Existing same-day appointments stay visible and can be cancelled or completed. |
+| Completed or cancelled | Review booking details and history |
+
+Booking and schedule writes use MongoDB transactions. Booking decisions require the loaded `updatedAt`, and closure edits require the loaded schedule version. The confirmation transaction releases the previous range and reserves the new one together, so a conflict rolls back the release. Public submissions carry a retry key, and booking notifications run after commit.
+
+The Calendar uses `PUT /api/schedule/:date/closure` for whole-day and range changes. Earlier bulk, force-override and per-slot mutation routes are retired. Existing blocked dates remain visible and can be reopened individually. Legacy whole-day records can also contain independent slot closures. Reopening the day flag keeps those slots closed until explicitly unblocked.
 | Future | Instagram Direct Messages | Separate account eligibility, platform-policy and messaging tests pass |
 
 ## Future: Instagram Direct Messages
@@ -120,18 +135,16 @@ Planned work:
 
 ## Acceptance checklist
 
-- [ ] Only Bookings and Calendar are primary destinations; login opens Needs review and legacy URLs recover intentionally.
-- [ ] Active holds/legacy pending requests are reviewable across all pages, with truthful counts, expiry and history.
-- [ ] Confirmation requires an explicit date/start/end and rejects expired or conflicting state.
-- [ ] Whole-day/range blocks preserve active holds and confirmed appointments; reopening affects only closures.
-- [ ] Server and public UI prevent new same-day booking/rescheduling in `Asia/Manila`.
+- [x] Only Bookings and Calendar are primary destinations. Login opens Needs review and legacy URLs redirect.
+- [x] Active holds and legacy pending requests have a paginated queue, server counts, expiry and history.
+- [x] Confirmation requires an explicit date, start and end and rejects expired or conflicting state.
+- [x] Whole-day and range blocks preserve active holds and confirmed appointments. Reopening affects only studio closures.
+- [x] Server and public UI prevent new same-day booking and rescheduling in `Asia/Manila`.
 - [ ] Tests cover Philippine 23:59/00:00, other browser timezones, leap dates, stale tabs and direct API calls; tomorrow is not incorrectly treated as a 24-hour wait.
 - [ ] Tests cover concurrent hold/closure, confirmation/expiry, duplicate submissions, release/cancellation and stale edits. Database and public availability agree after conflicts.
 - [ ] Unknown availability remains unknown; error states preserve useful input. No fabricated counts or operational data.
-- [ ] R2 references render correctly and no PII/media is newly persisted in browser storage.
-- [ ] Desktop/tablet/phone/short layouts, keyboard navigation, focus restoration, named controls and reduced motion pass.
-- [ ] Frontend lint/build, focused frontend/backend tests and Worker dry-run pass using isolated test data.
-- [ ] Record verification in `PLAN.md` and keep browser artifacts in ignored `.taste-skill/`.
-- [ ] DMs remain future work until their separate acceptance checks pass.
-
-This plan changes no application behavior, sends no messages, and authorizes no production migration or deployment.
+- [ ] Verify live Supabase references in staging. No new client storage is used for booking details or media.
+- [x] Desktop, tablet and phone layouts, short viewport, focus restoration, named controls and reduced motion were checked with browser fixtures.
+- [x] Frontend lint and build, focused tests and the Worker dry run pass locally.
+- [x] Verification is recorded in `PLAN.md` and browser artifacts are stored in ignored `.taste-skill/`.
+- [x] DMs remain future work until their separate acceptance checks pass.

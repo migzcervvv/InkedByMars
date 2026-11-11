@@ -21,3 +21,9 @@ test('past days cannot be public booking candidates; admin can edit unrecorded f
   assert.equal(getDateStatus({ ...date, requireKnown: false }), 'available')
   assert.equal(getDateStatus({ ...date, requireKnown: false, blocked: true }), 'blocked')
 })
+test('same-day policy disables public dates without hiding existing admin appointments', () => {
+  const dateKey = '2028-02-29'
+  const day = { availableCount: 2 }
+  assert.equal(getDateStatus({ dateKey, todayKey: dateKey, earliestDate: '2028-03-01', day }), 'policy')
+  assert.equal(getDateStatus({ dateKey, todayKey: dateKey, allowPast: true, day }), 'available')
+})

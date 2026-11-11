@@ -1,21 +1,29 @@
-name = "inked-by-mars-api"
+name = 'inkedbymars'
 main = "src/worker.js"
 compatibility_date = "2026-11-10"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
 
 [vars]
-NODE_ENV = "development"
-CLIENT_URL = "http://localhost:5173,http://127.0.0.1:5173"
-JWT_EXPIRE = "7d"
-JWT_COOKIE_EXPIRE = "7"
+BREVO_SENDER_EMAIL = "migzcerv007@gmail.com"
+BREVO_SMTP_USER = "af4831001@smtp-brevo.com"
+CLIENT_URL = "https://inkedbymars.netlify.app"
+FROM_EMAIL = "noreply@tattoo.com"
 IG_API_VERSION = "v25.0"
-NOTIFICATION_EMAIL_ENABLED = "false"
-
-[[r2_buckets]]
-binding = "MEDIA"
-bucket_name = "inked-by-mars-media"
-preview_bucket_name = "inked-by-mars-media-preview"
+INSTAGRAM_TOKEN_EXPIRES_AT = ""
+INSTAGRAM_USER_ID = "17841418937727052"
+JWT_COOKIE_EXPIRE = "7"
+JWT_EXPIRE = "7d"
+META_APP_ID = "2950022142002122"
+NODE_ENV = "development"
+PORT = "5000"
+PUBLIC_MEDIA_BASE_URL = "https://inkedbymars.migzcerv007.workers.dev"
+RATE_LIMIT_MAX = "100"
+RATE_LIMIT_WINDOW_MS = "900000"
+SEED_ADMIN_EMAIL = "marielle.cervantes@yahoo.com"
+SEED_ADMIN_NAME = "mars"
+SMTP_HOST = "smtp.mailtrap.io"
+SMTP_PORT = "2525"
 
 [[durable_objects.bindings]]
 name = "DATABASE"
@@ -45,3 +53,17 @@ crons = ["*/5 * * * *"]
 
 [observability]
 enabled = true
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+invocation_logs = true
+persist = true
+
+[observability.traces]
+enabled = false
+head_sampling_rate = 1
+persist = true
+
+[observability.issue_detection]
+enabled = false

@@ -23,7 +23,8 @@ export function normalizeApiError(error, fallback = "Can't reach the server. Che
     message: isCanceled ? 'Request canceled' : data?.message || fallback,
     status,
     fields,
-    code: error.code,
+    code: data?.code || error.code,
+    details: data?.details,
     isCanceled,
     requestId: data?.requestId || error.response?.headers?.['x-request-id'] || null,
   }

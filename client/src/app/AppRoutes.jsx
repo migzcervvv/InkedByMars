@@ -13,26 +13,22 @@ const AdminLayout = lazy(() =>
   })),
 );
 const LoginPage = lazy(() => import("../pages/admin/LoginPage"));
-const AdminDashboardPage = lazy(
-  () => import("../pages/admin/AdminDashboardPage"),
-);
 const AdminBookingsPage = lazy(
-  () => import("../pages/admin/AdminBookingsPage"),
+  () => import("../features/admin/bookings/BookingsPage"),
 );
-const AdminSchedulePage = lazy(
-  () => import("../pages/admin/AdminSchedulePage"),
-);
-const AdminAvailabilityPage = lazy(
-  () => import("../pages/admin/AdminAvailabilityPage"),
-);
-const AdminSettingsPage = lazy(
-  () => import("../pages/admin/AdminSettingsPage"),
+const AdminCalendarPage = lazy(
+  () => import("../features/admin/calendar/CalendarPage"),
 );
 const NotFoundPage = lazy(() => import("../pages/NotFoundPage"));
 
 function LegacyReceipt() {
   const { state } = useLocation();
   return <Navigate to="/booking" replace state={state} />;
+}
+
+function LegacyAdmin({ path }) {
+  const { search } = useLocation();
+  return <Navigate to={{ pathname: path, search }} replace />;
 }
 
 export function AppRoutes() {
@@ -66,11 +62,12 @@ export function AppRoutes() {
         <Route path="admin/login" element={<LoginPage />} />
         <Route element={<ProtectedRoute />}>
           <Route path="admin" element={<AdminLayout />}>
-            <Route index element={<AdminDashboardPage />} />
+            <Route index element={<LegacyAdmin path="/admin/bookings" />} />
             <Route path="bookings" element={<AdminBookingsPage />} />
-            <Route path="schedule" element={<AdminSchedulePage />} />
-            <Route path="availability" element={<AdminAvailabilityPage />} />
-            <Route path="settings" element={<AdminSettingsPage />} />
+            <Route path="calendar" element={<AdminCalendarPage />} />
+            <Route path="schedule" element={<LegacyAdmin path="/admin/calendar" />} />
+            <Route path="availability" element={<LegacyAdmin path="/admin/calendar" />} />
+            <Route path="settings" element={<LegacyAdmin path="/admin/calendar" />} />
           </Route>
         </Route>
       </Routes>
