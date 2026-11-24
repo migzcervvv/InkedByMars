@@ -42,3 +42,9 @@ Motion revision: Chrome verified the first-visit intro on normal-speed loads at 
 - PASS — An isolated notification test captured a new-request email addressed to the configured studio account, verified the explicit recipient override and checked that disabling new-request delivery suppressed the message.
 - PASS — Client lint, client production build, 9 client tests, 40 backend tests and Worker dry-run build. Booking route chunk measured 23.04 kB or 8.16 kB gzip. Local DOMContentLoaded measured 195 ms, 75 ms and 67 ms respectively in the final run.
 - UNVERIFIED — Production database submission, delivery to Mars’s inbox, field Core Web Vitals and animation frame timing. Worker dry-run emitted warnings about observability.issue_detection and the whatwg-url compatibility shim.
+
+## Instagram booking and availability
+
+- PASS — Chromium at 375, 768 and 1440 px showed closed dates, read-only open times and the Instagram link using simulated availability. The tablet run used reduced motion.
+- PASS — Client lint and production build, backend suite (40 tests) and Worker dry-run build. The public booking route chunk measured 6.58 kB (2.55 kB gzip).
+- UNVERIFIED — Authenticated save against the production database, production deployment, field performance and admin dialog visual inspection.

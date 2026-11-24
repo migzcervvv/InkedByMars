@@ -67,7 +67,6 @@ export class DatabaseAPI extends DurableObject {
     this.api.use('/api/schedule/*', serializeBookingWrites);
     this.api.use('/api/auth/users/*', serializeBookingWrites);
     this.api.post('/api/auth/register', serializeBookingWrites);
-    this.api.post('/api/public/bookings', serializeBookingWrites);
     this.api.route('/api', api);
     this.api.post('/internal/cleanup', async c => {
       const results = await Promise.allSettled([

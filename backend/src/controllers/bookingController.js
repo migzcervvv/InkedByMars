@@ -87,7 +87,7 @@ const getBookingById = async (c) => {
  */
 const createBooking = async (c) => {
   const req = c.get('input');
-  const { preferredDate, preferredTime, submissionKey } = req.body;
+  const { preferredDate, preferredTime, submissionKey, appointmentEnd } = req.body;
   const existing = submissionKey ? await Booking.findOne({ submissionKey }) : null;
   if (existing) {
     if (existing.email !== req.body.email || existing.clientName !== req.body.clientName ||
@@ -108,6 +108,8 @@ const createBooking = async (c) => {
     if (references.includes(false)) throw new AppError('A reference upload is missing.', 400, 'VALIDATION_ERROR', [{ field: 'referenceImages', message: 'Remove the missing reference and upload it again.' }]);
   }
 
+  const confirmed = Boolean(req.admin && appointmentEnd);
+  const status = confirmed ? BOOKING_STATUS.CONFIRMED : BOOKING_STATUS.ON_HOLD;
   const booking = await transaction(async () => {
     requireBookableDate(preferredDate);
     const record = new Booking({
@@ -116,13 +118,20 @@ const createBooking = async (c) => {
       requestedTime: preferredTime,
       createdByAdmin: Boolean(req.admin),
       createdByAdminId: req.admin?._id,
-      status: BOOKING_STATUS.ON_HOLD,
+      status,
+      ...(confirmed && { appointmentEnd }),
       statusHistory: [{
-        status: BOOKING_STATUS.ON_HOLD,
+        status,
         changedBy: req.admin?._id,
-        reason: req.admin ? 'Created by admin' : 'Client requested a temporary hold',
+        reason: confirmed ? 'Confirmed by studio' : req.admin ? 'Created by admin' : 'Client requested a temporary hold',
       }],
     });
+    if (confirmed) {
+      const range = await scheduleService.blockConfirmedRange({ date: preferredDate, startTime: preferredTime, endTime: appointmentEnd, bookingId: record._id });
+      if (!range.ok) throw new AppError(range.reason, 409, 'SCHEDULE_CONFLICT');
+      await record.save();
+      return record;
+    }
     record.holdExpiresAt = await scheduleService.holdSlotAtomically({
       date: preferredDate, time: preferredTime, bookingId: record._id, expiryMinutes: HOLD_EXPIRY_MINUTES,
     });
@@ -131,6 +140,7 @@ const createBooking = async (c) => {
     return record;
   });
 
+  if (confirmed) return sendCreated(c, { booking }, "Appointment recorded.");
   c.executionCtx.waitUntil(notificationService.sendBookingPending(booking));
   c.executionCtx.waitUntil(notificationService.notifyAdminNewBooking(booking));
   return sendCreated(c, { booking: req.admin ? booking : serializePublicBooking(booking) }, 'Booking request received.');

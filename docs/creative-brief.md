@@ -38,6 +38,4 @@ The homepage ends with one dark studio footer combining contact, booking, naviga
 
 Public navigation uses three tapered calligraphic strokes that reshape into a handwritten X. The menu is uncovered from right to left as the page moves left, with the seal and control held in place.
 
-Booking opens with the calendar and verified open times. Choosing a slot reveals the tattoo brief. Required fields are name, Instagram handle, placement and size. Notes and reference images are optional. The studio can follow up via Instagram.
-
-This site is about requesting a session with Mars, expressed through a calendar and one intake question at a time, so visitors understand each choice before reviewing their request.
+Booking shows the studio’s availability. Clients arrange appointments with Mars over Instagram. Studio staff record confirmed appointments and closures in the admin calendar.

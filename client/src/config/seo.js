@@ -10,6 +10,6 @@ export const seoPages = {
   },
   "/booking": {
     "title": "Book a tattoo session in Las Piñas",
-    "description": "Check availability and request your tattoo session with Mars in BF Resort, Las Piñas. Choose a time, describe your piece, and attach your references in one place."
+    "description": "Check open dates and times for tattoos in BF Resort, Las Piñas. Message Mars on Instagram to book your session."
   }
 }

@@ -51,6 +51,10 @@ const createBookingValidators = [
     .matches(/^\d{2}:\d{2}$/)
     .withMessage("Time must be in HH:MM 24h format"),
 
+  body("appointmentEnd").optional().matches(/^(?:[01]\d|2[0-3]):[0-5]\d$|^24:00$/)
+    .custom((value, { req }) => value > req.body.preferredTime)
+    .withMessage("Choose an end time after the appointment start"),
+
   body("notes")
     .optional()
     .trim()

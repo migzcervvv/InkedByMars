@@ -26,7 +26,6 @@ api.delete('/auth/users/:id', ...requireSuperAdmin, validate(bv.mongoIdParam), a
 api.post('/auth/users/:id/reset-password', ...requireSuperAdmin, validate(av.resetUserPasswordValidators), auth.resetUserPassword);
 api.get('/public/availability', validate(sv.rangeQueryValidators), publicController.getAvailability);
 api.get('/public/availability/:date', validate(sv.dateParamValidator), publicController.getAvailabilityByDate);
-api.post('/public/bookings', validate(bv.createBookingValidators), booking.createBooking);
 api.use('/bookings/*', ...requireAdmin);
 api.use('/schedule/*', ...requireAdmin);
 api.get('/bookings/dashboard', booking.getDashboardStats);
