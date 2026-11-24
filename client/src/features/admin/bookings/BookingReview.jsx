@@ -92,7 +92,7 @@ export function BookingReview({ booking, refreshing, onRefresh, onSaved }) {
         </button></li>
       ))}</ul>}
     </section>
-    <section><h3>Contact</h3><dl className="studio-review-facts"><div><dt>Email</dt><dd><a href={`mailto:${booking.email}`}>{booking.email}</a></dd></div><div><dt>Phone</dt><dd><a href={`tel:${booking.phone}`}>{booking.phone}</a></dd></div><div><dt>Instagram</dt><dd>{booking.instagramHandle}</dd></div></dl></section>
+    <section><h3>Contact</h3><dl className="studio-review-facts"><div><dt>Email</dt><dd>{booking.email ? <a href={`mailto:${booking.email}`}>{booking.email}</a> : "—"}</dd></div><div><dt>Phone</dt><dd>{booking.phone ? <a href={`tel:${booking.phone}`}>{booking.phone}</a> : "—"}</dd></div><div><dt>Instagram</dt><dd>{booking.instagramHandle}</dd></div></dl></section>
     {booking.adminNotes && <section><h3>Studio notes</h3><p>{booking.adminNotes}</p></section>}
     <section><h3>History</h3>{booking.statusHistory?.length ? <ol className="studio-history">
       {[...booking.statusHistory].reverse().map((entry, index) => <li key={entry._id || index}><span>{entry.reason || entry.status}</span><time dateTime={entry.changedAt}>{formatStudioTimestamp(entry.changedAt)}</time></li>)}

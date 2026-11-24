@@ -13,7 +13,7 @@ export default function LoginPage() {
   const [form, setForm] = useState({ name: '', password: '' })
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
-  usePageMeta('Studio access', 'Sign in to Inked by Mars studio administration.')
+  usePageMeta('Studio access', 'Sign in to Inked by Mars studio administration.', { noIndex: true })
   if (isAuthenticated) return <Navigate to="/admin" replace />
   const submit = async event => {
     event.preventDefault(); setLoading(true); setError(null)

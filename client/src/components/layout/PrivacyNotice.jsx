@@ -4,7 +4,7 @@ export function PrivacyNotice({ open, onClose }) {
   return (
     <Dialog open={open} onClose={onClose} title="Your privacy">
       <div className="reading-copy">
-        <p>The booking form collects your name, email, phone number, Instagram handle, tattoo details, preferred appointment, and reference images. The studio uses these to review your request, arrange your appointment, and communicate with you.</p>
+        <p>The booking form collects your name, Instagram handle, tattoo details, preferred appointment, and any reference images you choose to provide. The studio uses these to review your request, arrange your appointment, and communicate with you.</p>
         <h3>Booking information</h3>
         <p>Your request is sent to the studio’s server. Access to booking records is restricted to authenticated studio administrators. Booking notifications may include request details and links to reference images.</p>
         <p>Reference images attached to a booking are scheduled for deletion 14 days after the appointment start, using Philippine time. If the appointment changes, the new schedule applies. If the request is cancelled or never confirmed, the last date and time on the request apply.</p>

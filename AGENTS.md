@@ -1,49 +1,62 @@
-# Inked By Mars engineering instructions
+# Creative Web Engineering Contract
 
-## Scope and product
+This repository uses concept-led, intent-driven design. Do not treat an attractive screenshot, a running build, or successful unit tests as proof of finished design.
 
-- Maintain three primary public pages: Home (`/`, including the artist biography and studio contact), Booking (`/booking`, including availability, request and receipt), and Works (`/works`, connected to the existing server-side Instagram integration).
-- Keep authenticated administration at `/admin/*`. Redirect older public URLs to the matching page/section. Privacy is a shared accessible dialog, not a fourth primary page.
-- Preserve the React 18 / Vite 8 / Tailwind 4 frontend. The backend uses Hono on Cloudflare Workers, MongoDB through Mongoose 9 and a database-owning Durable Object, and Supabase Storage behind a media adapter. Do not reintroduce an Express server or replace working integrations with mock services.
-- Use `GOALS.md` for acceptance criteria and `PLAN.md` for implementation status and verification evidence.
+## Authority and scope
 
-## Architecture
+- Respect the user's brief, existing architecture, business logic, constraints, and approval requirements. Inspect the repo before editing. Never commit, merge, deploy, delete data, or install large dependencies without authorization.
+- This file is the short, always-on standard. The site-specific truth lives in `docs/creative-brief.md`; motion decisions live in `docs/motion-intents.yaml`; implementation and testing evidence lives in `docs/quality-report.md`. Do not fabricate these artifacts or their test results.
+- If a required brief or reference is missing, supply a reasoned proposal and label it as a proposal; do not invent brand facts, visual assets, claims, or customer details.
 
-- `client/src/app`: route composition, metadata, compatibility redirects.
-- `client/src/features`: public page composition and feature-specific state. Booking owns its calendar/request/receipt lifecycle; Works owns feed presentation.
-- `client/src/components`: shared layout, accessible UI primitives and reusable domain components, including the same calendar used in public booking and administration.
-- `client/src/api`: HTTP transport and endpoint adapters only. `services` handles transformation/file processing; `hooks` handles reusable asynchronous state; `config` contains public business configuration.
-- `backend/src`: retain routes -> validators/middleware -> controllers -> services/models. Instagram credentials, token refresh, slot locking, email and authentication stay server-side.
-- `backend/src/bindings`: Worker environment scope, database model resolution, native HTTP, encrypted credential persistence and the media adapter. Stream uploads; never buffer whole files with formData()/arrayBuffer() or store base64/binary media in MongoDB. Keep secrets in ignored .dev.vars locally and Wrangler secrets remotely.
-- Keep one source for contact details, brand data and supported work categories. Do not duplicate content inside page components.
+## Creative direction before code
 
-## Design and motion
+1. Define the site's audience, single business goal, desired feeling, available content, and constraints.
+2. Offer two or three truly different governing concepts, each with a concrete visual metaphor, layout logic, motion language, accessibility/performance costs, and weakest point. Recommend one. Wait for concept approval when the user requested planning rather than implementation.
+3. Before implementing, record the chosen concept in `docs/creative-brief.md` with a one-sentence concept test: 'This site is about X, expressed through Y, so visitors understand Z.'
+4. All typographic, color, image, grid, transition, and interaction choices must reinforce the chosen concept. Differentiate from generic industry conventions; do not imitate a reference site's proprietary art, exact layout, or branding.
 
-- Follow the supplied Mars wax-seal logo: wax red, deep wine, gold lettering and neutral paper. The logo is an existing asset and must not be recolored. Slate blue from the reference background is a supporting brand color, not a primary action color.
-- Centralize tokens, base styles, shared component styles and motion rules in `client/src/index.css`. Tailwind owns responsive composition. Use semantic tokens, not new hard-coded palettes in JSX or per-component CSS files.
-- Use Unbounded for public display titles and Onest for reading and controls, with usable fallbacks. At most two typefaces, five semantic type steps. Public headings fit within two lines at 1440, 768 and 390 px.
-- Use Mars's actual local work and the live Instagram feed. Do not invent reviews, statistics, booking availability, tattoos, credentials or business policies. Existing portfolio assets have inherited provenance; document any asset requiring owner confirmation.
-- Build tattoo-inspired motion from artwork: the flash sheet opening into view, freehand movement, subtle parallax, a wax-seal press and work-image reveals. Use existing GSAP and CSS. No scroll hijacking or custom pointer. Motion must not block reading, booking or keyboard use.
-- Respect reduced motion. Scope and clean up every animation. Content must be visible without animation initialization. Public display effects do not run on operational admin screens.
+## Non-negotiable design standards
 
-## Interaction and data
+- Build a functional, useful, responsive site before adding elaborate motion. Keep semantic HTML, clear navigation, readable copy, meaningful headings, and a visible primary action.
+- Define reusable tokens for fonts, spacing, colors, timing, and easing. A design token is a reusable named value that keeps decisions consistent across the site.
+- Use intentional hierarchy and section pacing. Hierarchy is the visible order of importance; pacing is the alternation of density, silence, and emphasis through the page.
+- Reject by default: centered headline + two buttons + gradient blob; generic card grids; repeated fade-up for every block; a single easing for every action; scroll effects without narrative or functional purpose; custom cursor that obscures native usability; decorative 3D.
+- Do not add animation dependencies or large media files without a documented need and cost estimate.
 
-- Unknown or failed availability is never displayed as available. Prevent stale range/date responses from replacing newer selections.
-- A selected slot is a preference, not a server-side hold. Display request/hold/confirmed states truthfully. Resolve conflicts through server responses and refresh availability.
-- Keep form inputs across date/time changes. Use native forms, visible labels, linked errors, upload progress/failures and keyboard navigation. Verify streamed upload type and byte count against server limits; booking JSON carries only validated media object keys.
-- Never persist booking PII, references or credentials in new client storage. Receipt state may remain in component memory; a reload gets a deliberate recovery state.
-- Instagram uses backend endpoints; no tokens or Graph calls in the browser. Preserve retry, loading, empty and failure states. Do not present local photographs as a successful live Instagram fetch.
-- Dialogs require an accessible name, focus containment, Escape handling and focus restoration. Mobile navigation must name each destination.
+## Motion intent or no motion
 
-## Security and workflow
+For every non-trivial animation record: `id`, `element`, `purpose` (orient / direct attention / create rhythm / reveal narrative / confirm interaction / mask real loading / express brand), `meaning`, `trigger`, `start_state`, `end_state`, `duration_ms` or scroll range, `easing`, `stagger_ms`, `dependencies`, `z_layers`, `removal_cost`, `mobile`, `reduced_motion`, `implementation`, `performance_risk`, `acceptance_test`.
 
-- Never commit `.env`, `.env.*` values, token stores, credentials, logs, dependencies, builds or browser audit output. Sanitized explicitly named example templates are the only environment-file exceptions.
-- Preserve local environment files and pre-existing user changes. Do not commit, push, publish, deploy, rewrite history, or mutate production data without user authorization.
-- Do not read or print secret values to diagnose frontend behavior. No authenticated production actions or real booking submissions during QA.
-- Keep audit artifacts in ignored `.taste-skill/`. No new dependencies without a concrete need; use the lockfile and existing tools.
-- Run `npm run lint` and `npm run build` in `client`. Verify the public experience at desktop, tablet and phone widths, reduced motion, old-route redirects, keyboard interaction and representative API states. Use isolated test fixtures only in the test browser; do not ship fake APIs.
-- For substantial behavior changes, add focused tests that can catch a regression. Do not add tests that merely mirror CSS or implementation details.
+Cut an effect if removing it loses no orientation, narrative, feedback, or distinctive brand expression. Brand expression must have an explicit, project-specific rationale; 'looks premium' is not a rationale. Never apply uniform reveal presets site-wide.
 
-## Communication
+A timeline specifies the sequence and overlap of motions. Easing specifies how speed changes during an animation. Stagger specifies the offset between related animated items. Define timings deliberately; avoid arbitrary delay cascades.
 
-Use direct, factual language. No emojis, filler, hype, soft offers or engagement prompts. Report the completed change, verification and remaining limits. Do not ask optional questions when the current brief supports a reasonable implementation decision.
+## Loaders and hero
+
+- A loader is allowed only for a real gating dependency, a justified voluntary entry interaction, or a branded narrative transition that does not delay access to usable content unnecessarily.
+- Do not invent percentages or present simulated animation progress as network progress. Prefer direct rendering, a skeleton, or a useful static hero. Skip any purely branded opening on repeat visits; honor reduced motion.
+- Keep the meaningful headline, navigation, and primary action readable promptly. Avoid hiding already-rendered LCP content behind an intro. LCP is the time until the largest visible content element has rendered.
+- If a loader exists, reuse one visual object or spatial relationship through its handoff into the hero. Provide a skip path where the sequence can delay use.
+
+## Scrolling and interaction
+
+- Preserve native scrolling, browser history, deep links, text selection, and keyboard scrolling. No forced wheel interception or scroll-jacking. Scroll-jacking means overriding normal scrolling to control progression.
+- Use GSAP ScrollTrigger only when a coordinated scene, scrub, or justified pin requires it. A pin holds a scene in place while the reader advances through its content. Offer a linear alternative when the pinned scene is unnecessary or inaccessible.
+- Use hover for enhancement, never as the only way to reveal required information. Support touch and keyboard equivalents.
+- Stop animation loops offscreen; clean up event handlers, GSAP contexts, ScrollTriggers, render loops, and observers when components unmount or routes change.
+
+## Engineering and accessibility gates
+
+- Keep mobile and desktop equally meaningful; adapt composition rather than merely scaling a desktop canvas. Test at approximately 375, 768, and 1440 CSS pixels, plus short desktop heights.
+- Support `prefers-reduced-motion: reduce`; important content must remain available without motion. Preserve visible focus, operable controls, meaningful labels, readable contrast, logical heading order, and non-canvas fallback content.
+- Aim for field LCP <= 2.5 s, INP <= 200 ms, CLS <= 0.1 at the 75th percentile. These are Google's good Core Web Vitals thresholds. Report local Lighthouse lab results separately; do not pretend they are field metrics.
+- Proposed project guardrails until the brief supersedes them: target 60 fps on tested devices, avoid sustained frames >16.7 ms; keep critical route JavaScript and above-fold media as small as practical and report their actual sizes. Never claim a passing performance gate without measurements.
+- If WebGL is chosen, document whether 2D/CSS/SVG could solve the same task, device-tier fallback, lazy loading, GPU memory/texture budgets, and what happens on context loss.
+
+## Mandatory verification workflow
+
+For each phase: inspect relevant existing code; state proposed changes and risks; implement only authorized work; run applicable lint/types/build/tests; start the app; capture screenshots on desktop and mobile at meaningful states; inspect keyboard, reduced motion, hover/touch, and route transitions; measure performance; compare to the brief and motion records; fix discrepancies; summarize evidence and unresolved risks.
+
+If browser, Playwright, Lighthouse, video recording, or a reference asset is unavailable, explicitly say so and mark the corresponding quality gate UNVERIFIED. Never invent screenshots, performance results, test runs, or award expectations.
+
+Do not proceed to the next major phase while its blocking criteria fail. When reporting work, distinguish `PASS`, `FAIL`, `UNVERIFIED`, and `WAIVED BY USER`. Preserve existing content and interactions while polishing. Document every accepted compromise.

@@ -9,7 +9,7 @@ export function createDraft(category = 'custom') {
 
 export function validateBookingStep(draft, step) {
   const errors = {}
-  const fields = step === 'idea' ? ['tattooPlacement', 'tattooSize'] : ['clientName', 'email', 'phone', 'instagramHandle']
+  const fields = step === 'idea' ? ['tattooPlacement', 'tattooSize'] : ['clientName', 'instagramHandle']
   fields.forEach(field => { if (!draft[field]?.trim()) errors[field] = 'Please complete this field.' })
   if (step === 'details') {
     if (draft.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(draft.email.trim())) errors.email = 'Enter a valid email address.'
@@ -22,7 +22,9 @@ export function validateBookingStep(draft, step) {
 
 export function buildBookingPayload(draft, preferredDate, preferredTime) {
   return {
-    clientName: draft.clientName.trim(), email: draft.email.trim(), phone: draft.phone.trim(),
+    clientName: draft.clientName.trim(),
+    ...(draft.email.trim() && { email: draft.email.trim() }),
+    ...(draft.phone.trim() && { phone: draft.phone.trim() }),
     instagramHandle: draft.instagramHandle.trim(), tattooPlacement: draft.tattooPlacement.trim(), tattooSize: draft.tattooSize,
     preferredDate, preferredTime,
     notes: [`Starting point: ${draft.category}`, draft.notes.trim()].filter(Boolean).join('\n'),

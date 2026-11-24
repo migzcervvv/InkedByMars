@@ -11,7 +11,7 @@ const envEnabled = (name, fallback) => {
 };
 
 const getClientContact = (bookingData) => {
-  return [bookingData.email, bookingData.phone].filter(Boolean).join(" / ");
+  return [bookingData.email, bookingData.phone].filter(Boolean).join(" / ") || bookingData.instagramHandle;
 };
 
 const getBookingReference = (booking) => {
@@ -57,8 +57,8 @@ const buildAdminBookingHoldNotification = (booking) => {
   const text = [
     `New booking hold ${reference}`,
     `Client: ${booking.clientName}`,
-    `Email: ${booking.email}`,
-    `Phone: ${booking.phone}`,
+    `Email: ${booking.email || '—'}`,
+    `Phone: ${booking.phone || '—'}`,
     `Selected start: ${new Date(booking.preferredDate).toLocaleDateString(
       "en-US",
       {
@@ -77,8 +77,8 @@ const buildAdminBookingHoldNotification = (booking) => {
   const html = `
     <h2>New booking hold ${escapeHtml(reference)}</h2>
     <p><strong>Client:</strong> ${escapeHtml(booking.clientName)}</p>
-    <p><strong>Email:</strong> ${escapeHtml(booking.email)}</p>
-    <p><strong>Phone:</strong> ${escapeHtml(booking.phone)}</p>
+    <p><strong>Email:</strong> ${escapeHtml(booking.email || "—")}</p>
+    <p><strong>Phone:</strong> ${escapeHtml(booking.phone || "—")}</p>
     <p><strong>Selected start:</strong> ${escapeHtml(
       new Date(booking.preferredDate).toLocaleDateString("en-US", {
         month: "short",
@@ -188,6 +188,7 @@ const notificationService = {
   },
 
   async sendBookingPending(booking) {
+    if (!booking.email) return
     await sendEmail({
       to: booking.email,
       subject: "Booking Received",
@@ -235,6 +236,7 @@ const notificationService = {
   },
 
   async sendBookingConfirmation(booking, options = {}) {
+    if (!booking.email) return
     const endText = options.endTime ? ` until ${options.endTime}` : "";
     await sendEmail({
       to: booking.email,
@@ -292,6 +294,7 @@ const notificationService = {
   },
 
   async sendBookingCancellation(booking) {
+    if (!booking.email) return
     await sendEmail({
       to: booking.email,
       subject: "Booking Cancelled",

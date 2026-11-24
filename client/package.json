@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node build-seo.js",
     "lint": "eslint .",
     "test": "node --test src/features/booking/bookingModel.test.js src/components/availability/calendarModel.test.js src/api/requestPolicy.test.js",
     "preview": "vite preview"

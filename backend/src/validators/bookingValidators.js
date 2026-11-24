@@ -14,11 +14,12 @@ const createBookingValidators = [
     .withMessage("Name cannot exceed 100 characters"),
 
   body("email")
+    .optional()
     .isEmail()
     .withMessage("Provide a valid email address")
     .normalizeEmail(),
 
-  body("phone").trim().notEmpty().withMessage("Phone number is required"),
+  body("phone").optional().isString().trim(),
 
   body("instagramHandle")
     .trim()

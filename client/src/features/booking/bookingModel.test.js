@@ -27,6 +27,10 @@ test('builds the existing backend contract while preserving style in notes', () 
   assert.equal('references' in payload, false)
   assert.equal('category' in payload, false)
   assert.equal(draft.clientName, ' Test ')
+  const instagramOnly = { ...draft, email: '', phone: '' }
+  assert.deepEqual(validateBookingStep(instagramOnly, 'details'), {})
+  const instagramPayload = buildBookingPayload(instagramOnly, '2026-12-01', '13:00')
+  assert.equal('email' in instagramPayload || 'phone' in instagramPayload, false)
 })
 
 test('keeps notes within budget and sends object keys without file names or binary data', () => {

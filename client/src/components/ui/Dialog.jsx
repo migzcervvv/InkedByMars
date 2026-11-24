@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
-export function Dialog({ open, onClose, title, children, className = '' }) {
+export function Dialog({ open, onClose, title, children, className = '', closeControl }) {
   const ref = useRef(null)
   const titleId = useId()
   useEffect(() => {
@@ -13,5 +13,6 @@ export function Dialog({ open, onClose, title, children, className = '' }) {
     document.body.style.overflow = 'hidden'
     return () => { dialog.close(); document.body.style.overflow = previousOverflow; if (previousFocus instanceof HTMLElement && previousFocus.isConnected) previousFocus.focus() }
   }, [open])
-  return createPortal(<dialog ref={ref} className={`studio-dialog ${className}`} aria-labelledby={titleId} onCancel={event => { event.preventDefault(); onClose() }} onClick={event => { if (event.target === ref.current) onClose() }}><div className="dialog-heading"><h2 id={titleId}>{title}</h2><button type="button" className="icon-button" aria-label={`Close ${title}`} onClick={onClose}><X size={20} /></button></div>{open && children}</dialog>, document.body)
+  return createPortal(<dialog ref={ref} className={`studio-dialog ${className}`} aria-labelledby={titleId} onCancel={event => { event.preventDefault(); onClose() }} onClick={event => { if (event.target === ref.current) onClose() }}>{closeControl ? <><h2 id={titleId} className="sr-only">{title}</h2>{closeControl}</> : <div className="dialog-heading"><h2 id={titleId}>{title}</h2><button type="button" className="icon-button" aria-label={`Close ${title}`} onClick={onClose}><X size={20} /></button></div>}{(open || closeControl) && children}</dialog>, document.body)
 }
+

@@ -21,7 +21,7 @@ export function AdminLayout() {
   const disclosure = useRef(null)
   const trigger = useRef(null)
   const title = pathname === '/admin/users' ? 'Manage users' : links.find(link => link.to === pathname)?.label || 'Studio'
-  usePageMeta(`${title} · Studio`, 'Private Inked by Mars studio administration.')
+  usePageMeta(`${title} · Studio`, 'Private Inked by Mars studio administration.', { noIndex: true })
 
   useEffect(() => {
     if (!menuOpen) return
