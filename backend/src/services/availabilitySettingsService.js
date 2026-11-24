@@ -36,7 +36,17 @@ function validateDefaultSchedule({ times, endTime }) {
 }
 
 async function saveDefaultSchedule(input) {
-  const { times, endTime } = validateDefaultSchedule(input);
+  const { opening, closing } = input;
+  const clock = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+  if (typeof opening !== 'string' || typeof closing !== 'string' || !clock.test(opening) || !(clock.test(closing) || closing === '24:00') || opening >= closing) {
+    throw new AppError('Closing time must be after opening time.', 400, 'INVALID_SHOP_HOURS');
+  }
+  const minutes = value => Number(value.slice(0, 2)) * 60 + Number(value.slice(3));
+  const times = [];
+  for (let time = minutes(opening); time < minutes(closing); time += 30) {
+    times.push(String(Math.floor(time / 60)).padStart(2, '0') + ':' + String(time % 60).padStart(2, '0'));
+  }
+  const endTime = closing;
   await AvailabilitySettings.updateOne({ key }, {
     $set: { defaultTimes: times, defaultEndTime: endTime },
   }, { upsert: true });

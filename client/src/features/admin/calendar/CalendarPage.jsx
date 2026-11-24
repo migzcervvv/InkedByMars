@@ -67,11 +67,11 @@ export default function CalendarPage() {
   const editable = schedule && !agenda.loading && !agenda.error
 
   return <div className="studio-screen">
-    <header className="studio-screen-heading"><h1>Calendar</h1><button type="button" className="studio-secondary" onClick={() => setEditingDefaults(true)}>Default time slots</button></header>
+    <header className="studio-screen-heading"><h1>Calendar</h1><button type="button" className="studio-secondary" onClick={() => setEditingDefaults(true)}>Shop hours</button></header>
     {defaultsMessage && <p className="studio-result" role="status">{defaultsMessage}</p>}
     {editingDefaults && <DefaultTimesDialog onClose={() => setEditingDefaults(false)} onSaved={() => {
       setEditingDefaults(false)
-      setDefaultsMessage('Default time slots saved.')
+      setDefaultsMessage('Shop hours saved.')
       refresh()
     }} />}
     <div className={`studio-calendar-workspace ${mobileAgenda ? 'studio-detail-active' : ''}`}>

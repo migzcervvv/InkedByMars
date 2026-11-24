@@ -105,7 +105,8 @@ const getAvailability = async (c) => {
     } else if (!schedule) {
       availability.push(openDayAvailability(dateStr, defaults.times));
     } else {
-      availability.push(scheduleService.toPublicAvailability(schedule));
+      const { slots, ...summary } = scheduleService.toPublicAvailability(schedule);
+      availability.push(summary);
     }
 
     cursor = cursor.add(1, 'day');
@@ -124,34 +125,35 @@ const getAvailabilityByDate = async (c) => {
   const policy = bookingPolicy();
   c.header('Cache-Control', 'no-store');
   if (date < policy.earliestBookableDate) {
-    return sendOk(c, { ...policyDay(date, policy), policy });
+    return sendOk(c, { ...policyDay(date, policy), hours: null, blockedRanges: [], policy });
   }
 
   if (await availabilitySettingsService.isDateBlocked(date)) {
     const { times } = await availabilitySettingsService.getDefaultSchedule();
-    return sendOk(c, { ...blockedDayDetails(date, 'Unavailable', times), policy });
+    return sendOk(c, { ...blockedDayAvailability(date, 'Unavailable', times), hours: null, blockedRanges: [], policy });
   }
 
   const schedule = await Schedule.findOne({ date })
-    .select('date dayStatus closureReason timeSlots')
+    .select('date dayStatus endTime timeSlots')
     .lean();
 
   if (!schedule) {
-    const { times } = await availabilitySettingsService.getDefaultSchedule();
-    return sendOk(c, {
-      ...openDayAvailability(date, times),
-      policy,
-      slots: times.map((time) => ({
-        time,
-        status: SLOT_STATUS.AVAILABLE,
-        available: true,
-      })),
-    });
+    const { times, endTime } = await availabilitySettingsService.getDefaultSchedule();
+    return sendOk(c, { ...openDayAvailability(date, times), policy, hours: { opening: times[0], closing: endTime }, blockedRanges: [] });
   }
 
-  const publicData = scheduleService.toPublicAvailability(schedule);
-
-  return sendOk(c, { ...publicData, policy });
+  const { slots, ...publicData } = scheduleService.toPublicAvailability(schedule);
+  const boundaries = scheduleService.getSlotBoundaryTimes(schedule);
+  const blockedRanges = [];
+  for (const [index, slot] of slots.sort((a, b) => a.time.localeCompare(b.time)).entries()) {
+    if (slot.available || !boundaries[index + 1]) continue;
+    const end = boundaries[index + 1];
+    const previous = blockedRanges.at(-1);
+    if (previous?.end === slot.time) previous.end = end;
+    else blockedRanges.push({ start: slot.time, end });
+  }
+  const hours = boundaries.length >= 2 ? { opening: boundaries[0], closing: boundaries.at(-1) } : null;
+  return sendOk(c, { ...publicData, hours, blockedRanges, policy });
 };
 
 module.exports = { getAvailability, getAvailabilityByDate };

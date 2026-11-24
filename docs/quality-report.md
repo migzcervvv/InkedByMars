@@ -50,3 +50,9 @@ Motion revision: Chrome verified the first-visit intro on normal-speed loads at 
 - UNVERIFIED — Authenticated save against the production database, production deployment, field performance and admin dialog visual inspection.
 
 - PASS — A six-row booking month and legend fit in Chromium at 320 × 480, 375 × 667, 568 × 320, 768 × 1024 and 1440 × 720. The studio portrait loaded and the second Instagram link was present. Field performance remains unverified.
+
+## Shop hours and admin booking
+
+- PASS — Chromium checks at 375, 768 and 1440 px used simulated API responses to add a booking from Bookings, exclude conflicting end times, save shop hours and display a blocked range with shop hours on the public page. The tablet check used reduced motion. The mobile booking dialog was visually inspected.
+- PASS — Client lint, client and Worker builds, and 49 existing tests.
+- UNVERIFIED — Production persistence, live schedule data and field performance.

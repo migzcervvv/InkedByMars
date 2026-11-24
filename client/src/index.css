@@ -882,3 +882,10 @@ body:has(.ink-navigation[open]) .public-site > :is(main, .footer-entry) {
 .booking-page .calendar-legend { font-size: .75rem; column-gap: 8px; }
 .booking-page .calendar-legend span { gap: 4px; }
 .booking-invitation img { max-height: 440px; }
+
+.booking-day-hours { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 18px; padding-block: 12px; border-bottom: 1px solid #35121d40; }
+.booking-day-hours dd { margin: 0; font-weight: 600; }
+.booking-blocked-times { display: grid; gap: 6px; border-inline-start: 3px solid var(--brand-wax); padding-inline-start: 12px; }
+.booking-blocked-times ul { margin: 0; padding: 0; list-style: none; }
+
+.studio-fields fieldset { border: 0; margin: 0; padding: 0; min-inline-size: 0; }

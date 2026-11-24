@@ -41,3 +41,5 @@ Public navigation uses three tapered calligraphic strokes that reshape into a ha
 Booking shows the studio’s availability. Clients arrange appointments with Mars over Instagram. Studio staff record confirmed appointments and closures in the admin calendar.
 
 The booking page pairs the viewport-sized availability grid with a studio portrait and practical Instagram booking instructions.
+
+Booking availability shows the studio’s opening and closing times and lists only unavailable ranges. Mars can add a confirmed appointment from Bookings or Calendar.

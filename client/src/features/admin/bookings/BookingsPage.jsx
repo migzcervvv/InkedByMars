@@ -6,6 +6,7 @@ import { BookingStatusBadge } from '../../../components/admin/BookingStatusBadge
 import { formatDisplayDate, formatDisplayTime, formatStudioTimestamp } from '../../../utils/date'
 import { AdminFeedback } from '../AdminFeedback'
 import { useAdminResource } from '../useAdminResource'
+import { ConfirmedBookingDialog } from '../calendar/ConfirmedBookingDialog'
 import { BookingReview } from './BookingReview'
 
 const views = [
@@ -17,13 +18,14 @@ const loadBooking = id => bookingApi.getById(id)
 
 export default function BookingsPage() {
   const [params, setParams] = useSearchParams()
+  const [adding, setAdding] = useState(false)
   const [feedback, setFeedback] = useState('')
   const [search, setSearch] = useState('')
   const backTo = useRef(null)
   const detailTitle = useRef(null)
   const previousSelection = useRef(null)
   const bookingId = params.get('booking')
-  const view = views.some(([key]) => key === params.get('view')) ? params.get('view') : 'review'
+  const view = views.some(([key]) => key === params.get('view')) ? params.get('view') : 'confirmed'
   const date = params.get('date') || ''
   const page = params.get('page') || '1'
   const queue = useAdminResource(new URLSearchParams({ view, search, date, page }).toString(), loadQueue)
@@ -71,7 +73,14 @@ export default function BookingsPage() {
   const refresh = () => { queue.reload(); detail.reload() }
 
   return <div className="studio-screen">
-    <header className="studio-screen-heading"><h1>Bookings</h1><p>All times in Philippine time</p></header>
+    <header className="studio-screen-heading"><h1>Bookings</h1><button type="button" className="studio-primary" onClick={() => setAdding(true)}>Add booking</button></header>
+    {adding && <ConfirmedBookingDialog onClose={() => setAdding(false)} onSaved={booking => {
+      setAdding(false)
+      setSearch('')
+      setFeedback('Confirmed booking added.')
+      changeParams({ view: 'confirmed', date: null, page: null, booking: booking._id })
+      refresh()
+    }} />}
     {feedback && <p className="studio-result" role="status">{feedback}</p>}
     <div className={`studio-booking-workspace ${bookingId ? 'studio-detail-active' : ''}`}>
       <section className="studio-queue studio-panel" aria-label="Booking queue">
