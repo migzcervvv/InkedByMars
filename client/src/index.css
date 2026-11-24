@@ -819,3 +819,56 @@ body:has(.ink-navigation[open]) .public-site > :is(main, .footer-entry) {
 
 .appointment-slots { list-style: none; padding: 0; }
 .booking-calendar-panel .appointment-slot { cursor: default; }
+
+/* Budget for the sticky header, calendar controls, weekdays and legend. */
+.booking-page .booking-screen { padding: clamp(6px, 1.4vh, 16px); }
+.booking-page .booking-calendar-panel { padding: clamp(8px, 2vh, 20px); }
+.booking-page .booking-panel-heading { margin-bottom: 8px; gap: 4px 16px; flex-wrap: wrap; }
+.booking-page .booking-panel-heading h1 { font-size: clamp(1.25rem, 3.4vh, 2rem); }
+.booking-page .calendar-heading { margin-bottom: 4px; }
+.booking-page .calendar-day {
+  min-height: clamp(24px, calc((100dvh - 225px) / 6), 54px);
+  padding-block: 2px;
+  gap: 2px;
+}
+.booking-page .calendar-legend { margin-top: 8px; gap: 4px 12px; }
+@media (max-height: 440px) {
+  .public-site:has(.booking-page) .header-inner { min-height: 56px; }
+  .booking-page .calendar-days { gap: 2px; }
+}
+.booking-invitation {
+  margin-top: clamp(32px, 6vw, 72px);
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  background: var(--brand-wine);
+  color: var(--paper);
+}
+.booking-invitation img { width: 100%; height: 100%; min-height: 0; object-fit: cover; object-position: center 35%; }
+.booking-invitation-copy { display: grid; justify-items: start; align-content: center; gap: 18px; padding: clamp(24px, 5vw, 60px); }
+.booking-invitation h2 { font-size: clamp(1.65rem, 4vw, 3.25rem); max-width: 14ch; }
+.booking-invitation .button { background: var(--paper); color: var(--brand-wine); }
+.booking-invitation .button:hover { background: var(--brand-gold); }
+@media (max-width: 600px) {
+  .booking-invitation { grid-template-columns: 1fr; }
+  .booking-invitation img { height: clamp(180px, 58vw, 300px); object-position: center 18%; }
+}
+
+@media (max-height: 600px) {
+  .booking-page .booking-panel-heading h1 { line-height: 1.1; }
+  .booking-page .calendar-day { min-height: clamp(24px, calc((100dvh - 295px) / 6), 54px); }
+}
+@media (max-height: 440px) {
+  .booking-page .booking-panel-heading { margin-bottom: 4px; }
+  .booking-page .calendar-heading .icon-button { min-height: 32px; height: 32px; }
+  .booking-page .calendar-weekdays { margin-bottom: 3px; }
+  .booking-page .calendar-day { min-height: 24px; flex-direction: row; line-height: 1; }
+  .booking-page .calendar-legend { margin-top: 4px; line-height: 1.2; }
+}
+
+@media (max-height: 360px) {
+  .public-site:has(.booking-page) .site-header { position: static; }
+  .public-site:has(.booking-page) .header-inner { min-height: 44px; }
+  .booking-page .booking-screen, .booking-page .booking-calendar-panel { padding-block: 3px; }
+  .booking-page .calendar-weekdays { line-height: 1; }
+  .booking-page .calendar-heading { margin-bottom: 0; }
+}

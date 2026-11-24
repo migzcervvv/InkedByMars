@@ -48,3 +48,5 @@ Motion revision: Chrome verified the first-visit intro on normal-speed loads at 
 - PASS — Chromium at 375, 768 and 1440 px showed closed dates, read-only open times and the Instagram link using simulated availability. The tablet run used reduced motion.
 - PASS — Client lint and production build, backend suite (40 tests) and Worker dry-run build. The public booking route chunk measured 6.58 kB (2.55 kB gzip).
 - UNVERIFIED — Authenticated save against the production database, production deployment, field performance and admin dialog visual inspection.
+
+- PASS — A six-row booking month and legend fit in Chromium at 320 × 480, 375 × 667, 568 × 320, 768 × 1024 and 1440 × 720. The studio portrait loaded and the second Instagram link was present. Field performance remains unverified.
