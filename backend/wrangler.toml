@@ -5,6 +5,7 @@ compatibility_flags = ["nodejs_compat"]
 workers_dev = true
 
 [vars]
+NEW_BOOKING_EMAIL_ENABLED = "true"
 BREVO_SENDER_EMAIL = "migzcerv007@gmail.com"
 BREVO_SMTP_USER = "af4831001@smtp-brevo.com"
 CLIENT_URL = "https://inkedbymars.netlify.app"

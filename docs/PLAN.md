@@ -14,7 +14,7 @@ The backend tests cover Manila midnight and leap dates, direct same-day requests
 
 ## Supabase Storage replacement for R2
 
-Status: adapter and configuration implemented locally; hosted validation and existing-object cutover are pending. The selected provider is Supabase Storage on a Free project. The key setup is documented in [backend/CLOUDFLARE_SETUP.md](backend/CLOUDFLARE_SETUP.md).
+Status: adapter and configuration implemented locally; hosted validation and existing-object cutover are pending. The selected provider is Supabase Storage on a Free project. The key setup is documented in [backend/CLOUDFLARE_SETUP.md](../backend/CLOUDFLARE_SETUP.md).
 
 Reason: the owner cannot proceed with R2's credit-card enrollment requirement. Replace R2 as the media backend while retaining MongoDB for application records and the Hono Worker API. Do not solve this by putting image bytes or base64 in MongoDB.
 

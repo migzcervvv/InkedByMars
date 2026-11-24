@@ -173,3 +173,22 @@ motions:
     implementation: "CSS entry keyframes and React step state"
     performance_risk: "Clip-path repaint over one panel"
     acceptance_test: "Only open times are offered; selection reveals the form and Change time preserves the draft"
+
+  - id: booking-intake-handoff
+    element: "Time choices and full-screen intake title"
+    purpose: orient
+    meaning: "Move from scheduling to the tattoo brief"
+    trigger: "Date selection scrolls to times. Slot selection opens the title."
+    start_state: "Calendar, then centered Tell me your idea"
+    end_state: "Intake heading and contact fields"
+    duration_ms: "Native scroll, 950ms title including exit"
+    easing: "Native scroll curve and ease-in title exit"
+    stagger_ms: 0
+    dependencies: "Available slot"
+    z_layers: "Modal title over booking page"
+    removal_cost: "Lose the visual cue between scheduling and intake"
+    mobile: "Same sequence at viewport size"
+    reduced_motion: "Instant scroll and direct form entry"
+    implementation: "Native dialog, CSS transform and cancellable timer"
+    performance_risk: "One transformed text layer"
+    acceptance_test: "Select date and time, skip or wait for title, reach contact fields"

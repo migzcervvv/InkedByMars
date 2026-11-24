@@ -105,7 +105,7 @@ const createBooking = async (c) => {
   if (bookingData.referenceImages?.length) {
     const storage = require('../bindings/mediaStorage').createMediaStorage(c.env);
     const references = await Promise.all(bookingData.referenceImages.map(key => storage.head(key)));
-    if (references.includes(false)) throw new AppError('A reference upload is missing. Upload it again.', 400);
+    if (references.includes(false)) throw new AppError('A reference upload is missing.', 400, 'VALIDATION_ERROR', [{ field: 'referenceImages', message: 'Remove the missing reference and upload it again.' }]);
   }
 
   const booking = await transaction(async () => {

@@ -52,10 +52,10 @@ const buildReferenceImageHtml = booking => (booking.referenceImages || []).map(i
 const buildAdminBookingHoldNotification = (booking) => {
   const reference = getBookingReference(booking);
   const reviewUrl = getAdminReviewUrl(booking);
-  const subject = `New booking hold ${reference}`;
+  const subject = `New booking request ${reference}`;
 
   const text = [
-    `New booking hold ${reference}`,
+    `New booking request ${reference}`,
     `Client: ${booking.clientName}`,
     `Email: ${booking.email || '—'}`,
     `Phone: ${booking.phone || '—'}`,
@@ -75,7 +75,7 @@ const buildAdminBookingHoldNotification = (booking) => {
   ].join("\n");
 
   const html = `
-    <h2>New booking hold ${escapeHtml(reference)}</h2>
+    <h2>New booking request ${escapeHtml(reference)}</h2>
     <p><strong>Client:</strong> ${escapeHtml(booking.clientName)}</p>
     <p><strong>Email:</strong> ${escapeHtml(booking.email || "—")}</p>
     <p><strong>Phone:</strong> ${escapeHtml(booking.phone || "—")}</p>
@@ -99,9 +99,10 @@ const buildAdminBookingHoldNotification = (booking) => {
   return { subject, text, html, attachments };
 };
 
-const sendEmail = async ({ to, subject, text, html }) => {
+const sendEmail = async ({ to, subject, text, html, enabled = envEnabled("NOTIFICATION_EMAIL_ENABLED", false) }) => {
  const env = require('../bindings/runtime').env();
- if (!to || env.NOTIFICATION_EMAIL_ENABLED !== 'true') return;
+ if (!enabled) return;
+ if (!to) throw new Error('Studio notification recipient is missing.');
  if (!env.BREVO_API_KEY || !env.BREVO_SENDER_EMAIL) throw new Error('Brevo HTTP credentials are missing.');
  const response = await fetch('https://api.brevo.com/v3/smtp/email', { method:'POST', headers:{'api-key':env.BREVO_API_KEY,'Content-Type':'application/json'}, body:JSON.stringify({sender:{name:'Inked By Mars',email:env.BREVO_SENDER_EMAIL},to:[{email:to}],subject,textContent:text,htmlContent:html}) });
  if(!response.ok) throw new Error('Brevo email delivery failed: '+response.status);
@@ -128,6 +129,7 @@ const notificationService = {
   async notifyAdminNewBooking(bookingData) {
     const adminEmail = buildAdminBookingHoldNotification(bookingData);
     await this.notifyAdmin({
+      emailEnabled: envEnabled("NEW_BOOKING_EMAIL_ENABLED", envEnabled("NOTIFICATION_EMAIL_ENABLED", false)),
       subject: adminEmail.subject,
       message: adminEmail.text,
       html: adminEmail.html,
@@ -143,11 +145,7 @@ const notificationService = {
     });
   },
 
-  async notifyAdmin({ subject, message, html, attachments }) {
-    const emailEnabled = envEnabled(
-      "NOTIFICATION_EMAIL_ENABLED",
-      this.channels.email.enabled,
-    );
+  async notifyAdmin({ subject, message, html, attachments, emailEnabled = envEnabled("NOTIFICATION_EMAIL_ENABLED", false) }) {
     const smsEnabled = envEnabled(
       "NOTIFICATION_SMS_ENABLED",
       this.channels.sms.enabled,
@@ -158,7 +156,8 @@ const notificationService = {
     if (emailEnabled) {
       jobs.push(
         sendEmail({
-          to: require('../bindings/runtime').env().ADMIN_EMAIL || this.channels.email.to,
+          enabled: emailEnabled,
+          to: require('../bindings/runtime').env().ADMIN_EMAIL || require('../bindings/runtime').env().SEED_ADMIN_EMAIL,
           subject,
           text: message,
           html,

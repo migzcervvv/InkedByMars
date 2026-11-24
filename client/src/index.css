@@ -790,9 +790,29 @@ body:has(.ink-navigation[open]) .public-site > :is(main, .footer-entry) {
 }
 .booking-size-options input { accent-color: var(--brand-wax); }
 @media (prefers-reduced-motion: no-preference) {
-  .booking-screen:not([hidden]) { animation: booking-page-turn 760ms cubic-bezier(.22,.72,.22,1) both; }
+  .booking-screen:has(.booking-form-panel):not([hidden]) { animation: booking-page-turn 760ms cubic-bezier(.22,.72,.22,1) both; }
 }
 @keyframes booking-page-turn {
   from { clip-path: inset(0 8% 18% round 22px); transform: translateY(28px); opacity: .55; }
   to { clip-path: inset(0); transform: none; opacity: 1; }
 }
+
+.booking-title { font-size: clamp(26px, 4vw, 40px); padding-block: clamp(16px, 3vw, 36px); }
+#booking-time-step { scroll-margin-top: 110px; }
+.booking-interlude[open] {
+  position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none;
+  margin: 0; border: 0; display: grid; place-items: center;
+  background: var(--brand-wine); color: var(--paper);
+}
+.booking-interlude h2 { font-size: clamp(2.6rem, 8vw, 7rem); text-align: center; }
+.booking-interlude button { position: absolute; bottom: 8%; padding: 12px 20px; color: inherit; background: transparent; border: 1px solid currentColor; }
+@media (prefers-reduced-motion: no-preference) {
+  .booking-interlude h2 { animation: booking-title-exit 300ms ease-in 650ms both; }
+}
+@keyframes booking-title-exit { to { opacity: 0; transform: translateY(-18px); } }
+.booking-form-panel .category-controls { margin-block: 12px; }
+.booking-form-panel .form-actions { justify-content: space-between; }
+.booking-form-panel [aria-invalid=true] { outline: 2px solid var(--status-negative); outline-offset: 2px; }
+.booking-form-panel > h2 { margin-bottom: 24px; }
+
+.upload-control:has([aria-invalid=true]) { outline: 2px solid var(--status-negative); outline-offset: 2px; }

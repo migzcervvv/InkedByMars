@@ -66,7 +66,8 @@ Edit `.dev.vars` locally:
 | `INSTAGRAM_TOKEN_EXPIRES_AT` | Leave blank to discover expiry from Meta. This is not a lifetime setting. |
 | `BREVO_API_KEY` | Brevo **SMTP & API → API Keys**; create an API key, not an SMTP key. Optional while email is disabled. |
 | `BREVO_SENDER_EMAIL` | A verified Brevo sender address. |
-| `ADMIN_EMAIL` | Actual recipient for studio notifications. |
+| `ADMIN_EMAIL` | Studio notification recipient. Defaults to the configured seed admin mailbox. |
+| `NEW_BOOKING_EMAIL_ENABLED` | Enables the studio email on new requests independently of other notifications. |
 
 Never commit `.dev.vars`, `.env`, token stores or encryption keys. Wrangler vars in `wrangler.toml` contain non-secret settings only. `.dev.vars` is separate from the old `.env`; it is deliberately not copied automatically. When adding `.dev.vars`, carry over the backend secrets you still need, including the Mongo URI and JWT secret. Use a test Mongo URI for local integration checks. If a database credential was previously placed in `wrangler.toml`, rotate it and configure the replacement through a secret file or Wrangler secret.
 

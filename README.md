@@ -70,4 +70,4 @@ In a second terminal, run `npm ci` and `npm run dev` from `client`. Open the Vit
 - From `backend`, run `npm test` and `npm run build`. The Worker build is a Wrangler dry run.
 - After the Worker build, run `node scripts/test-storage-worker.cjs` from `backend` to verify uploads and reads against an isolated storage fixture.
 
-See [GOALS.md](GOALS.md) for acceptance criteria and [PLAN.md](PLAN.md) for implementation status.
+See [GOALS.md](docs/GOALS.md) for acceptance criteria and [PLAN.md](docs/PLAN.md) for implementation status.

@@ -20,7 +20,7 @@ The existing Express backend runs separately on its configured port. The public 
 - `npm test`
 - `npm run build`
 
-The focused Node tests cover unknown/closed availability, booking validation and the existing server payload contract. Browser QA uses isolated fixtures recorded in the root `PLAN.md`; no fake API ships with the site.
+The focused Node tests cover unknown/closed availability, booking validation and the existing server payload contract. Browser QA uses isolated fixtures recorded in [the project plan](../docs/PLAN.md); no fake API ships with the site.
 
 ## Code boundaries
 
@@ -42,4 +42,4 @@ Availability is never invented when the backend cannot connect. A selected time 
 
 Instagram is accessed through the existing `/api/instagram/*` backend endpoints. Tokens and Graph API refresh stay on the server. Outages show an honest retry/direct-Instagram view. Local portfolio images are not passed off as a successful Instagram response.
 
-See the root `AGENTS.md`, `GOALS.md` and `PLAN.md` for project constraints, acceptance criteria and verification evidence.
+See the [repository instructions](../AGENTS.md), [project goals](../docs/GOALS.md) and [project plan](../docs/PLAN.md) for project constraints, acceptance criteria and verification evidence.

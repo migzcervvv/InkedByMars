@@ -13,7 +13,9 @@ META_APP_SECRET=
 META_ACCESS_TOKEN=
 INSTAGRAM_USER_ID=
 INSTAGRAM_TOKEN_EXPIRES_AT=
-# Optional email; enable NOTIFICATION_EMAIL_ENABLED only after configuring these.
+# New booking emails use ADMIN_EMAIL or the studio seed admin address.
+# Disable local delivery while using placeholder credentials.
+NEW_BOOKING_EMAIL_ENABLED=false
 BREVO_API_KEY=
 BREVO_SENDER_EMAIL=
 ADMIN_EMAIL=

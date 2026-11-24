@@ -34,3 +34,11 @@ Motion revision: Chrome verified the first-visit intro on normal-speed loads at 
 
 - PASS — Chrome preview at 375, 768 and 1440 px with mocked availability and booking responses. Verified only open times are offered, keyboard activation opens the brief, changing time preserves the draft, reduced motion skips the entrance, and the request reaches the receipt without email or phone. Captured the form at all three widths.
 - PASS — Client build and lint, nine client tests and 40 backend tests. Live database writes and Instagram follow-up remain unverified.
+
+## Booking intake verification, 2026-11-24
+
+- PASS — The mobile calendar screenshot shows the complete month and its legend in the first 375 × 812 viewport. The full-screen studio-colored title marks the transition from scheduling to the tattoo brief.
+- PASS — Chromium completed the form at 375 × 812, 768 × 1024 and 1440 × 720 with intercepted availability and submission responses. Tests covered Enter to continue, automatic category and size advancement, empty contact fields, optional notes and references, a mobile file selection with simulated upload, a rejected indexed reference and the receipt after retry. The tablet run used reduced motion.
+- PASS — An isolated notification test captured a new-request email addressed to the configured studio account, verified the explicit recipient override and checked that disabling new-request delivery suppressed the message.
+- PASS — Client lint, client production build, 9 client tests, 40 backend tests and Worker dry-run build. Booking route chunk measured 23.04 kB or 8.16 kB gzip. Local DOMContentLoaded measured 195 ms, 75 ms and 67 ms respectively in the final run.
+- UNVERIFIED — Production database submission, delivery to Mars’s inbox, field Core Web Vitals and animation frame timing. Worker dry-run emitted warnings about observability.issue_detection and the whatwg-url compatibility shim.

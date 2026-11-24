@@ -13,7 +13,16 @@ export default function BookingPage() {
   const flow = useBookingFlow()
   const [params] = useSearchParams()
   const [changingTime, setChangingTime] = useState(false)
-  const showIdea = Boolean(flow.time) && !changingTime
+  const [intro, setIntro] = useState(false)
+  const dialog = useRef(null)
+  useEffect(() => {
+    if (!intro) return
+    const element = dialog.current
+    element.showModal()
+    const timer = window.setTimeout(() => setIntro(false), 950)
+    return () => { window.clearTimeout(timer); element.close() }
+  }, [intro])
+  const showIdea = Boolean(flow.time) && !changingTime && !intro
   const step = flow.receipt ? 'receipt' : showIdea ? 'idea' : 'time'
   const previousStep = useRef(step)
   useEffect(() => {
@@ -29,13 +38,20 @@ export default function BookingPage() {
     screen?.scrollIntoView({ block: 'start', behavior: 'instant' })
   }, [step])
   function selectTime(time) {
+    setIntro(!window.matchMedia('(prefers-reduced-motion: reduce)').matches && !changingTime)
     flow.chooseTime(time)
     setChangingTime(false)
   }
   usePageMeta(seoPages['/booking'].title, seoPages['/booking'].description, { canonicalPath: '/booking' })
 
   return <div className="booking-page">
-    <PageIntro title={flow.receipt ? 'Your idea is in.' : 'Request a tattoo session'} aside={<p>BF Resort, Las Piñas<br />All times in Philippine time</p>}><p>{flow.receipt ? 'Your request has reached the studio. Here’s what happens next.' : 'Choose a time. Tell me about your piece. We’ll take it from there.'}</p></PageIntro>
+    {flow.receipt
+      ? <PageIntro title="Your idea is in." aside={<p>BF Resort, Las Piñas<br />All times in Philippine time</p>}><p>Your request has reached the studio. Here’s what happens next.</p></PageIntro>
+      : <h1 className="frame booking-title">Request a tattoo session</h1>}
+    {intro && <dialog className="booking-interlude" ref={dialog} aria-labelledby="booking-interlude-title" onCancel={() => setIntro(false)}>
+      <h2 id="booking-interlude-title">Tell me your idea</h2>
+      <button type="button" onClick={() => setIntro(false)}>Skip</button>
+    </dialog>}
     {flow.receipt ? <BookingConfirmation booking={flow.receipt} onAnother={flow.startAnother} /> : <div className="frame booking-layout booking-sequence">
       <div className="booking-screen" hidden={showIdea}>
       <BookingCalendar earliestDate={flow.earliestDate} studioDate={flow.studioDate} availabilityByDate={flow.availabilityByDate} dayAvailability={flow.selectedDay} calendarMonth={flow.month} selectedDate={flow.date} selectedSlot={flow.time} loading={flow.dateLoading} rangeLoading={flow.loading} rangeError={flow.rangeError} dateError={flow.dateError} onDateChange={flow.chooseDate} onMonthChange={flow.changeMonth} onSlotChange={selectTime} onRetryRange={() => flow.refreshRange()} onRetryDate={() => flow.fetchDate(toDateKey(flow.date))} />

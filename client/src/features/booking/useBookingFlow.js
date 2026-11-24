@@ -72,7 +72,10 @@ export function useBookingFlow() {
       if (!booking) throw new Error('The server did not return a booking receipt. Please check with the studio before trying again.')
       setReceipt(booking)
     } catch (error) {
-      setSubmitError(error)
+      const fieldMessages = Object.values(error.fields || {}).join(' ')
+      const message = fieldMessages || (error.code === 'VALIDATION_ERROR' ? 'The studio could not validate this request. Check your date, time and request details.' : error.message)
+      setSubmitError({ ...error, message })
+      if (error.fields?.preferredDate || error.fields?.preferredTime) setTime(null)
       if (error.status === 409) { setTime(null); await Promise.all([fetchDate(toDateKey(date)), refreshRange()]) }
       return { error }
     } finally { submittingRef.current = false; setSubmitting(false) }
