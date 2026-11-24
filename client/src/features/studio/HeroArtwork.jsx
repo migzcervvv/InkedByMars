@@ -4,9 +4,10 @@ import { createPortal } from "react-dom";
 const signature =
   "M182 374 C189 365 195 349 198 334 C201 322 204 324 204 335 L203 360 C206 348 209 323 220 321 C230 318 229 340 227 354 C231 339 235 314 246 313 C257 312 251 334 257 344 C261 349 267 342 273 336 269 324 273 302 280 295 286 282 300 284 302 290 299 312 291 335 280 335 268 334 273 316 276 308 281 296 287 286 303 287 299 301 296 324 304 324 319 326 328 283 329 265 325 257 314 258 319 268 323 276 337 270 352 260 348 271 346 299 357 298 368 302 373 269 377 246 377 259 389 268 394 275 400 286 385 294 387 281 391 270 402 256 419 247";
 
-export function HeroArtwork() {
+export function HeroArtwork({ showIntro }) {
   const overlay = useRef(null);
   useEffect(() => {
+    if (!showIntro) return;
     const layer = overlay.current;
     const reduced = matchMedia("(prefers-reduced-motion: reduce)");
     const refreshing =
@@ -84,7 +85,7 @@ export function HeroArtwork() {
       window.removeEventListener("keydown", hide);
       reduced.removeEventListener("change", hide);
     };
-  }, []);
+  }, [showIntro]);
   return (
     <>
       <picture className="portrait-back">
@@ -98,7 +99,7 @@ export function HeroArtwork() {
           fetchPriority="high"
         />
       </picture>
-      {createPortal(
+      {showIntro && createPortal(
         <div className="signature-entry" ref={overlay} hidden>
           <svg viewBox="175 230 260 155" aria-hidden="true">
             <path

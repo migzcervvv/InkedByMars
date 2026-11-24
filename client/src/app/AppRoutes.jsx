@@ -1,8 +1,9 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useLayoutEffect, useRef, useState } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { PublicLayout } from "../layouts/PublicLayout";
 import { ProtectedRoute } from "../routes/ProtectedRoute";
-import { Loader } from "../components/ui/Loader";
+import { flushSync } from "react-dom";
+import { ScrollToTop } from "../components/ui/ScrollToTop";
 
 const HomePage = lazy(() => import("../features/studio/HomePage"));
 const BookingPage = lazy(() => import("../features/booking/BookingPage"));
@@ -32,18 +33,48 @@ function LegacyAdmin({ path }) {
   return <Navigate to={{ pathname: path, search }} replace />;
 }
 
+function RouteReady({ ready }) {
+  useLayoutEffect(() => { ready.current?.() })
+  return <ScrollToTop />
+}
+
 export function AppRoutes() {
+  const target = useLocation();
+  const [page, setPage] = useState(target);
+  const [showIntro, setShowIntro] = useState(target.pathname === "/");
+  const ready = useRef(null);
+  const changingPage = page.pathname !== target.pathname;
+
+  useLayoutEffect(() => {
+    if (!changingPage) return;
+    const controller = new AbortController();
+    const commit = () => {
+      setShowIntro(false);
+      setPage(target);
+    };
+    if (!document.startViewTransition || matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      commit();
+      return;
+    }
+    const transition = document.startViewTransition(() => {
+      if (controller.signal.aborted) return;
+      return new Promise(resolve => {
+        ready.current = resolve;
+        controller.signal.addEventListener("abort", resolve, { once: true });
+        flushSync(commit);
+      });
+    });
+    return () => {
+      controller.abort();
+      transition.skipTransition();
+    };
+  }, [target]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
-    <Suspense
-      fallback={
-        <div className="route-loading">
-          <Loader label="Opening the studio" />
-        </div>
-      }
-    >
-      <Routes>
+    <Suspense fallback={null}>
+      <Routes location={changingPage ? page : target}>
         <Route element={<PublicLayout />}>
-          <Route index element={<HomePage />} />
+          <Route index element={<HomePage showIntro={showIntro} />} />
           <Route path="booking" element={<BookingPage />} />
           <Route path="works" element={<WorksPage />} />
           <Route path="gallery" element={<Navigate to="/works" replace />} />
@@ -75,6 +106,7 @@ export function AppRoutes() {
           </Route>
         </Route>
       </Routes>
+      {!changingPage && <RouteReady ready={ready} />}
     </Suspense>
   );
 }

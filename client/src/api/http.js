@@ -5,6 +5,11 @@ import { normalizeApiError } from '../utils/errors'
 import { shouldClearAdminSession } from './requestPolicy'
 
 let unauthorizedHandler = null
+let sessionToken = null
+
+export function setHttpSessionToken(token) {
+  sessionToken = token
+}
 const DEBUG_API = import.meta.env.VITE_API_DEBUG === 'true'
 
 export function setUnauthorizedHandler(handler) {
@@ -21,8 +26,8 @@ export const http = axios.create({
 })
 
 http.interceptors.request.use((config) => {
-  const token = getStoredToken()
-  if (token) config.headers.Authorization = `Bearer ${token}`
+  const token = sessionToken || getStoredToken()
+  if (token) config.headers.set('Authorization', `Bearer ${token}`)
   config.headers['X-Request-Id'] = crypto.randomUUID()
   config.metadata = { startedAt: performance.now() }
   return config
@@ -53,7 +58,8 @@ http.interceptors.response.use(
     const normalized = normalizeApiError(error)
 
     if (shouldClearAdminSession(normalized.status, config.url) && unauthorizedHandler) {
-      unauthorizedHandler(normalized)
+      const currentToken = sessionToken || getStoredToken()
+      if (!currentToken || config.headers?.get('Authorization') === `Bearer ${currentToken}`) unauthorizedHandler(normalized)
     }
 
     return Promise.reject(normalized)

@@ -9,7 +9,7 @@ import { studio } from '../../config/studio'
 export default function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { isAuthenticated, login } = useAuth()
+  const { isAuthenticated, login, sessionExpired } = useAuth()
   const [form, setForm] = useState({ name: '', password: '' })
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -21,5 +21,5 @@ export default function LoginPage() {
     catch (nextError) { setError(nextError) }
     finally { setLoading(false) }
   }
-  return <main className="login-page"><Link to="/">{studio.name}</Link><form className="login-form" onSubmit={submit}><h1>Studio access</h1><p>Sign in to manage your appointments.</p>{error && <Notice tone="error"><p>{error.message || 'Sign-in failed. Check your name and password.'}</p></Notice>}<Field label="Name" name="username" autoComplete="username" required value={form.name} onChange={event => setForm(current => ({ ...current, name: event.target.value }))} /><Field label="Password" name="password" type="password" autoComplete="current-password" required value={form.password} onChange={event => setForm(current => ({ ...current, password: event.target.value }))} /><Button type="submit" disabled={loading}>{loading ? 'Signing in…' : 'Sign in'}</Button></form><Link to="/">Back to the studio</Link></main>
+  return <main className="login-page"><Link to="/">{studio.name}</Link><form className="login-form" onSubmit={submit}><h1>Studio access</h1><p>Sign in to manage your appointments.</p>{sessionExpired && <Notice><p>Your studio session ended. Sign in again to continue.</p></Notice>}{error && <Notice tone="error"><p>{error.message || 'Sign-in failed. Check your name and password.'}</p></Notice>}<Field label="Name" name="username" autoComplete="username" required value={form.name} onChange={event => setForm(current => ({ ...current, name: event.target.value }))} /><Field label="Password" name="password" type="password" autoComplete="current-password" required value={form.password} onChange={event => setForm(current => ({ ...current, password: event.target.value }))} /><Button type="submit" disabled={loading}>{loading ? 'Signing in…' : 'Sign in'}</Button></form><Link to="/">Back to the studio</Link></main>
 }

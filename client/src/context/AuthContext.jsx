@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { authApi } from "../api/authApi";
-import { setUnauthorizedHandler } from "../api/http";
+import { setHttpSessionToken, setUnauthorizedHandler } from "../api/http";
 import { AuthContext } from "./AuthContextValue";
 import {
   clearStoredAuth,
@@ -15,16 +15,35 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => getStoredToken());
   const [booting, setBooting] = useState(Boolean(getStoredToken()));
 
+  const [sessionExpired, setSessionExpired] = useState(false);
+
   const clearSession = useCallback(() => {
+    setHttpSessionToken(null);
     clearStoredAuth();
     setAdmin(null);
     setToken(null);
   }, []);
 
   useEffect(() => {
-    setUnauthorizedHandler(() => clearSession());
+    setUnauthorizedHandler(() => {
+      setSessionExpired(true);
+      clearSession();
+    });
     return () => setUnauthorizedHandler(null);
   }, [clearSession]);
+
+  useEffect(() => {
+    function syncSession(event) {
+      if (event.storageArea !== window.localStorage || getStoredToken() === token) return;
+      const next = getStoredToken();
+      setHttpSessionToken(next);
+      setAdmin(null);
+      setBooting(Boolean(next));
+      setToken(next);
+    }
+    window.addEventListener("storage", syncSession);
+    return () => window.removeEventListener("storage", syncSession);
+  }, [token]);
 
   useEffect(() => {
     let mounted = true;
@@ -35,6 +54,7 @@ export function AuthProvider({ children }) {
         return;
       }
 
+      setHttpSessionToken(token);
       try {
         const data = await authApi.me();
         if (!mounted) return;
@@ -56,6 +76,8 @@ export function AuthProvider({ children }) {
 
   const login = useCallback(async (credentials) => {
     const data = await authApi.login(credentials);
+    setHttpSessionToken(data.token);
+    setSessionExpired(false);
     setToken(data.token);
     setAdmin(data.admin);
     setStoredToken(data.token);
@@ -81,6 +103,7 @@ export function AuthProvider({ children }) {
       admin,
       token,
       booting,
+      sessionExpired,
       isAuthenticated: Boolean(token && admin),
       role: admin?.role || null,
       login,
@@ -88,7 +111,7 @@ export function AuthProvider({ children }) {
       clearSession,
       updateProfile,
     }),
-    [admin, booting, clearSession, login, logout, token, updateProfile],
+    [admin, booting, sessionExpired, clearSession, login, logout, token, updateProfile],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

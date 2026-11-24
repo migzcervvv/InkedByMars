@@ -26,7 +26,7 @@ const descriptions = {
     "Choose from Mars’s ready-to-tattoo illustrations, then decide on size and placement.",
 };
 
-export default function HomePage() {
+export default function HomePage({ showIntro }) {
   const scope = useRef(null);
   const [categoryId, setCategoryId] = useState("custom");
   const activeIndex = workCategories.findIndex(
@@ -41,7 +41,7 @@ export default function HomePage() {
     <div ref={scope} className="studio-home">
       <div className="hero-stage">
         <section className="portrait-hero" aria-labelledby="home-title">
-          <HeroArtwork />
+          <HeroArtwork showIntro={showIntro} />
           <div className="portrait-title">
             <p>Custom tattoos / Las Piñas</p>
             <h1 id="home-title">

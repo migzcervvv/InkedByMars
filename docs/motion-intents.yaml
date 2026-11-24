@@ -155,21 +155,21 @@ motions:
     performance_risk: "Large text layer; pause it offscreen"
     acceptance_test: "Footer links work, marquee pauses offscreen and reduced motion disables movement"
 
-  - id: booking-date-scroll
-    element: "Daily availability"
+  - id: route-page-stack
+    element: "Outgoing and incoming viewport snapshots"
     purpose: orient
-    meaning: "Connect the selected date to its open times"
-    trigger: "Select a date"
-    start_state: "Monthly calendar"
-    end_state: "Daily availability in view and focused"
-    duration_ms: "Browser-managed"
-    easing: "Native smooth scroll"
+    meaning: "One studio page moves upward to make room for the next"
+    trigger: "Internal pathname change including history traversal"
+    start_state: "Outgoing page fills viewport"
+    end_state: "Incoming page fills viewport"
+    duration_ms: 1450
+    easing: "ease-in-out across shrink, slide, expand"
     stagger_ms: 0
-    dependencies: "Selected date"
-    z_layers: "Normal document flow"
-    removal_cost: "Daily times may remain below the viewport"
-    mobile: "Same native scroll"
-    reduced_motion: "Jump directly to daily availability"
-    implementation: "scrollIntoView"
-    performance_risk: "Native scroll with no custom frame loop"
-    acceptance_test: "Select a date and reach the daily availability region"
+    dependencies: "Browser View Transitions API"
+    z_layers: "Two page snapshots over a dark backdrop"
+    removal_cost: "Lose the spatial handoff between pages"
+    mobile: "Same motion in viewport-relative units"
+    reduced_motion: "Immediate navigation"
+    implementation: "Same-document view transition around React route commit"
+    performance_risk: "Two temporary viewport textures"
+    acceptance_test: "Internal links and Back transition without replaying the signature"

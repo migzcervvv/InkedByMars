@@ -889,3 +889,23 @@ body:has(.ink-navigation[open]) .public-site > :is(main, .footer-entry) {
 .booking-blocked-times ul { margin: 0; padding: 0; list-style: none; }
 
 .studio-fields fieldset { border: 0; margin: 0; padding: 0; min-inline-size: 0; }
+
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition { background: #211d1b; }
+  ::view-transition-group(root) { animation: none; }
+  ::view-transition-old(root), ::view-transition-new(root) {
+    animation: studio-page-out 1450ms ease-in-out both;
+    mix-blend-mode: normal;
+  }
+  ::view-transition-new(root) { animation-name: studio-page-in; }
+}
+@keyframes studio-page-out {
+  0% { transform: none; }
+  27% { transform: scale(.82); }
+  74%, 100% { transform: translateY(-105%) scale(.82); }
+}
+@keyframes studio-page-in {
+  0%, 27% { transform: translateY(105%) scale(.82); }
+  74% { transform: scale(.82); }
+  100% { transform: none; }
+}
