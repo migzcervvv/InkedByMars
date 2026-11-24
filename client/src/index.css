@@ -872,3 +872,13 @@ body:has(.ink-navigation[open]) .public-site > :is(main, .footer-entry) {
   .booking-page .calendar-weekdays { line-height: 1; }
   .booking-page .calendar-heading { margin-bottom: 0; }
 }
+
+.booking-page .booking-layout { padding-bottom: 0; }
+.public-site:has(.booking-page) .studio-footer { animation: none; }
+.booking-page :is(.calendar-day-booked, .legend-booked) { background: #5b2538; color: #fff; }
+.booking-page :is(.calendar-day-blocked, .legend-closed) { background: repeating-linear-gradient(135deg, #f2e8e3 0 4px, #ddc9c7 4px 6px); color: #35121d; }
+.booking-page :is(.calendar-day-booked, .calendar-day-blocked) .calendar-day-mark { display: none; }
+.booking-page :is(.calendar-day-booked, .calendar-day-blocked).is-selected { outline: 2px solid var(--brand-wax); outline-offset: 1px; }
+.booking-page .calendar-legend { font-size: .75rem; column-gap: 8px; }
+.booking-page .calendar-legend span { gap: 4px; }
+.booking-invitation img { max-height: 440px; }

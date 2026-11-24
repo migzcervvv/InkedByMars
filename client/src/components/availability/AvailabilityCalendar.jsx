@@ -3,7 +3,7 @@ import { fromDateKey, studioTodayKey, toDateKey } from '../../utils/date'
 import { getDateStatus } from './calendarModel'
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
-export function AvailabilityCalendar({ month, availabilityByDate = {}, blockedDates = [], bookedDates = [], selectedDate, onDateSelect, onMonthChange, disableUnavailable = false, loading = false, selectable = true, requireKnown = false, earliestDate, studioDate, allowPast = false }) {
+export function AvailabilityCalendar({ month, availabilityByDate = {}, blockedDates = [], bookedDates = [], selectedDate, onDateSelect, onMonthChange, disableUnavailable = false, loading = false, selectable = true, requireKnown = false, earliestDate, studioDate, allowPast = false, separateUnavailable = false }) {
   const monthDate = month instanceof Date ? new Date(month.getFullYear(), month.getMonth(), 1) : fromDateKey(`${month || studioTodayKey().slice(0, 7)}-01`)
   const label = monthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
   const first = monthDate.getDay()
@@ -21,6 +21,6 @@ export function AvailabilityCalendar({ month, availabilityByDate = {}, blockedDa
       const canSelect = selectable && !['loading', 'past', 'unknown', 'policy'].includes(status) && !(disableUnavailable && ['blocked', 'booked'].includes(status))
       return <button key={dateKey} type="button" disabled={!canSelect} onClick={() => onDateSelect?.(fromDateKey(dateKey))} className={`calendar-day calendar-day-${status} ${selectedKey === dateKey ? 'is-selected' : ''}`} aria-pressed={selectedKey === dateKey} aria-current={dateKey === todayKey ? 'date' : undefined} aria-label={`${fromDateKey(dateKey).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}, ${status === 'policy' ? 'same-day booking unavailable' : status}`}><span>{fromDateKey(dateKey).getDate()}</span><span className="calendar-day-mark" aria-hidden="true" /></button>
     })}</div>
-    <div className="calendar-legend"><span><i className="legend-available" />Available</span><span><i className="legend-limited" />Limited</span><span><i className="legend-booked" />Booked / closed</span></div>
+    <div className="calendar-legend"><span><i className="legend-available" />Available</span><span><i className="legend-limited" />Limited</span><span><i className="legend-booked" />{separateUnavailable ? 'Booked' : 'Booked / closed'}</span>{separateUnavailable && <span><i className="legend-closed" />Closed</span>}</div>
   </div>
 }
