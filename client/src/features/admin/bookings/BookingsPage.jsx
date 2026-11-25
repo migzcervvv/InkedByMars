@@ -32,6 +32,8 @@ export default function BookingsPage() {
   const page = params.get('page') || '1'
   const queue = useAdminResource(new URLSearchParams({ view, search, date, page }).toString(), loadQueue)
   const detail = useAdminResource(bookingId, loadBooking)
+  const work = useAdminResource('today', bookingApi.dashboard)
+  const reloadWork = work.reload
   const reloadQueue = queue.reload
   const reloadDetail = detail.reload
   const bookings = queue.data?.bookings || []
@@ -39,11 +41,12 @@ export default function BookingsPage() {
 
   useEffect(() => {
     const timer = window.setInterval(() => {
+      reloadWork()
       reloadQueue()
       if (bookingId) reloadDetail()
     }, 30_000)
     return () => window.clearInterval(timer)
-  }, [reloadQueue, reloadDetail, bookingId])
+  }, [reloadWork, reloadQueue, reloadDetail, bookingId])
 
   useEffect(() => {
     if (bookingId && previousSelection.current !== bookingId) {
@@ -72,10 +75,21 @@ export default function BookingsPage() {
     changeParams({ booking: id })
   }
 
-  const refresh = () => { queue.reload(); detail.reload() }
+  const refresh = () => { work.reload(); queue.reload(); detail.reload() }
 
   return <div className="studio-screen">
     <header className="studio-screen-heading"><h1>Bookings</h1><button type="button" className="studio-primary" onClick={() => setAdding(true)}>Add booking</button></header>
+    {!bookingId && <section className="studio-panel studio-today" aria-label="Today"><h2>Today</h2>
+      <AdminFeedback error={work.error} onRetry={work.reload} />
+      {work.loading && !work.data && <p role="status">Loading studio work…</p>}
+      {work.data && <div>{[
+        ['Next appointment', work.data.next ? [work.data.next] : [], 'No upcoming appointments.'],
+        ['Awaiting review', work.data.pending || [], 'No pending requests.'],
+        ['Holds expiring first', work.data.holds || [], 'No active holds.'],
+      ].map(([label, items, empty]) => <section key={label}><h3>{label}</h3>{items.length ? items.map(item =>
+        <button type="button" className="studio-plain" key={item._id} onClick={event => select(event, item._id)}>{item.clientName} · {item.holdExpiresAt ? formatStudioTimestamp(item.holdExpiresAt) : formatDisplayDate(item.preferredDate) + ' · ' + formatDisplayTime(item.preferredTime)}</button>
+      ) : <p>{empty}</p>}</section>)}</div>}
+    </section>}
     {adding && <ConfirmedBookingDialog onClose={() => setAdding(false)} onSaved={booking => {
       setAdding(false)
       setSearch('')

@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { scheduleApi } from '../../../api/scheduleApi'
 import { AvailabilityCalendar } from '../../../components/availability/AvailabilityCalendar'
-import { formatDisplayDate, formatDisplayTime, endOfMonth, fromDateKey, startOfMonth, studioTodayKey, toDateKey } from '../../../utils/date'
+import { formatDisplayDate, formatDisplayTime, formatStudioTimestamp, endOfMonth, fromDateKey, startOfMonth, studioTodayKey, toDateKey } from '../../../utils/date'
 import { AdminFeedback } from '../AdminFeedback'
 import { useAdminResource } from '../useAdminResource'
+import { BlockDaysDialog } from './BlockDaysDialog'
 import { ClosureDialog } from './ClosureDialog'
 import { ConfirmedBookingDialog } from './ConfirmedBookingDialog'
 import { DefaultTimesDialog } from './DefaultTimesDialog'
@@ -95,8 +96,8 @@ export default function CalendarPage() {
           <div className="studio-actions">
             {!schedule.blocked && date > today && <button type="button" className="studio-primary" disabled={!editable || !schedule.timeSlots.some(slot => slot.status === 'available')} onClick={() => setRecording(true)}>Record confirmed booking</button>}
             {schedule.blocked ? <button type="button" className="studio-primary" disabled={!editable} onClick={() => setOperation({ action: 'unblock-day' })}>Unblock whole day</button> :
-              <><button type="button" className="studio-primary" disabled={!editable} onClick={() => setOperation({ action: 'block-range' })}>Block time range</button>
-              <button type="button" className="studio-secondary" disabled={!editable} onClick={() => setOperation({ action: 'block-day' })}>Block whole day</button></>}
+              <button type="button" className="studio-primary" disabled={!editable} onClick={() => setOperation({ action: 'block-range' })}>Block time range</button>}
+            <button type="button" className="studio-secondary" disabled={!editable} onClick={() => setOperation({ action: 'block-day' })}>Block dates</button>
           </div>
           <ul className="studio-agenda" aria-label="Time slots">
             {schedule.timeSlots.map(slot => <li key={slot.time}>
@@ -109,13 +110,21 @@ export default function CalendarPage() {
                 aria-label={`Unblock ${formatDisplayTime(slot.time)}`} onClick={() => setOperation({ action: 'unblock-range', startTime: slot.time, endTime: schedule.boundaries[schedule.boundaries.indexOf(slot.time) + 1] })}>Unblock</button>}
             </li>)}
           </ul>
+          {schedule.closureHistory?.length > 0 && <details><summary>Closure history</summary><ol className="studio-history">{[...schedule.closureHistory].reverse().map(entry => <li key={entry._id}><span>{{'block-day': 'Blocked day', 'unblock-day': 'Unblocked day', 'block-range': 'Blocked time', 'unblock-range': 'Unblocked time'}[entry.action]} {entry.startTime && entry.startTime + '–' + entry.endTime} · {entry.changedByName}{entry.reason && ' · ' + entry.reason}</span><time dateTime={entry.changedAt}>{formatStudioTimestamp(entry.changedAt)}</time></li>)}</ol></details>}
         </>}
         {recording && schedule && <ConfirmedBookingDialog key={date} date={date} schedule={schedule} onClose={() => setRecording(false)} onConflict={refresh} onSaved={() => {
           setRecording(false)
           setMessage('Confirmed booking recorded.')
           refresh()
         }} />}
-        {operation && schedule && <ClosureDialog key={`${date}|${operation.action}`} date={date} schedule={schedule} initial={operation}
+        {operation?.action === 'block-day' && schedule && <BlockDaysDialog date={date} schedule={schedule} loadMonth={loadMonth}
+          onClose={() => setOperation(null)} onSaved={count => {
+            setOperation(null)
+            setMessage(count === 1 ? '1 day blocked.' : count + ' days blocked.')
+            refresh()
+            requestAnimationFrame(() => agendaTitle.current?.focus({ preventScroll: true }))
+          }} />}
+        {operation && operation.action !== 'block-day' && schedule && <ClosureDialog key={`${date}|${operation.action}`} date={date} schedule={schedule} initial={operation}
           refreshing={!editable} onClose={() => setOperation(null)} onConflict={refresh}
           onSaved={() => {
             setOperation(null)

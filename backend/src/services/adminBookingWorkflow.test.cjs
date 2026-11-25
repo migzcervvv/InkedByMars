@@ -8,10 +8,37 @@ const { createBooking, confirmBooking } = require('../controllers/bookingControl
 const { getAvailability, getAvailabilityByDate } = require('../controllers/publicController');
 const { bookingPolicy, validDate, requireBookableDate } = require('./bookingPolicy');
 const { expiryReason, isExpired, requireCurrentVersion, viewFilter } = require('./bookingReview');
-const { planClosure } = require('./calendarClosures');
+const { planClosure, blockDays } = require('./calendarClosures');
 const { toPublicAvailability, getSlotBoundaryTimes } = require('./scheduleService');
 const { validateDefaultSchedule, validateShopHours, saveDefaultSchedule } = require('./availabilitySettingsService');
 const runtime = require('../bindings/runtime');
+
+test('whole-day selection commits together and identifies the date that prevented a save', async () => {
+  const days = ['2099-01-30', '2099-02-02'].map(date => ({ date, version: 0 }));
+  const committed = [];
+  let staged;
+  let reserved = true;
+  const db = {
+    transaction: async work => { staged = []; await work(); committed.push(...staged); },
+    models: {
+      AvailabilitySettings: { findOne: () => ({ select: () => ({ lean: async () => ({}) }) }) },
+      Schedule: { findOne: ({ date }) => ({
+        date, __v: 0, dayStatus: 'open',
+        timeSlots: [{ time: '15:00', status: reserved && date === days[1].date ? 'booked' : 'available' }],
+        increment() {}, async save() { staged.push([date, this.dayStatus, this.closureReason]); },
+      }) },
+    },
+  };
+  await runtime.run({ db }, async () => {
+    await assert.rejects(blockDays(days, 'Guest spot'), { statusCode: 409, details: { date: days[1].date } });
+    assert.deepEqual(committed, []);
+    reserved = false;
+    await assert.rejects(blockDays([days[0], { ...days[1], version: null }]), { statusCode: 409 });
+    assert.deepEqual(committed, []);
+    await blockDays(days, 'Guest spot');
+    assert.deepEqual(committed, days.map(({ date }) => [date, 'fully_closed', 'Guest spot']));
+  });
+});
 
 test('shop hours accept opening and closing times and flag the field that needs changing', () => {
   assert.deepEqual(validateShopHours({ opening: '22:45', closing: '24:00' }), {

@@ -18,7 +18,7 @@ function viewFilter(view, now) {
 
 function isExpired(booking, now = new Date()) {
   if (booking.status === status.ON_HOLD) return !(booking.holdExpiresAt && new Date(booking.holdExpiresAt) > now);
-  return booking.status === status.CANCELLED && booking.statusHistory?.at(-1)?.reason === expiryReason;
+  return booking.status === status.CANCELLED && booking.statusHistory?.some(entry => entry.reason === expiryReason);
 }
 
 function requireCurrentVersion(booking, expectedUpdatedAt) {

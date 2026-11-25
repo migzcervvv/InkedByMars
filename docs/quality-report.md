@@ -69,3 +69,16 @@ Motion revision: Chrome verified the first-visit intro on normal-speed loads at 
 - PASS — Chromium at 375, 768 and 1440 px exercised sign-in, booking creation and cancellation validation, shop hours, calendar closure validation, team creation, password reset and account removal with simulated API responses. The booking form showed both returned field errors and moved focus to the error summary. An HTTP 503 displayed a plain-language message and the next save succeeded.
 - PASS — Backend tests covered omitted and blank contact fields, midnight closing, invalid hours, and preservation of existing intervals on a no-change save.
 - UNVERIFIED — Production saves with this revision. The deployed Worker still uses older validators, and Wrangler reported an expired login.
+
+## Admin multi-date closures, 2026-11-25
+
+- PASS — Chromium with simulated admin API responses exercised cross-month selection, touch and keyboard input, a reserved date, a conflict and retry with the remaining selection and reason, and navigation through Bookings and Manage users. Screen sizes were 375 × 667, 768 × 1024 with reduced motion, 1440 × 720 and 1366 × 580.
+- PASS — Client lint, client production build, Worker dry-run build, nine client tests and 44 backend tests. A transaction test double covered rejection of the second date for a booking or stale version and successful closure of both dates.
+- The production Calendar page chunk measured 13.62 kB before compression and 4.52 kB gzip. No new dependency or media was added.
+- UNVERIFIED — Live database persistence, production deployment and field performance.
+
+## Owner workflows, 2026-11-25
+
+- PASS — Chromium at 375, 768 and 1440 px opened a booking from Today, saved a standalone note and displayed the staff name in history using simulated responses. The request contained the note and version without a status change.
+- PASS — Client lint, production client build, Worker dry-run build and 53 tests.
+- UNVERIFIED — Live database persistence, historical account lookups, closure history rendering against live data and field performance.

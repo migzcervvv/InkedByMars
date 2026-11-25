@@ -13,6 +13,9 @@ export const scheduleApi = {
   getByDate(date) {
     return http.get(`/schedule/${date}`)
   },
+  blockDays(days, reason) {
+    return http.put('/schedule/block-days', { days, reason })
+  },
   changeClosure(date, operation) {
     return http.put(`/schedule/${date}/closure`, operation)
   },

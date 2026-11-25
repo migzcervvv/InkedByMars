@@ -228,6 +228,7 @@
 .calendar-legend span { display: flex; align-items: center; gap: 6px; }
 .calendar-legend i { width: 6px; height: 6px; display: block; }
 .legend-available { background: var(--status-positive); }
+.legend-selected { background: var(--brand-wine); }
 .legend-limited { background: var(--status-warning); }
 .legend-booked { background: var(--brand-wax); }
 .date-slot-panel { margin-top: 32px; }
@@ -395,6 +396,11 @@
 .studio-fields label { display: grid; gap: 4px; min-width: 0; font-weight: 500; }
 .studio-fields input, .studio-fields select, .studio-fields textarea { min-height: 44px; padding: 8px; min-width: 0; width: 100%; border: 1px solid var(--field-border); background: var(--paper); font-weight: 400; }
 .studio-fields textarea { min-height: 70px; resize: vertical; }
+.studio-today { padding: 16px; }
+.studio-today > div { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr)); gap: 12px; margin-top: 8px; }
+.studio-today h3 { font-size: 15px; }
+.studio-today .studio-plain { display: block; text-align: left; padding-inline: 0; text-decoration: underline; }
+.studio-block-selection { display: flex; flex-wrap: wrap; gap: 4px; list-style: none; margin: 0; padding: 0; }
 .studio-fields .studio-inline-check { display: flex; align-items: center; min-height: 44px; gap: 8px; }
 .studio-inline-check input[type=checkbox] { width: 18px; min-height: 18px; accent-color: var(--brand-wax); }
 .studio-form-footer { display: flex; justify-content: flex-end; gap: 8px; padding-top: 12px; border-top: 1px solid var(--studio-line); }

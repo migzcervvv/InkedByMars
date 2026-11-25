@@ -46,6 +46,7 @@ const scheduleSchema = new mongoose.Schema(
       enum: Object.values(DAY_STATUS),
       default: DAY_STATUS.OPEN,
     },
+    closureHistory: [{ action: String, startTime: String, endTime: String, reason: String, changedBy: mongoose.Schema.Types.ObjectId, changedByName: String, changedAt: Date }],
     closureReason: {
       type: String,
       trim: true,

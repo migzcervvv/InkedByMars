@@ -18,6 +18,8 @@ const { mediaUrl, isMediaKey } = require('../services/mediaService');
 const serializePublicBooking = (booking) => {
   const data = booking.toJSON ? booking.toJSON() : { ...booking };
   delete data.holdExpiresAt;
+  delete data.statusHistory;
+  delete data.adminNotes;
   return data;
 };
 
@@ -74,7 +76,7 @@ const getAllBookings = async (c) => {
  */
 const getBookingById = async (c) => {
   const req = c.get('input');
-  const booking = await Booking.findById(req.params.id);
+  const booking = await Booking.findById(req.params.id).populate('statusHistory.changedBy', 'name');
   if (!booking) return fail(new AppError("Booking not found", 404));
 
   return sendOk(c, { booking });
@@ -122,7 +124,7 @@ const createBooking = async (c) => {
       ...(confirmed && { appointmentEnd }),
       statusHistory: [{
         status,
-        changedBy: req.admin?._id,
+        changedBy: req.admin?._id, changedByName: req.admin?.name,
         reason: confirmed ? 'Confirmed by studio' : req.admin ? 'Created by admin' : 'Client requested a temporary hold',
       }],
     });
@@ -173,7 +175,7 @@ const confirmBooking = async (c) => {
     record.holdExpiresAt = null;
     if (adminNotes !== undefined) record.adminNotes = adminNotes;
     record.statusHistory.push({
-      status: BOOKING_STATUS.CONFIRMED, changedBy: req.admin._id,
+      status: BOOKING_STATUS.CONFIRMED, changedBy: req.admin._id, changedByName: req.admin?.name,
       reason: `Appointment set for ${date} ${startTime}–${endTime}`,
     });
     await record.save();
@@ -201,7 +203,7 @@ const updateBookingStatus = async (c) => {
     record.status = status;
     record.holdExpiresAt = null;
     if (adminNotes !== undefined) record.adminNotes = adminNotes;
-    record.statusHistory.push({ status, changedBy: req.admin._id, reason: reason || 'Appointment completed' });
+    record.statusHistory.push({ status, changedBy: req.admin._id, changedByName: req.admin?.name, reason: reason || 'Appointment completed' });
     await record.save();
     return record;
   });
@@ -222,7 +224,7 @@ const updateBooking = async (c) => {
   const updates = Object.fromEntries(fields.filter(key => req.body[key] !== undefined).map(key => [key, req.body[key]]));
   const booking = await Booking.findOneAndUpdate(
     { _id: current._id, updatedAt: current.updatedAt },
-    { $set: updates },
+    { $set: updates, $push: { statusHistory: { status: current.status, changedBy: req.admin._id, changedByName: req.admin.name, reason: Object.keys(updates).every(key => key === 'adminNotes') ? 'Studio notes updated' : 'Booking details updated' } } },
     { new: true, runValidators: true },
   );
   if (!booking) throw new AppError('This booking changed. Reload it before saving.', 409, 'BOOKING_CHANGED');
@@ -259,7 +261,15 @@ const deleteBooking = async (c) => {
  * Admin — aggregated stats for dashboard
  */
 const getDashboardStats = async (c) => {
-  const req = c.get('input');
+  const now = new Date();
+  const today = require('../services/bookingPolicy').bookingPolicy(now).studioDate;
+  const time = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit' }).format(now);
+  const fields = 'clientName preferredDate preferredTime holdExpiresAt';
+  const [next, pending, holds] = await Promise.all([
+    Booking.findOne({ status: 'confirmed', $or: [{ preferredDate: { $gt: today } }, { preferredDate: today, preferredTime: { $gte: time } }] }).sort({ preferredDate: 1, preferredTime: 1 }).select(fields).lean(),
+    Booking.find({ status: 'pending' }).sort({ createdAt: 1 }).limit(3).select(fields).lean(),
+    Booking.find({ status: 'on-hold', holdExpiresAt: { $gt: now } }).sort({ holdExpiresAt: 1 }).limit(3).select(fields).lean(),
+  ]);
   const [statusCounts, recentBookings] = await Promise.all([
     Booking.aggregate([{ $group: { _id: "$status", count: { $sum: 1 } } }]),
     Booking.find()
@@ -281,7 +291,7 @@ const getDashboardStats = async (c) => {
       total,
       ...stats,
     },
-    recentBookings,
+    recentBookings, next, pending, holds,
   });
 };
 

@@ -8,7 +8,7 @@ import { AdminFeedback } from '../AdminFeedback'
 import { useAdminResource } from '../useAdminResource'
 
 const loadAgenda = date => scheduleApi.getByDate(date)
-const actionTitles = { confirm: 'Confirm appointment', move: 'Reschedule appointment', decline: 'Decline request', cancel: 'Cancel appointment', complete: 'Mark completed' }
+const actionTitles = { notes: 'Save notes', confirm: 'Confirm appointment', move: 'Reschedule appointment', decline: 'Decline request', cancel: 'Cancel appointment', complete: 'Mark completed' }
 
 export function BookingReview({ booking, refreshing, onRefresh, onSaved }) {
   const earliest = toDateKey(addDays(fromDateKey(studioTodayKey()), 1))
@@ -65,7 +65,9 @@ export function BookingReview({ booking, refreshing, onRefresh, onSaved }) {
     setError(null)
     const expectedUpdatedAt = version
     try {
-      const result = changingSchedule
+      const result = action === 'notes'
+        ? await bookingApi.update(booking._id, { adminNotes: notes, expectedUpdatedAt })
+        : changingSchedule
         ? await bookingApi.confirm(booking._id, { date, startTime, endTime, expectedUpdatedAt, adminNotes: notes })
         : await bookingApi.updateStatus(booking._id, { status: action === 'complete' ? 'completed' : 'cancelled', reason, expectedUpdatedAt, adminNotes: notes })
       setAction(null)
@@ -103,9 +105,9 @@ export function BookingReview({ booking, refreshing, onRefresh, onSaved }) {
       ))}</ul>}
     </section>
     <section><h3>Contact</h3><dl className="studio-review-facts"><div><dt>Email</dt><dd>{booking.email ? <a href={`mailto:${booking.email}`}>{booking.email}</a> : "—"}</dd></div><div><dt>Phone</dt><dd>{booking.phone ? <a href={`tel:${booking.phone}`}>{booking.phone}</a> : "—"}</dd></div><div><dt>Instagram</dt><dd>{booking.instagramHandle}</dd></div></dl></section>
-    {booking.adminNotes && <section><h3>Studio notes</h3><p>{booking.adminNotes}</p></section>}
+    <section><h3>Studio notes</h3>{booking.adminNotes && <p>{booking.adminNotes}</p>}<button type="button" className="studio-secondary" disabled={refreshing} onClick={() => open('notes')}>Edit notes</button></section>
     <section><h3>History</h3>{booking.statusHistory?.length ? <ol className="studio-history">
-      {[...booking.statusHistory].reverse().map((entry, index) => <li key={entry._id || index}><span>{entry.reason || entry.status}</span><time dateTime={entry.changedAt}>{formatStudioTimestamp(entry.changedAt)}</time></li>)}
+      {[...booking.statusHistory].reverse().map((entry, index) => <li key={entry._id || index}><span>{entry.reason || entry.status}{(entry.changedByName || entry.changedBy?.name) && ' · ' + (entry.changedByName || entry.changedBy.name)}</span><time dateTime={entry.changedAt}>{formatStudioTimestamp(entry.changedAt)}</time></li>)}
     </ol> : <p>No history recorded.</p>}</section>
 
     <Dialog open={Boolean(preview)} onClose={() => setPreview(null)} title={preview?.label || 'Reference image'} className="studio-reference-dialog">

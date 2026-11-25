@@ -40,6 +40,11 @@ api.get('/schedule', validate(sv.rangeQueryValidators), schedule.getAllSchedules
 api.get('/schedule/blocked-dates', validate(sv.monthQueryValidators), schedule.getBlockedDates);
 api.get('/schedule/default-times', async c => c.json({ success: true, ...await settings.getDefaultSchedule() }));
 api.put('/schedule/default-times', async c => c.json({ success: true, ...await settings.saveDefaultSchedule(c.get('input').body) }));
+api.put('/schedule/block-days', validate(sv.blockDaysValidators), async c => {
+  const { days, reason } = c.get('input').body;
+  await calendar.blockDays(days, reason, c.get('input').admin);
+  return c.json({ success: true });
+});
 api.get('/schedule/:date', validate(sv.dateParamValidator), schedule.getScheduleByDate);
 api.put('/schedule/:date/closure', validate([
   ...sv.dateParamValidator,
@@ -49,7 +54,7 @@ api.put('/schedule/:date/closure', validate([
   body(['startTime', 'endTime']).if((_, { req }) => ['block-range', 'unblock-range'].includes(req.body.action)).matches(/^\d{2}:\d{2}$/),
 ]), async c => {
   const { params, body: operation } = c.get('input');
-  const agenda = await calendar.changeClosure(params.date, operation);
+  const agenda = await calendar.changeClosure(params.date, operation, c.get('input').admin);
   return c.json({ success: true, schedule: agenda });
 });
 api.post('/schedule/expire-holds', schedule.expireHolds);

@@ -63,35 +63,60 @@ async function dayAgenda(date) {
   };
 }
 
-async function changeClosure(date, operation) {
-  await transaction(async () => {
-    const schedule = await Schedule.findOne({ date }) || await scheduleForNewDate(date);
-    if ((schedule.__v ?? null) !== operation.version) {
-      throw new AppError('The calendar changed. Review the updated day and try again.', 409, 'SCHEDULE_CHANGED');
+async function applyClosure(date, operation, admin) {
+  const schedule = await Schedule.findOne({ date }) || await scheduleForNewDate(date);
+  if ((schedule.__v ?? null) !== operation.version) {
+    throw new AppError('The calendar changed. Review the updated day and try again.', 409, 'SCHEDULE_CHANGED');
+  }
+  const change = planClosure(schedule, operation);
+  if (change.wholeDay) {
+    const legacy = !change.closing && await settings.isDateBlocked(date);
+    if (legacy) await settings.removeBlockedDate(date);
+    if (change.closing && wholeDayClosed(schedule)) return;
+    if (!change.closing && !wholeDayClosed(schedule) && !legacy) return;
+    schedule.dayStatus = change.closing ? DAY_STATUS.FULLY_CLOSED : DAY_STATUS.OPEN;
+    schedule.closureReason = change.closing ? change.reason : null;
+  } else {
+    if (wholeDayClosed(schedule) || await settings.isDateBlocked(date)) {
+      throw new AppError('Unblock the whole day before editing individual times.', 409);
     }
-    const change = planClosure(schedule, operation);
-    if (change.wholeDay) {
-      if (!change.closing && await settings.isDateBlocked(date)) await settings.removeBlockedDate(date);
-      if (change.closing && wholeDayClosed(schedule)) return;
-      if (!change.closing && !wholeDayClosed(schedule)) return;
-      schedule.dayStatus = change.closing ? DAY_STATUS.FULLY_CLOSED : DAY_STATUS.OPEN;
-      schedule.closureReason = change.closing ? change.reason : null;
-    } else {
-      if (wholeDayClosed(schedule) || await settings.isDateBlocked(date)) {
-        throw new AppError('Unblock the whole day before editing individual times.', 409);
-      }
-      if (!change.slots.length) return;
-      for (const slot of change.slots) {
-        slot.status = change.closing ? SLOT_STATUS.CLOSED : SLOT_STATUS.AVAILABLE;
-        slot.reason = change.closing ? change.reason : null;
-        slot.holdExpiresAt = null;
-        slot.bookingId = null;
-      }
+    if (!change.slots.length) return;
+    for (const slot of change.slots) {
+      slot.status = change.closing ? SLOT_STATUS.CLOSED : SLOT_STATUS.AVAILABLE;
+      slot.reason = change.closing ? change.reason : null;
+      slot.holdExpiresAt = null;
+      slot.bookingId = null;
     }
-    if (!schedule.isNew) schedule.increment();
-    await schedule.save();
-  });
+  }
+  if (admin) {
+    const { action, startTime, endTime, reason } = operation;
+    schedule.closureHistory.push({ action, startTime, endTime, reason, changedBy: admin._id, changedByName: admin.name, changedAt: new Date() });
+  }
+  if (!schedule.isNew) schedule.increment();
+  await schedule.save();
+}
+
+async function changeClosure(date, operation, admin) {
+  await transaction(() => applyClosure(date, operation, admin));
   return dayAgenda(date);
 }
 
-module.exports = { dayAgenda, changeClosure, planClosure };
+async function blockDays(days, reason, admin) {
+  await transaction(async () => {
+    const blocked = await settings.getBlockedDateSet();
+    for (const { date, version } of days) {
+      try {
+        if (blocked.has(date)) throw new AppError('Already blocked.', 409);
+        await applyClosure(date, { action: 'block-day', version, reason }, admin);
+      } catch (error) {
+        if (error.statusCode === 409 || error.code === 11000 || error.name === 'VersionError') {
+          const message = error.statusCode === 409 ? error.message : 'The calendar changed.';
+          throw new AppError(date + ': ' + message + ' No dates were saved.', 409, 'BLOCK_DAYS_CONFLICT', { date });
+        }
+        throw error;
+      }
+    }
+  });
+}
+
+module.exports = { dayAgenda, changeClosure, blockDays, planClosure };

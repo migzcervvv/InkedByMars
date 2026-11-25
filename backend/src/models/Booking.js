@@ -108,6 +108,7 @@ const bookingSchema = new mongoose.Schema(
       {
         status: { type: String },
         changedAt: { type: Date, default: Date.now },
+        changedByName: String,
         changedBy: { type: mongoose.Schema.Types.ObjectId, ref: "Admin" },
         reason: { type: String },
       },
