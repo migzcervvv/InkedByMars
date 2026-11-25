@@ -159,7 +159,7 @@ motions:
     element: "Outgoing and incoming viewport snapshots"
     purpose: orient
     meaning: "One studio page moves upward to make room for the next"
-    trigger: "Internal pathname change including history traversal"
+    trigger: "Public-to-public pathname change including history traversal"
     start_state: "Outgoing page fills viewport"
     end_state: "Incoming page fills viewport"
     duration_ms: 1450

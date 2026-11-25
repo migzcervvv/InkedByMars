@@ -52,7 +52,9 @@ export function AppRoutes() {
       setShowIntro(false);
       setPage(target);
     };
-    if (!document.startViewTransition || matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    const adminRoute = /^\/admin(?:\/|$)/i;
+    if (adminRoute.test(page.pathname) || adminRoute.test(target.pathname) ||
+        !document.startViewTransition || matchMedia("(prefers-reduced-motion: reduce)").matches) {
       commit();
       return;
     }

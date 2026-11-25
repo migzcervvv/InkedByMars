@@ -56,3 +56,10 @@ Motion revision: Chrome verified the first-visit intro on normal-speed loads at 
 - PASS — Chromium checks at 375, 768 and 1440 px used simulated API responses to add a booking from Bookings, exclude conflicting end times, save shop hours and display a blocked range with shop hours on the public page. The tablet check used reduced motion. The mobile booking dialog was visually inspected.
 - PASS — Client lint, client and Worker builds, and 49 existing tests.
 - UNVERIFIED — Production persistence, live schedule data and field performance.
+
+## Route motion, 2026-11-25
+
+- PASS — Internal pathname changes use a 1.45-second shrink, upward slide and expansion. A mid-transition mobile screenshot showed both pages against the dark background.
+- PASS — Browser checks at 375, 768 and 1440 px covered homepage entry, navigation to Booking, Back and homepage refresh. Reduced motion bypassed the animation. Direct Works entry followed by its internal Home link also passed at 375 and 1440 px.
+- PASS — Client lint, production build and nine client tests.
+- UNVERIFIED — Field performance and production deployment.
