@@ -1,3 +1,4 @@
+import { formErrors } from '../../../utils/formValidation'
 import { useRef, useState } from 'react'
 import { scheduleApi } from '../../../api/scheduleApi'
 import { Dialog } from '../../../components/ui/Dialog'
@@ -23,9 +24,18 @@ function DefaultTimesForm({ defaults, pendingRef, onClose, onSaved }) {
   async function save(event) {
     event.preventDefault()
     if (pendingRef.current) return
+    const validation = formErrors(event.currentTarget, { opening: 'an opening time', closing: 'a closing time' })
+    if (validation) {
+      setError(validation)
+      return
+    }
     const fields = new FormData(event.currentTarget)
     const opening = fields.get('opening')
     const closing = fields.get('closing') === '00:00' ? '24:00' : fields.get('closing')
+    if (opening >= closing) {
+      setError({ fields: { closing: 'Choose a closing time after opening time.' } })
+      return
+    }
     pendingRef.current = true
     setBusy(true)
     setError(null)
@@ -33,20 +43,22 @@ function DefaultTimesForm({ defaults, pendingRef, onClose, onSaved }) {
       await scheduleApi.saveDefaults({ opening, closing })
       onSaved()
     } catch (failure) {
-      setError(failure)
+      setError(failure.code === 'INVALID_DEFAULT_TIMES'
+        ? { message: 'The studio website hasn’t finished updating. Shop hours could not be saved.' }
+        : failure)
     } finally {
       pendingRef.current = false
       setBusy(false)
     }
   }
 
-  return <form className="studio-fields" onSubmit={save}>
+  return <form className="studio-fields" noValidate onSubmit={save}>
     <p className="studio-meta">Philippine time. Applies to dates without a saved schedule. Select 12:00 AM to close at midnight.</p>
     <fieldset disabled={busy} className="studio-field-pair">
       <label>Opens at<input type="time" name="opening" required defaultValue={defaults.times[0]} /></label>
       <label>Closes at<input type="time" name="closing" required defaultValue={defaults.endTime === '24:00' ? '00:00' : defaults.endTime} /></label>
     </fieldset>
-    <AdminFeedback error={error} />
+    <AdminFeedback error={error} form />
     <div className="studio-form-footer">
       <button type="button" className="studio-secondary" disabled={busy} onClick={onClose}>Cancel</button>
       <button className="studio-primary" type="submit" disabled={busy}>{busy ? 'Saving…' : 'Save shop hours'}</button>

@@ -1,3 +1,4 @@
+import { formErrors } from '../../../utils/formValidation'
 import { useRef, useState } from 'react'
 import { scheduleApi } from '../../../api/scheduleApi'
 import { addDays, fromDateKey, studioTodayKey, toDateKey } from '../../../utils/date'
@@ -32,19 +33,35 @@ function ConfirmedBookingForm({ date, schedule, busy, setBusy, refreshing, onSav
   const [start, setStart] = useState('')
   const [error, setError] = useState(null)
   const pending = useRef(false)
+  const attempt = useRef(null)
 
   async function submit(event) {
     event.preventDefault()
-    if (pending.current) return
+    if (pending.current || refreshing) return
+    const validation = formErrors(event.currentTarget, { clientName: 'the client’s name', instagramHandle: 'an Instagram handle', tattooPlacement: 'the tattoo placement', preferredTime: 'a start time', appointmentEnd: 'an end time' })
+    if (validation) {
+      setError(validation)
+      return
+    }
     const fields = Object.fromEntries(new FormData(event.currentTarget))
+    const payload = { ...fields, preferredDate: date }
+    const signature = JSON.stringify(payload)
+    if (attempt.current?.signature !== signature) {
+      attempt.current = { signature, key: crypto.randomUUID() }
+    }
     pending.current = true
     setBusy(true)
     setError(null)
     try {
-      const { booking } = await bookingApi.create({ ...fields, preferredDate: date })
+      const { booking } = await bookingApi.create({ ...payload, submissionKey: attempt.current.key })
+      if (!booking?._id) {
+        setError({ message: 'The website couldn’t confirm the save. Check the bookings list before trying again.' })
+        return
+      }
       onSaved(booking)
     } catch (failure) {
-      setError(failure)
+      const outdated = failure.fields?.phone || failure.fields?.email
+      setError(outdated ? { message: 'The studio website is still asking for contact details that this form no longer uses. This booking could not be saved.' } : failure)
       if (failure.status === 409) onConflict()
     } finally {
       pending.current = false
@@ -52,9 +69,9 @@ function ConfirmedBookingForm({ date, schedule, busy, setBusy, refreshing, onSav
     }
   }
 
-  return <form className="studio-fields" onSubmit={submit}>
+  return <form className="studio-fields" noValidate onSubmit={submit}>
       <p>{formatDisplayDate(date)} · Philippine time</p>
-      <AdminFeedback error={error} />
+      <AdminFeedback error={error} form />
       <fieldset disabled={busy || refreshing} className="studio-fields">
         <label>Client name<input name="clientName" required maxLength={100} /></label>
         <label>Instagram handle<input name="instagramHandle" required maxLength={100} /></label>
@@ -69,7 +86,7 @@ function ConfirmedBookingForm({ date, schedule, busy, setBusy, refreshing, onSav
             {schedule.boundaries.filter(time => time > start && !schedule.timeSlots.some(slot => slot.time >= start && slot.time < time && slot.status !== 'available')).map(time => <option key={time} value={time}>{time === '24:00' ? 'Midnight' : formatDisplayTime(time)}</option>)}
           </select></label>
         </div>
-        <button className="studio-primary" type="submit" disabled={!start}>{busy ? 'Saving…' : 'Confirm booking'}</button>
+        <button className="studio-primary" type="submit" disabled={busy || refreshing}>{busy ? 'Saving…' : 'Confirm booking'}</button>
       </fieldset>
   </form>
 }

@@ -1,3 +1,4 @@
+import { formErrors, checkNewPassword } from '../../utils/formValidation'
 import { useRef, useState } from 'react'
 import { KeyRound, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
@@ -86,6 +87,11 @@ function TeamAccountAction({ action, busyRef, onSaved, onCancel }) {
   async function submit(event) {
     event.preventDefault()
     if (busyRef.current) return
+    const validation = formErrors(event.currentTarget, { password: 'a new password' }, { password: checkNewPassword })
+    if (validation) {
+      setError(validation)
+      return
+    }
     const password = new FormData(event.currentTarget).get('password')
     busyRef.current = true
     setSaving(true)
@@ -101,13 +107,13 @@ function TeamAccountAction({ action, busyRef, onSaved, onCancel }) {
     }
   }
 
-  return <form className="studio-fields" onSubmit={submit}>
+  return <form className="studio-fields" noValidate onSubmit={submit}>
     <p><strong>{user.name}</strong><br /><span className="studio-meta">{user.email}</span></p>
     <p>{removing ? 'This permanently removes the account and ends its studio access.' : 'Saving a new password signs this user out of their current sessions.'}</p>
     {!removing && <label>New password<input type="password" name="password" autoComplete="new-password" required minLength={8} maxLength={72} />
       <small className="studio-meta">At least 8 characters, including an uppercase letter and a number.</small>
     </label>}
-    <AdminFeedback error={error && { ...error, message: Object.values(error.fields || {})[0] || error.message }} />
+    <AdminFeedback error={error} form />
     <div className="studio-form-footer">
       <button type="button" className="studio-secondary" onClick={onCancel} disabled={saving}>Cancel</button>
       <button type="submit" className="studio-primary" disabled={saving}>{saving ? 'Saving…' : titles[action.type]}</button>

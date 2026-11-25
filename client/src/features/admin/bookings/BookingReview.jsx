@@ -1,3 +1,4 @@
+import { formErrors } from '../../../utils/formValidation'
 import { useRef, useState } from 'react'
 import { bookingApi } from '../../../api/bookingApi'
 import { scheduleApi } from '../../../api/scheduleApi'
@@ -49,7 +50,16 @@ export function BookingReview({ booking, refreshing, onRefresh, onSaved }) {
 
   const save = async event => {
     event.preventDefault()
-    if (saving.current || refreshing || changed || (changingSchedule && !canSubmitRange)) return
+    if (saving.current || refreshing || changed) return
+    const validation = formErrors(event.currentTarget, { date: 'an appointment date', startTime: 'a start time', endTime: 'an end time', reason: 'a reason', adminNotes: 'the internal notes' })
+    if (validation) {
+      setError(validation)
+      return
+    }
+    if (changingSchedule && !canSubmitRange) {
+      setError({ message: 'Choose a date and an available time range before saving.' })
+      return
+    }
     saving.current = true
     setBusy(true)
     setError(null)
@@ -104,12 +114,12 @@ export function BookingReview({ booking, refreshing, onRefresh, onSaved }) {
         : <img className="studio-reference-preview" src={preview.url} alt={preview.label} onError={() => setFailedPreview(preview.key)} />)}
     </Dialog>
     <Dialog open={Boolean(action)} onClose={() => { if (!busy) setAction(null) }} title={actionTitles[action] || 'Booking action'} className="studio-admin-dialog">
-      <form className="studio-fields" onSubmit={save}>
+      <form className="studio-fields" noValidate onSubmit={save}>
         {changingSchedule && <>
-          <label>Appointment date<input type="date" min={earliest} value={date} required onChange={event => { setDate(event.target.value); setStart(''); setEnd('') }} /></label>
+          <label>Appointment date<input name="date" type="date" min={earliest} value={date} required onChange={event => { setDate(event.target.value); setStart(''); setEnd('') }} /></label>
           <div className="studio-field-pair">
-            <label>Start<select required value={startTime} onChange={event => { setStart(event.target.value); setEnd('') }}><option value="">Choose time</option>{boundaries.slice(0, -1).map(time => <option key={time} value={time}>{formatDisplayTime(time)}</option>)}</select></label>
-            <label>End<select required value={endTime} disabled={!startTime} onChange={event => setEnd(event.target.value)}><option value="">Choose time</option>{boundaries.filter(time => time > startTime).map(time => <option key={time} value={time}>{formatDisplayTime(time)}</option>)}</select></label>
+            <label>Start<select name="startTime" required value={startTime} onChange={event => { setStart(event.target.value); setEnd('') }}><option value="">Choose time</option>{boundaries.slice(0, -1).map(time => <option key={time} value={time}>{formatDisplayTime(time)}</option>)}</select></label>
+            <label>End<select name="endTime" required value={endTime} disabled={!startTime} onChange={event => setEnd(event.target.value)}><option value="">Choose time</option>{boundaries.filter(time => time > startTime).map(time => <option key={time} value={time}>{formatDisplayTime(time)}</option>)}</select></label>
           </div>
           {agenda.loading && <p role="status">Checking calendar…</p>}
           <AdminFeedback error={agenda.error} onRetry={agenda.reload} />
@@ -117,16 +127,16 @@ export function BookingReview({ booking, refreshing, onRefresh, onSaved }) {
           {conflicts.length > 0 && <p role="status">Unavailable at {conflicts.map(slot => formatDisplayTime(slot.time)).join(', ')}.</p>}
           {canSubmitRange && <p className="studio-range-review">{formatDisplayDate(date)} · {formatDisplayTime(startTime)}–{formatDisplayTime(endTime)} Philippine time</p>}
         </>}
-        {closingRequest && <label>Reason<textarea required maxLength={500} value={reason} onChange={event => setReason(event.target.value)} /></label>}
+        {closingRequest && <label>Reason<textarea name="reason" required maxLength={500} value={reason} onChange={event => setReason(event.target.value)} /></label>}
         {action === 'complete' && <p>Mark this appointment completed and keep its time closed.</p>}
-        <label>Internal notes<textarea maxLength={1000} value={notes || ''} onChange={event => setNotes(event.target.value)} /></label>
+        <label>Internal notes<textarea name="adminNotes" maxLength={1000} value={notes || ''} onChange={event => setNotes(event.target.value)} /></label>
         {changed && <div className="studio-feedback" role="status">
           <p>The booking was updated. Current status is {booking.isExpired ? 'hold expired' : booking.status}. {formatDisplayDate(booking.preferredDate)} · {formatDisplayTime(booking.preferredTime)}.</p>
           {booking.adminNotes && <p>Current studio notes: {booking.adminNotes}</p>}
           <button type="button" className="studio-plain" disabled={refreshing} onClick={() => setVersion(booking.updatedAt)}>Use updated booking</button>
         </div>}
-        <AdminFeedback error={error} />
-        <div className="studio-actions"><button type="submit" className="studio-primary" disabled={busy || refreshing || changed || (changingSchedule && !canSubmitRange)}>{busy ? 'Saving…' : actionTitles[action]}</button></div>
+        <AdminFeedback error={error} form />
+        <div className="studio-actions"><button type="submit" className="studio-primary" disabled={busy || refreshing || changed || agenda.loading}>{busy ? 'Saving…' : actionTitles[action]}</button></div>
       </form>
     </Dialog>
   </div>

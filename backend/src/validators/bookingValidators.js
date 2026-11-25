@@ -13,13 +13,17 @@ const createBookingValidators = [
     .isLength({ max: 100 })
     .withMessage("Name cannot exceed 100 characters"),
 
+  // Instagram bookings may omit contact details or send blank optional fields.
+  body(["email", "phone"]).customSanitizer(value =>
+    value === null || (typeof value === "string" && !value.trim()) ? undefined : value),
+
   body("email")
     .optional()
     .isEmail()
-    .withMessage("Provide a valid email address")
+    .withMessage("Enter an email address like name@example.com.")
     .normalizeEmail(),
 
-  body("phone").optional().isString().trim(),
+  body("phone").optional().isString().withMessage("Enter a valid phone number.").trim(),
 
   body("instagramHandle")
     .trim()
@@ -42,14 +46,14 @@ const createBookingValidators = [
     .notEmpty()
     .withMessage("Preferred date is required")
     .matches(/^\d{4}-\d{2}-\d{2}$/)
-    .withMessage("Date must be in YYYY-MM-DD format")
+    .withMessage("Choose a valid appointment date.")
     .custom(validDate).withMessage('Invalid date'),
 
   body("preferredTime")
     .notEmpty()
     .withMessage("Preferred time is required")
     .matches(/^\d{2}:\d{2}$/)
-    .withMessage("Time must be in HH:MM 24h format"),
+    .withMessage("Choose a valid start time."),
 
   body("appointmentEnd").optional().matches(/^(?:[01]\d|2[0-3]):[0-5]\d$|^24:00$/)
     .custom((value, { req }) => value > req.body.preferredTime)
@@ -66,7 +70,7 @@ const createBookingValidators = [
     .isArray({ max: 4 })
     .withMessage("Reference images must be an array with at most 4 items"),
 
-  body("referenceImages.*").custom(value => require('../services/mediaService').isMediaKey(value)).withMessage('References must be uploaded media keys, not inline data or external URLs'),
+  body("referenceImages.*").custom(value => require('../services/mediaService').isMediaKey(value)).withMessage('Upload the reference images again.'),
 ];
 
 const updateBookingStatusValidators = [
@@ -100,7 +104,7 @@ const confirmBookingValidators = [
 
   body("date")
     .matches(/^\d{4}-\d{2}-\d{2}$/)
-    .withMessage("Date must be in YYYY-MM-DD format")
+    .withMessage("Choose a valid appointment date.")
     .custom(validDate).withMessage('Invalid date'),
 
   body("startTime")

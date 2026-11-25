@@ -35,22 +35,32 @@ function validateDefaultSchedule({ times, endTime }) {
   return { times: [...times].sort(), endTime };
 }
 
-async function saveDefaultSchedule(input) {
-  const { opening, closing } = input;
+function validateShopHours({ opening, closing }) {
   const clock = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
-  if (typeof opening !== 'string' || typeof closing !== 'string' || !clock.test(opening) || !(clock.test(closing) || closing === '24:00') || opening >= closing) {
-    throw new AppError('Closing time must be after opening time.', 400, 'INVALID_SHOP_HOURS');
-  }
+  const errors = [];
+  if (typeof opening !== 'string' || !clock.test(opening)) errors.push({ field: 'opening', message: 'Choose an opening time.' });
+  if (typeof closing !== 'string' || !(clock.test(closing) || closing === '24:00')) errors.push({ field: 'closing', message: 'Choose a closing time.' });
+  if (!errors.length && opening >= closing) errors.push({ field: 'closing', message: 'Choose a closing time after opening time.' });
+  if (errors.length) throw new AppError('Check the shop hours and try again.', 400, 'INVALID_SHOP_HOURS', errors);
   const minutes = value => Number(value.slice(0, 2)) * 60 + Number(value.slice(3));
   const times = [];
   for (let time = minutes(opening); time < minutes(closing); time += 30) {
     times.push(String(Math.floor(time / 60)).padStart(2, '0') + ':' + String(time % 60).padStart(2, '0'));
   }
-  const endTime = closing;
+  return { times, endTime: closing };
+}
+
+async function saveDefaultSchedule(input) {
+  const legacyInput = !Object.hasOwn(input, 'opening') && !Object.hasOwn(input, 'closing') && Object.hasOwn(input, 'times');
+  const { times, endTime } = legacyInput ? validateDefaultSchedule(input) : validateShopHours(input);
+  if (!legacyInput) {
+    const current = await getDefaultSchedule();
+    if (current.times[0] === times[0] && current.endTime === endTime) return current;
+  }
   await AvailabilitySettings.updateOne({ key }, {
     $set: { defaultTimes: times, defaultEndTime: endTime },
   }, { upsert: true });
   return { times, endTime };
 }
 
-module.exports = { getBlockedDateSet, getBlockedDatesForMonth, isDateBlocked, removeBlockedDate, getDefaultSchedule, saveDefaultSchedule, validateDefaultSchedule };
+module.exports = { getBlockedDateSet, getBlockedDatesForMonth, isDateBlocked, removeBlockedDate, getDefaultSchedule, saveDefaultSchedule, validateDefaultSchedule, validateShopHours };

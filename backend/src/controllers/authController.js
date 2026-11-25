@@ -40,7 +40,7 @@ const login = async (c) => {
   }
 
   if (!admin.isActive) {
-    return fail(new AppError("Account is deactivated", 403));
+    return fail(new AppError("This account is inactive. Ask the studio owner to restore your access.", 403, "ACCOUNT_INACTIVE"));
   }
 
   admin.lastLogin = new Date();

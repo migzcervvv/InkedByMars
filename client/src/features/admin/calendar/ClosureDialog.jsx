@@ -1,3 +1,4 @@
+import { formErrors } from '../../../utils/formValidation'
 import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { scheduleApi } from '../../../api/scheduleApi'
@@ -25,7 +26,16 @@ export function ClosureDialog({ date, schedule, initial, refreshing, onClose, on
 
   const save = async event => {
     event.preventDefault()
-    if (pending.current || refreshing || changed || !valid || conflicts.length) return
+    if (pending.current || refreshing || changed || conflicts.length) return
+    const validation = formErrors(event.currentTarget, { startTime: 'a start time', endTime: 'an end time', reason: 'a reason' })
+    if (validation) {
+      setError(validation)
+      return
+    }
+    if (!valid) {
+      setError({ message: 'Choose a start and end time from the calendar. The end must be after the start.' })
+      return
+    }
     pending.current = true
     setBusy(true)
     setError(null)
@@ -42,17 +52,17 @@ export function ClosureDialog({ date, schedule, initial, refreshing, onClose, on
   }
 
   return <Dialog open onClose={() => { if (!busy) onClose() }} title={titles[action]} className="studio-admin-dialog">
-    <form className="studio-fields" onSubmit={save}>
+    <form className="studio-fields" noValidate onSubmit={save}>
       <p>{formatDisplayDate(date)} · Philippine time</p>
       {range && <div className="studio-field-pair">
-        <label>Start<select value={startTime} required onChange={event => { setStart(event.target.value); setEnd('') }}>
+        <label>Start<select name="startTime" value={startTime} required onChange={event => { setStart(event.target.value); setEnd('') }}>
           <option value="">Choose time</option>{schedule.boundaries.slice(0, -1).map(time => <option key={time} value={time}>{formatDisplayTime(time)}</option>)}
         </select></label>
-        <label>End<select value={endTime} required disabled={!startTime} onChange={event => setEnd(event.target.value)}>
+        <label>End<select name="endTime" value={endTime} required disabled={!startTime} onChange={event => setEnd(event.target.value)}>
           <option value="">Choose time</option>{schedule.boundaries.filter(time => time > startTime).map(time => <option key={time} value={time}>{formatDisplayTime(time)}</option>)}
         </select></label>
       </div>}
-      {blocking && <label>Internal reason (optional)<textarea maxLength={500} value={reason} onChange={event => setReason(event.target.value)} /></label>}
+      {blocking && <label>Internal reason (optional)<textarea name="reason" maxLength={500} value={reason} onChange={event => setReason(event.target.value)} /></label>}
       {valid && <p className="studio-range-review">{range ? `${formatDisplayTime(startTime)}–${formatDisplayTime(endTime)}` : 'Whole day'} · {blocking ? 'Mark non-bookable' : 'Remove studio closure'}</p>}
       {conflicts.length > 0 && <div className="studio-feedback" role="status">
         <p>These times are reserved. Review the bookings before blocking time.</p>
@@ -62,8 +72,8 @@ export function ClosureDialog({ date, schedule, initial, refreshing, onClose, on
         <p>The agenda changed while you were editing. Review the range and any reserved slots shown above.</p>
         <button type="button" className="studio-plain" disabled={refreshing} onClick={() => setVersion(schedule.version)}>Use updated agenda</button>
       </div>}
-      <AdminFeedback error={error} />
-      <div className="studio-actions"><button type="submit" className="studio-primary" disabled={!valid || Boolean(conflicts.length) || refreshing || changed || busy}>{busy ? 'Saving…' : titles[action]}</button></div>
+      <AdminFeedback error={error} form />
+      <div className="studio-actions"><button type="submit" className="studio-primary" disabled={Boolean(conflicts.length) || refreshing || changed || busy}>{busy ? 'Saving…' : titles[action]}</button></div>
     </form>
   </Dialog>
 }

@@ -9,7 +9,12 @@ exports.validate = (...chains) => async (c, next) => {
   input.params = c.req.param();
   for (const chain of chains.flat()) await chain.run(input);
   const result = validationResult(input);
-  if (!result.isEmpty()) throw new AppError('Please correct the highlighted fields.', 400, 'VALIDATION_ERROR', result.array().map(({ path, msg }) => ({ field: path, message: msg })));
+  if (!result.isEmpty()) {
+    const errors = result.array({ onlyFirstError: true }).map(({ path, msg }) => ({
+      field: path, message: msg === 'Invalid value' ? 'Check the information you entered and try again.' : msg,
+    }));
+    throw new AppError('Check the information you entered and try again.', 400, 'VALIDATION_ERROR', errors);
+  }
   await next();
 };
 exports.input = async (c, next) => {

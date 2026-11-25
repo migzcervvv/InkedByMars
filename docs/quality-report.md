@@ -63,3 +63,9 @@ Motion revision: Chrome verified the first-visit intro on normal-speed loads at 
 - PASS — Browser checks at 375, 768 and 1440 px covered homepage entry, navigation to Booking, Back and homepage refresh. Reduced motion bypassed the animation. Direct Works entry followed by its internal Home link also passed at 375 and 1440 px.
 - PASS — Client lint, production build and nine client tests.
 - UNVERIFIED — Field performance and production deployment.
+
+## Admin form validation, 2026-11-25
+
+- PASS — Chromium at 375, 768 and 1440 px exercised sign-in, booking creation and cancellation validation, shop hours, calendar closure validation, team creation, password reset and account removal with simulated API responses. The booking form showed both returned field errors and moved focus to the error summary. An HTTP 503 displayed a plain-language message and the next save succeeded.
+- PASS — Backend tests covered omitted and blank contact fields, midnight closing, invalid hours, and preservation of existing intervals on a no-change save.
+- UNVERIFIED — Production saves with this revision. The deployed Worker still uses older validators, and Wrangler reported an expired login.

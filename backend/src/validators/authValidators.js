@@ -9,7 +9,7 @@ const identity = () => [
   body('email').isString().bail().trim().isEmail().withMessage('Provide a valid email address').normalizeEmail(),
 ];
 const password = () => body('password').isString().bail()
-  .custom(value => Buffer.byteLength(value, 'utf8') <= 72).withMessage('Password must be at most 72 bytes')
+  .custom(value => Buffer.byteLength(value, 'utf8') <= 72).withMessage('Use a shorter password.')
   .isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
   .matches(/[A-Z]/).withMessage('Password must contain an uppercase letter')
   .matches(/[0-9]/).withMessage('Password must contain a number');

@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom'
 import { bookingApi } from '../../../api/bookingApi'
 import { BookingStatusBadge } from '../../../components/admin/BookingStatusBadge'
 import { formatDisplayDate, formatDisplayTime, formatStudioTimestamp } from '../../../utils/date'
+import { formErrors } from '../../../utils/formValidation'
 import { AdminFeedback } from '../AdminFeedback'
 import { useAdminResource } from '../useAdminResource'
 import { ConfirmedBookingDialog } from '../calendar/ConfirmedBookingDialog'
@@ -21,6 +22,7 @@ export default function BookingsPage() {
   const [adding, setAdding] = useState(false)
   const [feedback, setFeedback] = useState('')
   const [search, setSearch] = useState('')
+  const [filterError, setFilterError] = useState(null)
   const backTo = useRef(null)
   const detailTitle = useRef(null)
   const previousSelection = useRef(null)
@@ -91,16 +93,20 @@ export default function BookingsPage() {
         </nav>
         <details className="studio-search">
           <summary><Search size={16} aria-hidden="true" /> Search and date {search || date ? '· Active' : ''}</summary>
-          <form key={`${search}|${date}`} className="studio-fields" onSubmit={event => {
+          <form key={`${search}|${date}`} className="studio-fields" noValidate onSubmit={event => {
             event.preventDefault()
+            const validation = formErrors(event.currentTarget, { search: 'the search text', date: 'the appointment date' })
+            setFilterError(validation)
+            if (validation) return
             const fields = new FormData(event.currentTarget)
             setSearch(fields.get('search').trim())
             changeParams({ date: fields.get('date'), page: null, booking: null })
           }}>
             <label>Client name or email<input type="search" name="search" maxLength={100} defaultValue={search} /></label>
             <label>Appointment date<input type="date" name="date" defaultValue={date} /></label>
+            <AdminFeedback error={filterError} form />
             <div className="studio-actions"><button type="submit" className="studio-primary">Search</button>
-              {(search || date) && <button type="button" className="studio-plain" onClick={() => { setSearch(''); changeParams({ date: null, page: null, booking: null }) }}>Clear</button>}
+              {(search || date) && <button type="button" className="studio-plain" onClick={() => { setFilterError(null); setSearch(''); changeParams({ date: null, page: null, booking: null }) }}>Clear</button>}
             </div>
           </form>
         </details>

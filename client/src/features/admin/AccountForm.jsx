@@ -1,3 +1,4 @@
+import { formErrors, checkNewPassword } from '../../utils/formValidation'
 import { useRef, useState } from 'react'
 import { authApi } from '../../api/authApi'
 import { AdminFeedback } from './AdminFeedback'
@@ -11,6 +12,11 @@ export function AccountForm({ user, self = false, onSaved, onCancel }) {
   async function save(event) {
     event.preventDefault()
     if (pending.current) return
+    const validation = formErrors(event.currentTarget, { name: 'a username', email: 'an email address', password: 'a password', currentPassword: 'your current password' }, { password: checkNewPassword })
+    if (validation) {
+      setError(validation)
+      return
+    }
     const fields = new FormData(event.currentTarget)
     const payload = { name: fields.get('name').trim(), email: fields.get('email').trim() }
     if (fields.has('password')) payload.password = fields.get('password')
@@ -29,7 +35,7 @@ export function AccountForm({ user, self = false, onSaved, onCancel }) {
     }
   }
 
-  return <form className="studio-fields" onSubmit={save}>
+  return <form className="studio-fields" noValidate onSubmit={save}>
     <label>Username<input name="name" required maxLength={100} autoComplete="off" defaultValue={user?.name || ''} /></label>
     <label>Email<input name="email" type="email" required autoComplete="off" defaultValue={user?.email || ''} /></label>
     {self && <label className="studio-inline-check"><input type="checkbox" checked={changingPassword} onChange={event => setChangingPassword(event.target.checked)} />Change password</label>}
@@ -38,7 +44,7 @@ export function AccountForm({ user, self = false, onSaved, onCancel }) {
       <input name="password" type="password" required minLength={8} maxLength={72} autoComplete="new-password" />
       <small className="studio-meta">At least 8 characters, including an uppercase letter and a number.</small>
     </label>}
-    <AdminFeedback error={error && { ...error, message: Object.values(error.fields || {})[0] || error.message }} />
+    <AdminFeedback error={error} form />
     <div className="studio-form-footer">
       <button type="button" className="studio-secondary" disabled={saving} onClick={onCancel}>Cancel</button>
       <button className="studio-primary" type="submit" disabled={saving}>{saving ? 'Saving…' : user ? 'Save changes' : 'Create account'}</button>

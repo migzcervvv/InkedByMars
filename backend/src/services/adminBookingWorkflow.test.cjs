@@ -10,7 +10,52 @@ const { bookingPolicy, validDate, requireBookableDate } = require('./bookingPoli
 const { expiryReason, isExpired, requireCurrentVersion, viewFilter } = require('./bookingReview');
 const { planClosure } = require('./calendarClosures');
 const { toPublicAvailability, getSlotBoundaryTimes } = require('./scheduleService');
-const { validateDefaultSchedule } = require('./availabilitySettingsService');
+const { validateDefaultSchedule, validateShopHours, saveDefaultSchedule } = require('./availabilitySettingsService');
+const runtime = require('../bindings/runtime');
+
+test('shop hours accept opening and closing times and flag the field that needs changing', () => {
+  assert.deepEqual(validateShopHours({ opening: '22:45', closing: '24:00' }), {
+    times: ['22:45', '23:15', '23:45'], endTime: '24:00',
+  });
+  assert.throws(() => validateShopHours({ opening: '16:00', closing: '15:00' }), {
+    code: 'INVALID_SHOP_HOURS', details: [{ field: 'closing', message: 'Choose a closing time after opening time.' }],
+  });
+});
+
+test('Instagram bookings pass validation with omitted or blank contact fields', async () => {
+  const api = new Hono();
+  api.use('*', input);
+  api.post('/bookings', validate(createBookingValidators), c => c.json(c.get('input').body));
+  const booking = {
+    clientName: 'Fixture', instagramHandle: 'fixture', tattooPlacement: 'Arm',
+    preferredDate: '2099-01-01', preferredTime: '15:00', appointmentEnd: '16:00',
+  };
+  for (const contact of [{}, { email: ' ', phone: null }]) {
+    const response = await api.request('/bookings', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...booking, ...contact }),
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), booking);
+  }
+});
+
+test('saving unchanged shop hours preserves legacy intervals', async () => {
+  const settings = { defaultTimes: ['15:00', '16:00', '17:00'], defaultEndTime: '18:00' };
+  const writes = [];
+  const db = { models: { AvailabilitySettings: {
+    findOne: () => ({ select: () => ({ lean: async () => settings }) }),
+    updateOne: async (_filter, change) => writes.push(change.$set),
+  } } };
+  await runtime.run({ db }, async () => {
+    assert.deepEqual(await saveDefaultSchedule({ opening: '15:00', closing: '18:00' }), {
+      times: settings.defaultTimes, endTime: settings.defaultEndTime,
+    });
+    assert.equal(writes.length, 0);
+    await saveDefaultSchedule({ opening: '15:00', closing: '16:15' });
+    assert.deepEqual(writes, [{ defaultTimes: ['15:00', '15:30', '16:00'], defaultEndTime: '16:15' }]);
+  });
+});
 
 test('custom starts are sorted and the explicit end works for uneven slots and midnight', () => {
   const { times, endTime } = validateDefaultSchedule({ times: ['20:30', '15:00', '19:15'], endTime: '24:00' });

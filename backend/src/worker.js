@@ -29,8 +29,15 @@ app.use('*', async (c, next) => {
 export const handleError = (error, c) => {
   const status = error.statusCode || (error.code === 11000 ? 409 : ['ValidationError','CastError'].includes(error.name) ? 400 : 500);
   console.error(JSON.stringify({ requestId: c.get('requestId'), code: error.code || error.name, status, providerStatus: error.providerStatus, invalidBindings: error.invalidBindings }));
-  const errors=Array.isArray(error.details) ? error.details : Object.values(error.errors || {}).map(item=>({field:item.path,message:item.message}));
-  return c.json({ success: false, requestId: c.get('requestId'), code: typeof error.code === 'string' ? error.code : 'API_ERROR', message: status < 500 || error.isOperational ? error.message : 'The server could not complete the request.', errors, details: error.details }, status);
+  const errors = Array.isArray(error.details) ? error.details : Object.values(error.errors || {}).map(item => ({
+    field: item.path,
+    message: item.name === 'CastError' ? 'Check the value you entered.' : item.message,
+  }));
+  const message = error.isOperational ? error.message
+    : status === 409 ? 'This change conflicts with a recent update. Refresh the page and try again.'
+    : status === 400 ? 'Check the information you entered and try again.'
+    : 'The studio website couldn’t finish this request. Try again in a moment.';
+  return c.json({ success: false, requestId: c.get('requestId'), code: typeof error.code === 'string' ? error.code : 'API_ERROR', message, errors, details: error.details }, status);
 };
 app.onError(handleError);
 app.use('/api/*', async (c, next) => {
